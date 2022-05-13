@@ -3,8 +3,8 @@ from functools import wraps
 from functools import reduce
 from pyparsing import (
     ParserElement, CaselessKeyword, Literal, Regex, LineEnd, StringEnd,
-    Word, Forward, FollowedBy, White, Group, alphas, alphanums,
-    delimited_list,
+    Word, Forward, FollowedBy, White, Group, Empty, Located, alphas,
+    alphanums, delimited_list, lineno, col
 )
 from .exceptions import SyntaxError
 from .expr import (
@@ -71,7 +71,7 @@ numeric_literal = (
 
 string_literal = Regex(r'"[^"]*"')
 
-identifier = Word(alphas, alphanums) + type_char[...]
+identifier = ~keyword + Word(alphas, alphanums) + type_char[...]
 
 # Arithmetic Expressions
 
@@ -119,7 +119,11 @@ data_clause = quoted_string | unquoted_string
 data_stmt = data_kw + (data_clause | comma)[...] + unclosed_quoted_string[...]
 
 line_no = Regex(r'\d+') + FollowedBy(White())
-label = ~keyword + Regex(r'[a-z][a-z0-9_]+:\s*', re.I)
+label = (
+    ~keyword +
+    Regex(r'[a-z][a-z0-9]', re.I) +
+    Literal(':').suppress()
+)
 
 beep_stmt = beep_kw
 
@@ -131,7 +135,8 @@ stmt = (
     beep_stmt |
     call_stmt |
     cls_stmt |
-    data_stmt
+    data_stmt |
+    Empty()
 )
 stmts = stmt + (colon + stmt)[...]
 
@@ -140,7 +145,11 @@ line_prefix = line_no | label
 line_with_just_prefix = line_prefix
 line_without_prefix = line_rest
 line_with_prefix = line_prefix + line_rest
-line_without_nl = line_with_prefix | line_without_prefix | line_with_just_prefix
+line_without_nl = (
+    line_with_prefix |
+    line_with_just_prefix |
+    line_without_prefix
+)
 line = line_without_nl + LineEnd()[1, ...].suppress()
 
 program = line[...]
@@ -223,6 +232,15 @@ def parse_expr_list(toks):
     return list(toks)
 
 
+@parse_action(stmts)
+def parse_stmts(toks):
+    ret = []
+    for tok in toks:
+        if tok != ':':
+            ret.append(tok)
+    return ret
+
+
 @parse_action(beep_stmt)
 def parse_call(toks):
     return BeepStmt()
@@ -236,6 +254,18 @@ def parse_call(toks):
 @parse_action(cls_stmt)
 def parse_call(toks):
     return ClsStmt()
+
+
+@parse_action(label)
+def parse_label(toks):
+    class Lbl:
+        def __init__(self, name):
+            self.name = name
+        def compile(self):
+            return [('LBL', self.name)]
+        def __repr__(self):
+            return f'<LBL {self.name}>'
+    return Lbl(toks[0])
 
 
 class Compiler:
