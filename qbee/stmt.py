@@ -6,6 +6,13 @@ class Stmt(ABC):
     def compile(self):
         pass
 
+class BeepStmt(Stmt):
+    def __repr__(self):
+        return '<BeepStmt>'
+
+    def compile(self):
+        return [('BEEP',)]
+
 
 class CallStmt(Stmt):
     def __init__(self, name, args):
@@ -22,3 +29,11 @@ class CallStmt(Stmt):
 
     def __repr__(self):
         return f'<CallStmt {self.name} args={self.args}>'
+
+
+class ClsStmt(Stmt):
+    def __repr__(self):
+        return '<ClsStmt>'
+
+    def compile(self):
+        return [('CLS',)]

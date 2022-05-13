@@ -11,7 +11,7 @@ from .expr import (
     Type, Operator, ExprNode, NumericLiteral, Identifier, BinaryOp,
     UnaryOp,
 )
-from .stmt import CallStmt
+from .stmt import BeepStmt, CallStmt, ClsStmt
 
 
 # Enable memoization
@@ -223,10 +223,19 @@ def parse_expr_list(toks):
     return list(toks)
 
 
+@parse_action(beep_stmt)
+def parse_call(toks):
+    return BeepStmt()
+
+
 @parse_action(call_stmt)
 def parse_call(toks):
-    return CallStmt(toks[0], toks[1:])
-    #return ('CALL', toks[0], toks[1:])
+    return CallStmt(toks[0].name, toks[1:])
+
+
+@parse_action(cls_stmt)
+def parse_call(toks):
+    return ClsStmt()
 
 
 class Compiler:
