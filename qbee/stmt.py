@@ -2,6 +2,15 @@ from abc import ABC, abstractmethod
 
 
 class Stmt(ABC):
+    compiler = None
+
+    # These will be set by the relevant parse action to the start and
+    # end indices of the statement in the input string. Since we only
+    # wrap the "stmt" rule in Located, these will only be available
+    # after the expression is parsed, so for example the parse action
+    # for CallStmt will not have access to these.
+    loc_start = loc_end = None
+
     @abstractmethod
     def compile(self):
         pass

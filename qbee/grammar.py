@@ -108,7 +108,7 @@ or_expr = and_expr + (and_kw + and_expr)[...]
 xor_expr = or_expr + (xor_kw + or_expr)[...]
 eqv_expr = xor_expr + (xor_kw + xor_expr)[...]
 imp_expr = eqv_expr + (eqv_kw + eqv_expr)[...]
-expr <<= imp_expr
+expr <<= Located(imp_expr)
 
 # Statements and program
 
@@ -131,7 +131,7 @@ call_stmt = call_kw[...].suppress() + identifier + expr_list[...]
 
 cls_stmt = cls_kw
 
-stmt = (
+stmt = Located(
     beep_stmt |
     call_stmt |
     cls_stmt |
@@ -165,6 +165,21 @@ def parse_action(rule):
             return func(*args, **kwargs)
         return func
     return wrapper
+
+
+@parse_action(expr)
+def parse_expr(toks):
+    loc_start, (tok,), loc_end = toks
+    return tok
+
+
+@parse_action(stmt)
+def parse_stmt(toks):
+    loc_start, toks, loc_end = toks
+    if len(toks) == 0:
+        return toks
+    tok = toks[0]
+    return tok
 
 
 @parse_action(numeric_literal)

@@ -158,6 +158,13 @@ class ExprNode(ABC):
     # be used to get type info, declared variables, etc.
     compiler = None
 
+    # These will be set by the relevant parse action to the start and
+    # end indices of the expression in the input string. Since we only
+    # wrap the "expr" rule in Located, these will only be available
+    # after the expression is parsed, so for example the parse action
+    # for NumericLiteral will not have access to these.
+    loc_start = loc_end = None
+
     @property
     @abstractmethod
     def type(self) -> Type:
