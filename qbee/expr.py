@@ -410,17 +410,19 @@ class Identifier(ExprNode):
     is_literal = False
 
     def __init__(self, name, type:Type=None):
-        if type is None:
-            type = self.compiler.get_identifier_type(name)
         self.name = name
-        self.type = type
+        self._type = type
 
     def __repr__(self):
         return f'<Identifier {self.name}>'
 
+    @property
     def type(self):
+        if self._type:
+            return self._type
+
         assert ExprNode.compiler
-        return self.compiler.get_var_type(self.name)
+        return self.compiler.get_identifier_type(self.name)
 
     @property
     def is_const(self):
