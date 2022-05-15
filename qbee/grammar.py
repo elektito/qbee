@@ -3,8 +3,8 @@ from functools import wraps
 from functools import reduce
 from pyparsing import (
     ParserElement, CaselessKeyword, Literal, Regex, LineEnd, StringEnd,
-    Word, Forward, FollowedBy, White, Group, Empty, Located, alphas,
-    alphanums, delimited_list, lineno, col
+    Word, Forward, FollowedBy, White, Group, Empty, Located, SkipTo,
+    alphas, alphanums, delimited_list, lineno, col
 )
 from .exceptions import SyntaxError
 from .expr import (
@@ -35,6 +35,7 @@ imp_kw = CaselessKeyword('imp')
 mod_kw = CaselessKeyword('mod')
 not_kw = CaselessKeyword('not')
 or_kw = CaselessKeyword('or')
+rem_kw = CaselessKeyword('rem')
 xor_kw = CaselessKeyword('xor')
 
 # create a single rule matching all keywords
@@ -48,6 +49,7 @@ keyword = reduce(lambda a, b: a | b, _kw_rules)
 # Operators and punctuation
 
 type_char = Regex(r'[%&$#!]')
+single_quote = Literal("'")
 comma = Literal(',')
 colon = Literal(':')
 lpar = Literal("(")
@@ -113,6 +115,8 @@ unclosed_quoted_string = Regex(r'"[^"\n]+') + FollowedBy(LineEnd())
 data_clause = quoted_string | unquoted_string
 data_stmt = data_kw + (data_clause | comma)[...] + unclosed_quoted_string[...]
 
+rem_stmt = (rem_kw + SkipTo(LineEnd())).suppress()
+
 line_no = Located(Regex(r'\d+') + FollowedBy(White()))
 label = Located(
     ~keyword +
@@ -131,9 +135,12 @@ stmt = Located(
     call_stmt |
     cls_stmt |
     data_stmt |
+    rem_stmt |
     Empty()
 )
 stmts = stmt + (colon + stmt)[...]
+
+comment = single_quote + SkipTo(LineEnd())
 
 line_rest = stmts
 line_prefix = line_no | label
@@ -145,7 +152,11 @@ line_without_nl = (
     line_with_just_prefix |
     line_without_prefix
 )
-line = line_without_nl + LineEnd()[1, ...].suppress()
+line = (
+    line_without_nl +
+    comment[...].suppress() +
+    LineEnd()[1, ...].suppress()
+)
 
 program = line[...]
 
