@@ -107,7 +107,7 @@ eqv_expr = xor_expr + (xor_kw + xor_expr)[...]
 imp_expr = eqv_expr + (eqv_kw + eqv_expr)[...]
 expr <<= Located(imp_expr)
 
-# Statements and program
+# Statements
 
 quoted_string = Regex(r'"[^"]+"')
 unquoted_string = Regex(r'[^"\n:]+')
@@ -116,13 +116,6 @@ data_clause = quoted_string | unquoted_string
 data_stmt = data_kw + (data_clause | comma)[...] + unclosed_quoted_string[...]
 
 rem_stmt = (rem_kw + SkipTo(LineEnd())).suppress()
-
-line_no = Located(Regex(r'\d+') + FollowedBy(White()))
-label = Located(
-    ~keyword +
-    Regex(r'[a-z][a-z0-9]', re.I) +
-    Literal(':').suppress()
-)
 
 beep_stmt = beep_kw
 
@@ -140,7 +133,16 @@ stmt = Located(
 )
 stmts = stmt + (colon + stmt)[...]
 
+# Lines and program
+
 comment = single_quote + SkipTo(LineEnd())
+
+line_no = Located(Regex(r'\d+') + FollowedBy(White()))
+label = Located(
+    ~keyword +
+    Regex(r'[a-z][a-z0-9]', re.I) +
+    Literal(':').suppress()
+)
 
 line_rest = stmts
 line_prefix = line_no | label
