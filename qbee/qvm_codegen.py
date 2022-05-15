@@ -1,17 +1,34 @@
 from .codegen import BaseCodeGen, BaseCode
 from .program import Label
+from .exceptions import InternalError
 from . import stmt, expr
 
 
 class QvmCode(BaseCode):
     def __init__(self):
-        self.instrs = []
+        self._instrs = []
 
     def __repr__(self):
-        return f'<QvmCode {self.instrs}>'
+        return f'<QvmCode {self._instrs}>'
 
     def add(self, *instrs):
-        self.instrs.extend(instrs)
+        if not all(isinstance(i, tuple) for i in instrs):
+            raise InternalError('Instruction not a tuple')
+        self._instrs.extend(instrs)
+
+    def __str__(self):
+        s = ''
+        for instr in self._instrs:
+            op, *args = instr
+            if op == '_label':
+                label, = args
+                s += f'{label}:\n'
+            else:
+                s += f'    {op}\t{", ".join(str(i) for i in args)}\n'
+        return s
+
+    def __bytes__(self):
+        return b'<machine code>'
 
 
 class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
@@ -58,7 +75,7 @@ def gen_identifier(node, code, codegen):
 
 @QvmCodeGen.generator_for(Label)
 def gen_label(node, code, codegen):
-    code.add(('label', node.name))
+    code.add(('_label', node.name))
 
 
 @QvmCodeGen.generator_for(stmt.BeepStmt)

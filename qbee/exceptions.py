@@ -29,6 +29,7 @@ class CodeGenError(Exception):
 
 class ErrorCode(Enum):
     TYPE_MISMATCH = 'Type mismatch'
+    DUPLICATE_LABEL = 'Duplicate label'
 
 
 class CompileError(Exception):

@@ -113,8 +113,8 @@ unclosed_quoted_string = Regex(r'"[^"\n]+') + FollowedBy(LineEnd())
 data_clause = quoted_string | unquoted_string
 data_stmt = data_kw + (data_clause | comma)[...] + unclosed_quoted_string[...]
 
-line_no = Regex(r'\d+') + FollowedBy(White())
-label = (
+line_no = Located(Regex(r'\d+') + FollowedBy(White()))
+label = Located(
     ~keyword +
     Regex(r'[a-z][a-z0-9]', re.I) +
     Literal(':').suppress()
@@ -282,7 +282,11 @@ def parse_call(toks):
 
 @parse_action(label)
 def parse_label(toks):
-    return Label(toks[0])
+    loc_start, (tok,), loc_end = toks
+    label = Label(str(tok))
+    label.loc_start = loc_start
+    label.loc_end = loc_end
+    return label
 
 
 @parse_action(program)

@@ -11,9 +11,20 @@ from .exceptions import ErrorCode as EC, InternalError, CompileError
 from . import qvm_codegen
 
 
+class Routine:
+    "Represents a SUB or a FUNCTION"
+
+    def __init__(self, name):
+        self.name = name
+        self.labels = set()
+
+
 class Compiler:
     def __init__(self, optimization_level=0):
         self.optimization_level = optimization_level
+
+        self.cur_routine = Routine('_main')
+        self.routines = {'': self.cur_routine}
 
         self._codegen = CodeGen('qvm', self)
         self._asm = Assembler(self)
@@ -49,7 +60,11 @@ class Compiler:
             elif isinstance(node, Expr):
                 self._compile_expr(node)
             elif isinstance(node, Label):
-                pass
+                if node.name in self.cur_routine.labels:
+                    raise CompileError(EC.DUPLICATE_LABEL,
+                                       f'Duplicate label: {node.name}',
+                                       node=node)
+                self.cur_routine.labels.add(node.name)
             else:
                 raise InternalError(
                     f'Do not know how to compile node: {node}')
