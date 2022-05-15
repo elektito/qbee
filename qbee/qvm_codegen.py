@@ -1,3 +1,4 @@
+import re
 from .codegen import BaseCodeGen, BaseCode
 from .program import Label
 from .exceptions import InternalError
@@ -15,6 +16,18 @@ class QvmCode(BaseCode):
         if not all(isinstance(i, tuple) for i in instrs):
             raise InternalError('Instruction not a tuple')
         self._instrs.extend(instrs)
+
+    def optimize(self):
+        push_num_re = re.compile('^push(?P<type_char>[#!%&])$')
+        for i, instr in enumerate(self._instrs):
+            op, *args = instr
+            match = push_num_re.match(op.lower())
+            if match:
+                type_char = match.group('type_char')
+                if args[0] == 0:
+                    self._instrs[i] = (f'push0{type_char}',)
+                elif args[0] == 1:
+                    self._instrs[i] = (f'push1{type_char}',)
 
     def __str__(self):
         s = ''
