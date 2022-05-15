@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
+from .node import Node
 
 
-class Stmt(ABC):
+class Stmt(Node):
     def bind(self, compiler):
         self._compiler = compiler
         for child in self.children:
@@ -18,19 +19,34 @@ class Stmt(ABC):
         # some methods or properties.
         pass
 
-class BeepStmt(Stmt):
-    def __repr__(self):
-        return '<BeepStmt>'
 
+class NoChildStmt(Stmt):
     @property
     def children(self):
         return []
+
+    def replace_child(self, old_child, new_child):
+        pass
+
+
+class BeepStmt(NoChildStmt):
+    def __repr__(self):
+        return '<BeepStmt>'
 
 
 class CallStmt(Stmt):
     def __init__(self, name, args):
         self.name = name
         self.args = args
+
+    def replace_child(self, old_child, new_child):
+        for i in range(len(self.args)):
+            if self.args[i] == old_child:
+                self.args[i] = new_child
+                break
+        else:
+            raise InternalError(
+                f'No such child to replace: {old_child}')
 
     @property
     def children(self):
@@ -40,10 +56,6 @@ class CallStmt(Stmt):
         return f'<CallStmt {self.name} args={self.args}>'
 
 
-class ClsStmt(Stmt):
+class ClsStmt(NoChildStmt):
     def __repr__(self):
         return '<ClsStmt>'
-
-    @property
-    def children(self):
-        return []

@@ -186,6 +186,16 @@ class Expr(Node):
             f'eval method not implemented for type '
             f'"{type(self).__name__}".')
 
+    def fold(self):
+        if self.is_const:
+            value = self.eval()
+            if self.type.is_numeric:
+                literal = NumericLiteral(value, self.type)
+            else:
+                literal = StringLiteral(value)
+            return literal
+        return self
+
 
 class NumericLiteral(Expr):
     is_literal = True
@@ -225,6 +235,9 @@ class NumericLiteral(Expr):
     def children(self):
         return []
 
+    def replace_child(self, new_child):
+        pass
+
 
 class BinaryOp(Expr):
     is_literal = False
@@ -241,6 +254,14 @@ class BinaryOp(Expr):
             f'left={self.left} '
             f'right={self.right}>'
         )
+
+    def replace_child(self, old_child, new_child):
+        if self.left == old_child:
+            self.left = new_child
+        elif self.right == old_child:
+            self.right = new_child
+        else:
+            raise InternalError('No such child to replace')
 
     @property
     def children(self):
@@ -310,8 +331,8 @@ class BinaryOp(Expr):
                 'non-primitive values')
 
     def _eval_numeric(self):
-        left = self.type(self.left)
-        right = self.type(self.right)
+        left = self.type.py_type(self.left.eval())
+        right = self.type.py_type(self.right.eval())
 
         if self.left == Type.INTEGER and self.right == Type.INTEGER:
             mask = 0xffff
@@ -348,6 +369,11 @@ class BinaryOp(Expr):
 
         return self.left.eval() + self.right.eval()
 
+    def _qb_mod(self, a, b):
+        a = int(round(a))
+        b = int(round(b))
+        return a % b
+
 
 class UnaryOp(Expr):
     is_literal = False
@@ -359,6 +385,12 @@ class UnaryOp(Expr):
 
     def __repr__(self):
         return f'<UnaryOp op={self.op.name} arg={self.arg}>'
+
+    def replace_child(self, old_child, new_child):
+        if self.arg == old_child:
+            self.arg = new_child
+        else:
+            raise InternalError('No such child to replace')
 
     @property
     def children(self):
@@ -404,6 +436,9 @@ class Identifier(Expr):
     def __repr__(self):
         return f'<Identifier {self.name}>'
 
+    def replace_child(self, old_child, new_child):
+        pass
+
     @property
     def children(self):
         return []
@@ -443,6 +478,9 @@ class StringLiteral(Expr):
 
     def eval(self):
         return self.value
+
+    def replace_child(self, old_child, new_child):
+        pass
 
     @property
     def children(self):

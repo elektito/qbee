@@ -8,6 +8,9 @@ class Label(Node):
     def __repr__(self):
         return f'<Label {self.name}>'
 
+    def replace_child(self, old_child, new_child):
+        pass
+
     @property
     def children(self):
         return []
@@ -22,6 +25,15 @@ class Program(Node):
             f'<Program with {len(self.nodes)} '
             f'{"node" if len(self.nodes) == 1 else "nodes"}>'
         )
+
+    def replace_child(self, old_child, new_child):
+        for i in range(len(self.nodes)):
+            if self.nodes[i] == old_child:
+                self.nodes[i] = new_child
+                break
+        else:
+            raise InternalError(
+                f'No such child to replace: {old_child}')
 
     @property
     def children(self):

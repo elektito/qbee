@@ -196,7 +196,7 @@ def parse_stmt(toks):
 
 @parse_action(string_literal)
 def parse_str_literal(s, loc, toks):
-    return StringLiteral(toks[0])
+    return StringLiteral(toks[0][1:-1])
 
 
 @parse_action(numeric_literal)

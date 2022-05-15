@@ -38,6 +38,11 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
 
 # Code generators for expressions
 
+@QvmCodeGen.generator_for(expr.StringLiteral)
+def gen_str_literal(node, code, codegen):
+    code.add((f'push$', f'"{node.value}"'))
+
+
 @QvmCodeGen.generator_for(expr.NumericLiteral)
 def gen_num_literal(node, code, codegen):
     code.add((f'push{node.type.type_char}', node.value))

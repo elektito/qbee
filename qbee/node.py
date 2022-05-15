@@ -25,3 +25,15 @@ class Node(ABC):
         # method uses it to bind a compiler to the expression which
         # could be needed by some methods or properties.
         pass
+
+    def fold(self):
+        for child in self.children:
+            folded = child.fold()
+            assert isinstance(folded, Node)
+            if folded != child:
+                self.replace_child(child, folded)
+        return self
+
+    @abstractmethod
+    def replace_child(self, old_child, new_child):
+        pass
