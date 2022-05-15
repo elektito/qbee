@@ -8,10 +8,11 @@ from pyparsing import (
 )
 from .exceptions import SyntaxError
 from .expr import (
-    Type, Operator, ExprNode, NumericLiteral, Identifier, BinaryOp,
-    UnaryOp,
+    Type, Operator, NumericLiteral, Identifier, BinaryOp, UnaryOp,
+    StringLiteral,
 )
 from .stmt import BeepStmt, CallStmt, ClsStmt
+from .program import Program, Label
 
 
 # Enable memoization
@@ -170,6 +171,8 @@ def parse_action(rule):
 @parse_action(expr)
 def parse_expr(toks):
     loc_start, (tok,), loc_end = toks
+    tok.loc_start = loc_start
+    tok.loc_end = loc_end
     return tok
 
 
@@ -179,7 +182,14 @@ def parse_stmt(toks):
     if len(toks) == 0:
         return toks
     tok = toks[0]
+    tok.loc_start = loc_start
+    tok.loc_end = loc_end
     return tok
+
+
+@parse_action(string_literal)
+def parse_str_literal(s, loc, toks):
+    return StringLiteral(toks[0])
 
 
 @parse_action(numeric_literal)
@@ -273,33 +283,9 @@ def parse_call(toks):
 
 @parse_action(label)
 def parse_label(toks):
-    class Lbl:
-        def __init__(self, name):
-            self.name = name
-        def compile(self):
-            return [('LBL', self.name)]
-        def __repr__(self):
-            return f'<LBL {self.name}>'
-    return Lbl(toks[0])
+    return Label(toks[0])
 
 
-class Compiler:
-    def get_identifier_type(self, name):
-        return Type.LONG
-
-
-ExprNode.compiler = Compiler()
-
-
-r = program.parse_string('foo x$+y$, 2+(3-4)', parse_all=True)
-print(r)
-
-
-
-instrs = []
-for x in r:
-    instrs += x.compile()
-for instr in instrs:
-    if instr == ('possibly_conv',):
-        continue
-    print(instr)
+@parse_action(program)
+def parse_program(self, toks):
+    return Program(toks)

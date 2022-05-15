@@ -2,25 +2,29 @@ from abc import ABC, abstractmethod
 
 
 class Stmt(ABC):
-    compiler = None
+    def bind(self, compiler):
+        self._compiler = compiler
+        for child in self.children:
+            child.bind(compiler)
 
-    # These will be set by the relevant parse action to the start and
-    # end indices of the statement in the input string. Since we only
-    # wrap the "stmt" rule in Located, these will only be available
-    # after the expression is parsed, so for example the parse action
-    # for CallStmt will not have access to these.
-    loc_start = loc_end = None
-
+    @property
     @abstractmethod
-    def compile(self):
+    def children(self):
+        # An implementation of this method should return all direct
+        # child expressions of this statement. It's important that
+        # this is properly implemented in all sub-classes, because the
+        # bind method (for both statements and expressions) uses it to
+        # bind a compiler to the expression which could be needed by
+        # some methods or properties.
         pass
 
 class BeepStmt(Stmt):
     def __repr__(self):
         return '<BeepStmt>'
 
-    def compile(self):
-        return [('BEEP',)]
+    @property
+    def children(self):
+        return []
 
 
 class CallStmt(Stmt):
@@ -28,13 +32,9 @@ class CallStmt(Stmt):
         self.name = name
         self.args = args
 
-    def compile(self):
-        ret = []
-        for arg in self.args:
-            ret += arg.compile()
-        ret.append(('PUSHARGSLEN', len(self.args)))
-        ret.append(('CALL',))
-        return ret
+    @property
+    def children(self):
+        return self.args
 
     def __repr__(self):
         return f'<CallStmt {self.name} args={self.args}>'
@@ -44,5 +44,6 @@ class ClsStmt(Stmt):
     def __repr__(self):
         return '<ClsStmt>'
 
-    def compile(self):
-        return [('CLS',)]
+    @property
+    def children(self):
+        return []

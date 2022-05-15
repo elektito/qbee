@@ -1,6 +1,7 @@
 from enum import Enum
 from abc import ABC, abstractmethod
 from .exceptions import InternalError
+from .node import Node
 
 
 class Type(Enum):
@@ -153,11 +154,7 @@ class Operator(Enum):
         }[token]
 
 
-class ExprNode(ABC):
-    # This class variable will be set at runtime to a value that can
-    # be used to get type info, declared variables, etc.
-    compiler = None
-
+class Expr(Node):
     # These will be set by the relevant parse action to the start and
     # end indices of the expression in the input string. Since we only
     # wrap the "expr" rule in Located, these will only be available
@@ -180,21 +177,17 @@ class ExprNode(ABC):
     def is_const(self) -> Type:
         pass
 
-    @abstractmethod
-    def compile():
-        pass
-
     def eval(self):
         if not self.is_const:
             raise ValueError(
-                'Attempting to evaluate non-const ExprNode')
+                'Attempting to evaluate non-const expression')
 
         raise InternalError(
             f'eval method not implemented for type '
             f'"{type(self).__name__}".')
 
 
-class NumericLiteral(ExprNode):
+class NumericLiteral(Expr):
     is_literal = True
     is_const = True
 
@@ -203,18 +196,19 @@ class NumericLiteral(ExprNode):
     def __init__(self, value, type:Type=None):
         if type is None:
             type = self.DEFAULT_TYPE
-        self.type = type
-        self.value = self.type.py_type(value)
+        self._type = type
+        self.value = self._type.py_type(value)
 
     def __repr__(self):
         typechar = self.type.type_char
         return f'<NumericLiteral {self.value}{typechar}>'
 
+    @property
     def type(self):
-        return self.type.py_type(self.value)
+        return self._type
 
     def eval(self):
-        return self.value
+        return self.type.py_type(self.value)
 
     @classmethod
     def parse(cls, token: str, type_char=None):
@@ -227,11 +221,12 @@ class NumericLiteral(ExprNode):
         value = literal_type.py_type(token)
         return cls(value, literal_type)
 
-    def compile(self):
-        return [('PUSH', self.type.type_char, self.value)]
+    @property
+    def children(self):
+        return []
 
 
-class BinaryOp(ExprNode):
+class BinaryOp(Expr):
     is_literal = False
 
     def __init__(self, left, right, op: Operator):
@@ -248,6 +243,10 @@ class BinaryOp(ExprNode):
         )
 
     @property
+    def children(self):
+        return [self.left, self.right]
+
+    @property
     def is_const(self):
         return self.left.is_const and self.right.is_const
 
@@ -260,6 +259,13 @@ class BinaryOp(ExprNode):
 
         ltype = self.left.type
         rtype = self.right.type
+
+        if (ltype == Type.STRING and rtype != Type.STRING) or \
+           (rtype == Type.STRING and ltype != Type.STRING):
+            return Type.UNKNOWN
+
+        if ltype == rtype == Type.STRING and self.op != Operator.ADD:
+            return Type.UNKNOWN
 
         if self.op == Operator.MOD:
             if not ltype.is_numeric or not rtype.is_numeric:
@@ -342,20 +348,8 @@ class BinaryOp(ExprNode):
 
         return self.left.eval() + self.right.eval()
 
-    def compile(self):
-        return (
-            self.left.compile() +
-            [('possibly_conv',)] +
-            self.right.compile() +
-            [
-                ('possibly_conv',),
-                (self.op, self.type),
-                ('possibly_conv',)
-            ]
 
-        )
-
-class UnaryOp(ExprNode):
+class UnaryOp(Expr):
     is_literal = False
 
     def __init__(self, arg, op: Operator):
@@ -365,6 +359,10 @@ class UnaryOp(ExprNode):
 
     def __repr__(self):
         return f'<UnaryOp op={self.op.name} arg={self.arg}>'
+
+    @property
+    def children(self):
+        return [self.arg]
 
     @property
     def is_const(self):
@@ -395,18 +393,8 @@ class UnaryOp(ExprNode):
 
         return value
 
-    def compile(self):
-        return (
-            self.arg.compile() +
-            [
-                ('possibly_conv',),
-                (self.op, self.type),
-                ('possibly_conv',),
-            ]
-        )
 
-
-class Identifier(ExprNode):
+class Identifier(Expr):
     is_literal = False
 
     def __init__(self, name, type:Type=None):
@@ -417,11 +405,14 @@ class Identifier(ExprNode):
         return f'<Identifier {self.name}>'
 
     @property
+    def children(self):
+        return []
+
+    @property
     def type(self):
         if self._type:
             return self._type
 
-        assert ExprNode.compiler
         return self.compiler.get_identifier_type(self.name)
 
     @property
@@ -435,5 +426,24 @@ class Identifier(ExprNode):
 
         return self.compiler.get_const_value(self.name)
 
-    def compile(self):
-        return [('PUSHID', self.type.type_char, self.name)]
+
+class StringLiteral(Expr):
+    is_literal = True
+    is_const = True
+
+    def __init__(self, value):
+        self.value = value
+
+    def __repr__(self):
+        return f'<StringLiteral {self.value}>'
+
+    @property
+    def type(self):
+        return Type.STRING
+
+    def eval(self):
+        return self.value
+
+    @property
+    def children(self):
+        return []
