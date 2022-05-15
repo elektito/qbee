@@ -66,10 +66,7 @@ compare_op = Regex(r'(<=|>=|<>|><|=<|=>|<|>|=)')
 
 numeric_literal = (
     Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?") +
-    type_char[...] +
-    FollowedBy(Regex(r'[^a-z_]', re.I) |
-                  LineEnd() |
-                  StringEnd())
+    type_char[...]
 )
 
 string_literal = Regex(r'"[^"]*"')
