@@ -41,8 +41,6 @@ class Compiler:
 
         code = self._codegen.gen_code(tree)
 
-        print(code)
-
         if self.optimization_level > 1:
             code.optimize()
 
