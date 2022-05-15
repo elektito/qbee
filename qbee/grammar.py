@@ -47,7 +47,7 @@ keyword = reduce(lambda a, b: a | b, _kw_rules)
 
 # Operators and punctuation
 
-type_char = Regex(r'[%&$#]')
+type_char = Regex(r'[%&$#!]')
 comma = Literal(',')
 colon = Literal(':')
 lpar = Literal("(")
@@ -63,7 +63,7 @@ exponent_op = Literal('^')
 compare_op = Regex(r'(<=|>=|<>|><|=<|=>|<|>|=)')
 
 numeric_literal = (
-    Regex(r'\+?[0-9]+') + type_char[...] +
+    Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?") +
     type_char[...] +
     FollowedBy(Regex(r'[^a-z_]', re.I) |
                   LineEnd() |
@@ -200,7 +200,11 @@ def parse_num_literal(s, loc, toks):
     if type_char == '$':
         raise SyntaxError(
             loc, 'Invalid type character for numeric literal')
-    return NumericLiteral.parse(toks[0], type_char)
+    try:
+        return NumericLiteral.parse(toks[0], type_char)
+    except ValueError:
+        # probably something like "2.1%"
+        raise SyntaxError(loc, 'Illegal number')
 
 
 @parse_action(identifier)
