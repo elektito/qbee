@@ -159,7 +159,7 @@ def gen_label(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.BeepStmt)
 def gen_beep(node, code, codegen):
-    code.add(('beep',))
+    code.add(('ioreq', 'pcspkr', 'beep'))
 
 
 @QvmCodeGen.generator_for(stmt.CallStmt)
@@ -174,4 +174,4 @@ def gen_call(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.ClsStmt)
 def gen_cls(node, code, codegen):
-    code.add(('io', 'screen', 'cls'))
+    code.add(('ioreq', 'screen', 'cls'))
