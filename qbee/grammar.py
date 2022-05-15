@@ -91,19 +91,13 @@ atom = (
 )
 exponent_expr = Forward()
 exponent_expr <<= atom + (exponent_op + exponent_expr)[...]
-unary_expr = (
-    addsub_op[1, ...] + exponent_expr |
-    exponent_expr
-)
+unary_expr = addsub_op[...] + exponent_expr
 muldiv_expr = unary_expr + (muldiv_op + unary_expr)[...]
 intdiv_expr = muldiv_expr + (intdiv_op + muldiv_expr)[...]
 mod_expr = intdiv_expr + (mod_kw + intdiv_expr)[...]
 addsub_expr = mod_expr + (addsub_op + mod_expr)[...]
 compare_expr = addsub_expr + (compare_op + addsub_expr)[...]
-not_expr = (
-    not_kw[1, ...] + compare_expr |
-    compare_expr
-)
+not_expr = not_kw[...] + compare_expr
 and_expr = not_expr + (and_kw + not_expr)[...]
 or_expr = and_expr + (and_kw + and_expr)[...]
 xor_expr = or_expr + (xor_kw + or_expr)[...]
@@ -249,11 +243,12 @@ def parse_right_assoc_binary_expr(toks):
 @parse_action(not_expr)
 @parse_action(unary_expr)
 def parse_unary_expr(toks):
-    ops = toks[:-1]
-    node = toks[-1]
-    for op in reversed(ops):
-        node = UnaryOp(node, Operator.unary_op_from_token(op))
-    return node
+    if len(toks) > 0 and toks[0] in ('-', '+', 'not'):
+        ops = toks[:-1]
+        node = toks[-1]
+        for op in reversed(ops):
+            node = UnaryOp(node, Operator.unary_op_from_token(op))
+        return node
 
 
 @parse_action(expr_list)
