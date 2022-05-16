@@ -94,9 +94,7 @@ class QvmCode(BaseCode):
                 del self._instrs[i]
                 del self._instrs[i]
 
-                # Go back one instruction, so that if eliminating
-                # these two instructions has caused a pair like
-                # (push/conv) to become consecutive, we detect it.
+                # Go back to allow for more chained optimizations
                 if i > 0:
                     i -= 1
 
