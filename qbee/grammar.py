@@ -93,13 +93,19 @@ atom = (
 )
 exponent_expr = Forward()
 exponent_expr <<= atom + (exponent_op + exponent_expr)[...]
-unary_expr = addsub_op[...] + exponent_expr
+not_expr = Forward()
+unary_expr = (
+    addsub_op[1, ...] + exponent_expr |
+    addsub_op[1, ...] + not_expr | # allow combination of the two
+                                   # unaries without parentheses
+    exponent_expr
+)
 muldiv_expr = unary_expr + (muldiv_op + unary_expr)[...]
 intdiv_expr = muldiv_expr + (intdiv_op + muldiv_expr)[...]
 mod_expr = intdiv_expr + (mod_kw + intdiv_expr)[...]
 addsub_expr = mod_expr + (addsub_op + mod_expr)[...]
 compare_expr = addsub_expr + (compare_op + addsub_expr)[...]
-not_expr = not_kw[...] + compare_expr
+not_expr <<= not_kw[...] + compare_expr
 and_expr = not_expr + (and_kw + not_expr)[...]
 or_expr = and_expr + (and_kw + and_expr)[...]
 xor_expr = or_expr + (xor_kw + or_expr)[...]
