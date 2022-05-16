@@ -1,4 +1,3 @@
-import re
 from .codegen import BaseCodeGen, BaseCode
 from .program import Label
 from .exceptions import InternalError
@@ -18,16 +17,53 @@ class QvmCode(BaseCode):
         self._instrs.extend(instrs)
 
     def optimize(self):
-        push_num_re = re.compile('^push(?P<type_char>[#!%&])$')
-        for i, instr in enumerate(self._instrs):
+        i = 0
+        while i < len(self._instrs):
+            instr = self._instrs[i]
             op, *args = instr
-            match = push_num_re.match(op.lower())
-            if match:
-                type_char = match.group('type_char')
+
+            cur_instr = self._parse_instr(self._instrs[i])
+
+            if i < len(self._instrs) - 1:
+                next_instr = self._parse_instr(self._instrs[i+1])
+            else:
+                next_instr = self._parse_instr(('nop',))
+
+            # when we have a push and a conv instruction, and the
+            # conv's source type is the same as the push's type, we
+            # can fold them into one push instruction.
+            #
+            # For example:
+            #    push!  1.0
+            #    conv!&
+            # will be converted to:
+            #    push&  1.0
+            if cur_instr['op'] == 'push' and \
+               next_instr['op'] == 'conv' and \
+               cur_instr['type_char'] == next_instr['src_type_char']:
+                self._instrs[i] = (f'push{next_instr["type_char"]}',
+                                   *cur_instr['args'])
+                del self._instrs[i+1]
+                continue
+
+            # Convert normal push instructions with -1, 0, or 1
+            # operands to a single instruction pushing the same value.
+            #
+            # Notice that it's important that this is after the
+            # previous optimization (fold push and conv), because it
+            # can then optimize the result of that optimization.
+            if cur_instr['op'] == 'push' and \
+               cur_instr['args'][0] in [-1, 0, 1]:
+                type_char = cur_instr['type_char']
                 if args[0] == 0:
                     self._instrs[i] = (f'push0{type_char}',)
                 elif args[0] == 1:
                     self._instrs[i] = (f'push1{type_char}',)
+                else:
+                    self._instrs[i] = (f'pushm1{type_char}',)
+                continue
+
+            i += 1
 
     def __str__(self):
         s = ''
@@ -42,6 +78,32 @@ class QvmCode(BaseCode):
 
     def __bytes__(self):
         return b'<machine code>'
+
+    def _parse_instr(self, instr):
+        "Helper used by the optimize function"
+
+        op, *args = instr
+        type_chars = expr.Type.type_chars()
+        if any(op.endswith(c) for c in type_chars):
+            type_char = op[-1]
+            op = op[:-1]
+        else:
+            type_char = None
+
+        extras = {}
+        if op[:-1] == 'conv':
+            src_type_char = op[-1]
+            op = op[:-1]
+            extras = {'src_type_char': src_type_char}
+
+        result = {
+            'op': op,
+            'type_char': type_char,
+            'args': args,
+        }
+        result.update(extras)
+
+        return result
 
 
 class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):

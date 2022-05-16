@@ -1,1 +1,4 @@
 pyparsing==3.0.9
+
+# for tests
+pytest==7.1.2
