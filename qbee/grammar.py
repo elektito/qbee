@@ -263,7 +263,7 @@ def parse_right_assoc_binary_expr(toks):
     node = toks[-1]
     for i in range(-2, -len(toks) - 1, -2):
         assert toks[i] == '^'
-        node = BinaryOp(node, toks[i-1], Operator.EXP)
+        node = BinaryOp(toks[i-1], node, Operator.EXP)
     return node
 
 
