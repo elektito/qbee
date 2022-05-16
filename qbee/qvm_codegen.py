@@ -131,6 +131,17 @@ def gen_num_literal(node, code, codegen):
     code.add((f'push{node.type.type_char}', node.value))
 
 
+@QvmCodeGen.generator_for(expr.Identifier)
+def gen_identifier(node, code, codegen):
+    identifier_type = codegen.compiler.get_identifier_type(node.name)
+    type_char = identifier_type.type_char
+    if codegen.compiler.is_var_global(node.name):
+        scope = 'g' # global
+    else:
+        scope = 'l' # local
+    code.add((f'read{scope}{type_char}', node.name))
+
+
 @QvmCodeGen.generator_for(expr.BinaryOp)
 def gen_binary_op(node, code, codegen):
     Operator = expr.Operator
@@ -241,11 +252,19 @@ def gen_label(node, code, codegen):
 @QvmCodeGen.generator_for(stmt.AssignmentStmt)
 def gen_assignment(node, code, codegen):
     codegen.gen_code_for_node(node.rvalue, code)
+
     dest_type_char = node.lvalue.type.type_char
+
     if node.rvalue.type != node.lvalue.type:
         src_type_char = node.rvalue.type.type_char
         code.add((f'conv{src_type_char}{dest_type_char}',))
-    code.add((f'store{dest_type_char}', node.lvalue.name))
+
+    if codegen.compiler.is_var_global(node.lvalue.name):
+        scope = 'g' # global
+    else:
+        scope = 'l' # local
+
+    code.add((f'store{scope}{dest_type_char}', node.lvalue.name))
 
 
 @QvmCodeGen.generator_for(stmt.BeepStmt)

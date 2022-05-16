@@ -58,6 +58,9 @@ class Compiler:
         # default type
         return Type.SINGLE
 
+    def is_var_global(self, name):
+        return False
+
     def _compile_tree(self, tree):
         for node in tree.children:
             if isinstance(node, Stmt):
