@@ -431,13 +431,23 @@ class UnaryOp(Expr):
         value = self.arg.eval()
         if self.op == Operator.NOT:
             value = int(round(value))
-            value = ~value & 0xffff_ffff
+            value = ~value
         elif self.op == Operator.NEG:
             value = -value
         elif self.op == Operator.PLUS:
             pass
         else:
             raise InternalError('Unknown unary operator')
+
+        if self.arg.type == Type.INTEGER:
+            max_positive_int = 2**15 - 1
+            max_negative_int = -2**15
+        else:
+            max_positive_int = 2**31 - 1
+            max_negative_int = -2**31
+
+        if value > max_positive_int or value < max_negative_int:
+            value = max_negative_int
 
         return value
 
