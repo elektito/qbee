@@ -5,7 +5,7 @@ from functools import reduce
 from pyparsing import (
     ParserElement, CaselessKeyword, Literal, Regex, LineEnd, StringEnd,
     Word, Forward, FollowedBy, White, Group, Empty, Located, SkipTo,
-    alphas, alphanums, delimited_list, lineno, col
+    ParseException, alphas, alphanums, delimited_list, lineno, col
 )
 from .exceptions import SyntaxError
 from .expr import (
@@ -340,7 +340,11 @@ def main():
         print(f'No such rule found: {args.rule}')
         exit(1)
 
-    result = rule.parse_string(args.expr, parse_all=not args.not_all)
+    try:
+        result = rule.parse_string(args.expr, parse_all=not args.not_all)
+    except ParseException as e:
+        print(e.explain())
+        exit(1)
     if hasattr(result, '__len__') and isinstance(result[0], Program):
         for node in result[0].nodes:
             print(node)
