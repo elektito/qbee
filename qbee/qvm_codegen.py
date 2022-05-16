@@ -51,6 +51,14 @@ class QvmCode(BaseCode):
                 del self._instrs[i+1]
                 continue
 
+            if (cur.get('push_no_arg') and
+                next1['op'] == 'conv' and
+                cur['type_char'] == next1['src_type_char']
+            ):
+                self._instrs[i] = (f'{cur["op"]}{next1["type_char"]}',)
+                del self._instrs[i+1]
+                continue
+
             # Convert normal push instructions with -1, 0, or 1
             # operands to a single instruction pushing the same value.
             #
@@ -152,6 +160,8 @@ class QvmCode(BaseCode):
             scope = op[-1]
             op = op[:-1]
             extras = {'scope': scope}
+        if op in ['push1', 'push0', 'pushm1']:
+            extras['push_no_arg'] = True
 
         result = {
             'op': op,

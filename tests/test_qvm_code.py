@@ -11,6 +11,16 @@ def test_fold_push_and_conv():
     assert code._instrs == [('push&', 10)]
 
 
+def test_fold_push0_and_conv():
+    code = QvmCode()
+    code.add(
+        ('push0!',),
+        ('conv!%',),
+    )
+    code.optimize()
+    assert code._instrs == [('push0%',)]
+
+
 def test_push_one():
     code = QvmCode()
     code.add(
