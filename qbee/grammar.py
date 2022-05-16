@@ -1,3 +1,4 @@
+import argparse
 import re
 from functools import wraps
 from functools import reduce
@@ -302,3 +303,34 @@ def parse_label(toks):
 @parse_action(program)
 def parse_program(self, toks):
     return Program(toks)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='A script used for testing the grammar.')
+
+    parser.add_argument('expr', help='The value to parse.')
+    parser.add_argument(
+        '--rule', '-r', default='program',
+        help='The rule to use for parsing. Defaults to "%(default)s".')
+    parser.add_argument(
+        '--not-all', '-n', action='store_true',
+        help='If set, the parse_all flag is set to false.')
+
+    args = parser.parse_args()
+
+    rule = globals().get(args.rule)
+    if not isinstance(rule, ParserElement):
+        print(f'No such rule found: {args.rule}')
+        exit(1)
+
+    result = rule.parse_string(args.expr, parse_all=not args.not_all)
+    if hasattr(result, '__len__') and isinstance(result[0], Program):
+        for node in result[0].nodes:
+            print(node)
+    else:
+        print(result)
+
+
+if __name__ == '__main__':
+    main()
