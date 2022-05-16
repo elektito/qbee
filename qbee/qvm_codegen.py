@@ -85,6 +85,13 @@ class QvmCode(BaseCode):
                 # remove both
                 del self._instrs[i]
                 del self._instrs[i]
+
+                # Go back one instruction, so that if eliminating
+                # these two instructions has caused a pair like
+                # (push/conv) to become consecutive, we detect it.
+                if i > 0:
+                    i -= 1
+
                 continue
 
             i += 1

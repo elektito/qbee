@@ -105,3 +105,15 @@ def test_eliminate_read_store_incompatible_arg():
         ('readl!', 'x'),
         ('storel!', 'y'),
     ]
+
+
+def test_fold_push_and_conv_after_store_read():
+    code = QvmCode()
+    code.add(
+        ('push!', 10.0),
+        ('storel!', 'x'),
+        ('readl!', 'x'),
+        ('conv!&',),
+    )
+    code.optimize()
+    assert code._instrs == [('push&', 10)]
