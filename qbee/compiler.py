@@ -3,7 +3,6 @@ from .stmt import Stmt
 from .expr import Type, Expr, BinaryOp, UnaryOp
 from .program import Label
 from .codegen import CodeGen
-from .asm import Assembler
 from .exceptions import ErrorCode as EC, InternalError, CompileError
 
 # Import codegen implementations to enable them (this is needed even
@@ -27,7 +26,6 @@ class Compiler:
         self.routines = {'': self.cur_routine}
 
         self._codegen = CodeGen('qvm', self)
-        self._asm = Assembler(self)
 
     def compile(self, input_string):
         tree = program.parse_string(input_string, parse_all=True)
@@ -44,8 +42,7 @@ class Compiler:
         if self.optimization_level > 1:
             code.optimize()
 
-        module = self._asm.assemble(code)
-        return module
+        return code
 
     def _compile_tree(self, tree):
         for node in tree.children:
