@@ -19,15 +19,12 @@ class QvmCode(BaseCode):
     def optimize(self):
         i = 0
         while i < len(self._instrs):
-            instr = self._instrs[i]
-            op, *args = instr
-
-            cur_instr = self._parse_instr(self._instrs[i])
+            cur = self._parse_instr(self._instrs[i])
 
             if i < len(self._instrs) - 1:
-                next_instr = self._parse_instr(self._instrs[i+1])
+                next1 = self._parse_instr(self._instrs[i+1])
             else:
-                next_instr = self._parse_instr(('nop',))
+                next1 = self._parse_instr(('nop',))
 
             # when we have a push and a conv instruction, and the
             # conv's source type is the same as the push's type, we
@@ -38,18 +35,18 @@ class QvmCode(BaseCode):
             #    conv!&
             # will be converted to:
             #    push&  1.0
-            if (cur_instr['op'] == 'push' and
-                next_instr['op'] == 'conv' and
-                cur_instr['type_char'] == next_instr['src_type_char']
+            if (cur['op'] == 'push' and
+                next1['op'] == 'conv' and
+                cur['type_char'] == next1['src_type_char']
             ):
-                arg, = cur_instr['args']
+                arg, = cur['args']
 
                 # Convert the argument to the dest type
-                type_char = next_instr['type_char']
+                type_char = next1['type_char']
                 dest_type = expr.Type.from_type_char(type_char)
                 arg = dest_type.py_type(arg)
 
-                self._instrs[i] = (f'push{next_instr["type_char"]}',
+                self._instrs[i] = (f'push{next1["type_char"]}',
                                    arg)
                 del self._instrs[i+1]
                 continue
@@ -60,12 +57,12 @@ class QvmCode(BaseCode):
             # Notice that it's important that this is after the
             # previous optimization (fold push and conv), because it
             # can then optimize the result of that optimization.
-            if cur_instr['op'] == 'push' and \
-               cur_instr['args'][0] in [-1, 0, 1]:
-                type_char = cur_instr['type_char']
-                if args[0] == 0:
+            if cur['op'] == 'push' and \
+               cur['args'][0] in [-1, 0, 1]:
+                type_char = cur['type_char']
+                if cur['args'][0] == 0:
                     self._instrs[i] = (f'push0{type_char}',)
-                elif args[0] == 1:
+                elif cur['args'][0] == 1:
                     self._instrs[i] = (f'push1{type_char}',)
                 else:
                     self._instrs[i] = (f'pushm1{type_char}',)
@@ -80,11 +77,11 @@ class QvmCode(BaseCode):
             # or this pair:
             #    readg%  x
             #    storeg% x
-            cur_pair = set([cur_instr['op'], next_instr['op']])
-            if cur_pair == {'read', 'store'} and \
-               cur_instr['scope'] == next_instr['scope'] and \
-               cur_instr['type_char'] == next_instr['type_char'] and \
-               cur_instr['args'] == next_instr['args']:
+            ops = set([cur['op'], next1['op']])
+            if ops == {'read', 'store'} and \
+               cur['scope'] == next1['scope'] and \
+               cur['type_char'] == next1['type_char'] and \
+               cur['args'] == next1['args']:
                 # remove both
                 del self._instrs[i]
                 del self._instrs[i]
