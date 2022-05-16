@@ -55,6 +55,13 @@ class Type(Enum):
             Type.STRING: '$',
         }[self]
 
+    def is_coercible_to(self, other):
+        if self == other:
+            return True
+        if self.is_numeric and other.is_numeric:
+            return True
+        return False
+
     @staticmethod
     def from_type_char(type_char):
         return {
@@ -274,7 +281,13 @@ class BinaryOp(Expr):
     @property
     def type(self):
         if self.op.is_logical:
-            return Type.INTEGER
+            if not self.left.type.is_numeric or \
+               not self.right.type.is_numeric:
+                return Type.UNKNOWN
+            if self.left.type == self.right.type == Type.INTEGER:
+                return Type.INTEGER
+            else:
+                return Type.LONG
         if self.op.is_comparison:
             return Type.INTEGER
 
@@ -403,7 +416,10 @@ class UnaryOp(Expr):
     @property
     def type(self):
         if self.op.is_logical:
-            return self.INTEGER
+            if self.arg.type == Type.INTEGER:
+                return Type.INTEGER
+            else:
+                return Type.LONG
         else:
             return self.arg.type
 

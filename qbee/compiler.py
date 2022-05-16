@@ -1,5 +1,5 @@
 from .grammar import program
-from .stmt import Stmt
+from .stmt import Stmt, AssignmentStmt
 from .expr import Type, Expr, BinaryOp, UnaryOp
 from .program import Label
 from .codegen import CodeGen
@@ -61,11 +61,7 @@ class Compiler:
     def _compile_tree(self, tree):
         for node in tree.children:
             if isinstance(node, Stmt):
-                for child in node.children:
-                    if isinstance(child, Expr):
-                        self._compile_expr(child)
-                    else:
-                        self._compile_tree(child)
+                self._compile_stmt(node)
             elif isinstance(node, Expr):
                 self._compile_expr(node)
             elif isinstance(node, Label):
@@ -77,6 +73,17 @@ class Compiler:
             else:
                 raise InternalError(
                     f'Do not know how to compile node: {node}')
+
+    def _compile_stmt(self, stmt):
+        if isinstance(stmt, AssignmentStmt):
+            if not stmt.lvalue.type.is_coercible_to(stmt.rvalue.type):
+                raise CompileError(EC.TYPE_MISMATCH, node=stmt)
+
+        for child in stmt.children:
+            if isinstance(child, Expr):
+                self._compile_expr(child)
+            else:
+                self._compile_tree(child)
 
     def _compile_expr(self, expr):
         for child in expr.children:
