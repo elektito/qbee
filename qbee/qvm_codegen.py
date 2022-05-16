@@ -38,11 +38,19 @@ class QvmCode(BaseCode):
             #    conv!&
             # will be converted to:
             #    push&  1.0
-            if cur_instr['op'] == 'push' and \
-               next_instr['op'] == 'conv' and \
-               cur_instr['type_char'] == next_instr['src_type_char']:
+            if (cur_instr['op'] == 'push' and
+                next_instr['op'] == 'conv' and
+                cur_instr['type_char'] == next_instr['src_type_char']
+            ):
+                arg, = cur_instr['args']
+
+                # Convert the argument to the dest type
+                type_char = next_instr['type_char']
+                dest_type = expr.Type.from_type_char(type_char)
+                arg = dest_type.py_type(arg)
+
                 self._instrs[i] = (f'push{next_instr["type_char"]}',
-                                   *cur_instr['args'])
+                                   arg)
                 del self._instrs[i+1]
                 continue
 
