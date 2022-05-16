@@ -231,18 +231,21 @@ def gen_unary_op(node, code, codegen):
     )
 
 
-@QvmCodeGen.generator_for(expr.Identifier)
-def gen_identifier(node, code, codegen):
-    code.add(
-        ('PUSHID', self.type.type_char, self.name),
-    )
-
-
 # Code generators for statements
 
 @QvmCodeGen.generator_for(Label)
 def gen_label(node, code, codegen):
     code.add(('_label', node.name))
+
+
+@QvmCodeGen.generator_for(stmt.AssignmentStmt)
+def gen_assignment(node, code, codegen):
+    codegen.gen_code_for_node(node.rvalue, code)
+    dest_type_char = node.lvalue.type.type_char
+    if node.rvalue.type != node.lvalue.type:
+        src_type_char = node.rvalue.type.type_char
+        code.add((f'conv{src_type_char}{dest_type_char}',))
+    code.add((f'store{dest_type_char}', node.lvalue.name))
 
 
 @QvmCodeGen.generator_for(stmt.BeepStmt)

@@ -44,6 +44,20 @@ class Compiler:
 
         return code
 
+    def is_const(self, name):
+        "Return whether the given name is a const or not"
+        return False
+
+    def get_identifier_type(self, name: str) -> Type:
+        """Return the type of the given name, taking into account the DEF*
+        statements encountered so far.
+
+        """
+
+        # for now DEF* statements are not supported, so always the
+        # default type
+        return Type.SINGLE
+
     def _compile_tree(self, tree):
         for node in tree.children:
             if isinstance(node, Stmt):

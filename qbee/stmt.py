@@ -29,6 +29,28 @@ class NoChildStmt(Stmt):
         pass
 
 
+class AssignmentStmt(Stmt):
+    def __init__(self, lvalue, rvalue):
+        self.lvalue = lvalue
+        self.rvalue = rvalue
+
+    def __repr__(self):
+        return f'<AssignmentStmt {self.lvalue} = {self.rvalue}>'
+
+    @property
+    def children(self):
+        return [self.lvalue, self.rvalue]
+
+    def replace_child(self, old_child, new_child):
+        if self.rvalue == old_child:
+            self.rvalue = new_child
+        elif self.lvalue == old_child:
+            self.lvalue = new_child
+        else:
+            raise InternalError(
+                f'No such child to replace: {old_child}')
+
+
 class BeepStmt(NoChildStmt):
     def __repr__(self):
         return '<BeepStmt>'

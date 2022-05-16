@@ -12,7 +12,7 @@ from .expr import (
     Type, Operator, NumericLiteral, Identifier, BinaryOp, UnaryOp,
     StringLiteral,
 )
-from .stmt import BeepStmt, CallStmt, ClsStmt
+from .stmt import AssignmentStmt, BeepStmt, CallStmt, ClsStmt
 from .program import Program, Label
 
 
@@ -33,6 +33,7 @@ cls_kw = CaselessKeyword('cls')
 data_kw = CaselessKeyword('data')
 eqv_kw = CaselessKeyword('eqv')
 imp_kw = CaselessKeyword('imp')
+let_kw = CaselessKeyword('let')
 mod_kw = CaselessKeyword('mod')
 not_kw = CaselessKeyword('not')
 or_kw = CaselessKeyword('or')
@@ -51,6 +52,7 @@ keyword = reduce(lambda a, b: a | b, _kw_rules)
 
 type_char = Regex(r'[%&$#!]')
 single_quote = Literal("'")
+eq = Literal('=')
 comma = Literal(',')
 colon = Literal(':')
 lpar = Literal("(")
@@ -115,6 +117,13 @@ data_stmt = data_kw + (data_clause | comma)[...] + unclosed_quoted_string[...]
 
 rem_stmt = (rem_kw + SkipTo(LineEnd())).suppress()
 
+assignment_stmt = (
+    let_kw[...].suppress() +
+    identifier +
+    eq.suppress() +
+    expr
+)
+
 beep_stmt = beep_kw
 
 call_stmt = call_kw[...].suppress() + identifier + expr_list[...]
@@ -122,6 +131,7 @@ call_stmt = call_kw[...].suppress() + identifier + expr_list[...]
 cls_stmt = cls_kw
 
 stmt = Located(
+    assignment_stmt |
     beep_stmt |
     call_stmt |
     cls_stmt |
@@ -274,6 +284,12 @@ def parse_stmts(toks):
         if tok != ':':
             ret.append(tok)
     return ret
+
+
+@parse_action(assignment_stmt)
+def parse_assignment(toks):
+    lvalue, expr = toks
+    return AssignmentStmt(lvalue, expr)
 
 
 @parse_action(beep_stmt)
