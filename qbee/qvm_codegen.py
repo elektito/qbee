@@ -94,6 +94,28 @@ class QvmCode(BaseCode):
 
                 continue
 
+            # Fold push/unary-op
+            if (cur['op'] == 'push' and
+                cur['type_char'] == next1['type_char'] and
+                next1['op'] in ['not', 'neg']
+            ):
+                value = cur['args'][0]
+                op = {
+                    'not': expr.Operator.NOT,
+                    'neg': expr.Operator.NEG,
+                }[next1['op']]
+                value_type = expr.Type.from_type_char(cur['type_char'])
+                value = expr.NumericLiteral(value, value_type)
+                unary_expr = expr.UnaryOp(value, op)
+                value = unary_expr.eval()
+
+                self._instrs[i] = (f'push{cur["type_char"]}', value)
+                del self._instrs[i+1]
+
+                continue
+
+            # fold push/push/binary-op
+
             i += 1
 
     def __str__(self):
