@@ -46,3 +46,62 @@ def test_fold_push_and_conv_one():
     )
     code.optimize()
     assert code._instrs == [('push1!',)]
+
+
+def test_eliminate_store_read():
+    code = QvmCode()
+    code.add(
+        ('storel!', 'x'),
+        ('readl!', 'x'),
+    )
+    code.optimize()
+    assert code._instrs == []
+
+
+def test_eliminate_read_store():
+    code = QvmCode()
+    code.add(
+        ('readg!', 'x'),
+        ('storeg!', 'x'),
+    )
+    code.optimize()
+    assert code._instrs == []
+
+
+def test_eliminate_read_store_incompatible_scope():
+    code = QvmCode()
+    code.add(
+        ('readl!', 'x'),
+        ('storeg!', 'x'),
+    )
+    code.optimize()
+    assert code._instrs == [
+        ('readl!', 'x'),
+        ('storeg!', 'x'),
+    ]
+
+
+def test_eliminate_read_store_incompatible_type():
+    code = QvmCode()
+    code.add(
+        ('readl!', 'x'),
+        ('storel#', 'x'),
+    )
+    code.optimize()
+    assert code._instrs == [
+        ('readl!', 'x'),
+        ('storel#', 'x'),
+    ]
+
+
+def test_eliminate_read_store_incompatible_arg():
+    code = QvmCode()
+    code.add(
+        ('readl!', 'x'),
+        ('storel!', 'y'),
+    )
+    code.optimize()
+    assert code._instrs == [
+        ('readl!', 'x'),
+        ('storel!', 'y'),
+    ]

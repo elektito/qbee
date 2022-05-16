@@ -71,6 +71,25 @@ class QvmCode(BaseCode):
                     self._instrs[i] = (f'pushm1{type_char}',)
                 continue
 
+            # Eliminate pairs of compatible consecutive read/store or
+            # store/read.
+            #
+            # For example this pair:
+            #    storel# x
+            #    readl#  x
+            # or this pair:
+            #    readg%  x
+            #    storeg% x
+            cur_pair = set([cur_instr['op'], next_instr['op']])
+            if cur_pair == {'read', 'store'} and \
+               cur_instr['scope'] == next_instr['scope'] and \
+               cur_instr['type_char'] == next_instr['type_char'] and \
+               cur_instr['args'] == next_instr['args']:
+                # remove both
+                del self._instrs[i]
+                del self._instrs[i]
+                continue
+
             i += 1
 
     def __str__(self):
@@ -103,6 +122,10 @@ class QvmCode(BaseCode):
             src_type_char = op[-1]
             op = op[:-1]
             extras = {'src_type_char': src_type_char}
+        if op[:-1] in ['store', 'read']:
+            scope = op[-1]
+            op = op[:-1]
+            extras = {'scope': scope}
 
         result = {
             'op': op,
