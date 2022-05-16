@@ -219,9 +219,6 @@ def gen_binary_op(node, code, codegen):
             Operator.CMP_GT: 'sub',
             Operator.CMP_LE: 'sub',
             Operator.CMP_GE: 'sub',
-            Operator.NEG: 'neg',
-            Operator.PLUS: None, # noop
-            Operator.NOT: 'not',
             Operator.AND: 'and',
             Operator.OR: 'or',
             Operator.XOR: 'xor',
@@ -235,12 +232,24 @@ def gen_binary_op(node, code, codegen):
 
 @QvmCodeGen.generator_for(expr.UnaryOp)
 def gen_unary_op(node, code, codegen):
-    code.add(
-        ('possibly_conv',),
-        (node.op, node.type),
-        ('possibly_conv',),
-    )
+    codegen.gen_code_for_node(node.arg, code)
+    if node.op == expr.Operator.NEG:
+        type_char = node.arg.type.type_char
+        code.add((f'neg{type_char}',))
+    elif node.op == expr.Operator.PLUS:
+        # no code needed for the unary plus
+        pass
+    elif node.op == expr.Operator.NOT:
+        if node.arg.type == expr.Type.INTEGER:
+            result_type = expr.Type.INTEGER
+        else:
+            result_type = expr.Type.LONG
 
+        result_type_char = result_type.type_char
+        if node.arg.type != result_type:
+            arg_type_char = node.arg.type.type_char
+            code.add((f'conv{arg_type_char}{result_type_char}',))
+        code.add((f'not{result_type_char}',))
 
 # Code generators for statements
 
