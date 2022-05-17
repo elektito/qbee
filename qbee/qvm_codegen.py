@@ -4,6 +4,92 @@ from .exceptions import InternalError
 from . import stmt, expr
 
 
+class QvmInstr:
+    """Represents a QVM instruction. It receives its data from either an
+iterable, or a list of arguments it receives.
+
+For certain instructions, like push variants, there's a canonical
+form, which is always in the form ('push&', 10), and there's also the
+final form which might be in the form ('push1&',).
+
+    """
+
+    def __init__(self, *elements):
+        assert elements
+        if isinstance(elements[0], tuple):
+            assert len(elements) == 1
+            elements = elements[0]
+
+        self.op, *self.args = elements
+        assert isinstance(self.op, str)
+
+        self.type = None
+        if any(self.op.endswith(c) for c in expr.Type.type_chars()):
+            self.type = expr.Type.from_type_char(self.op[-1])
+            self.op = self.op[:-1]
+
+        self.src_type = None
+        if any(self.op.endswith(c) for c in expr.Type.type_chars()):
+            self.src_type = expr.Type.from_type_char(self.op[-1])
+            self.op = self.op[:-1]
+
+        self.scope = None
+        if self.op in ('storel', 'storeg', 'readl', 'readg'):
+            self.scope = self.op[-1]
+            self.op = self.op[:-1]
+
+        if self.op in ('push1', 'push0', 'pushm1'):
+            intrinsic_value = {
+                'push1': 1,
+                'push0': 0,
+                'pushm1': -1,
+            }[self.op]
+            self.op = 'push'
+            self.args = (intrinsic_value,)
+
+    @property
+    def canonical(self):
+        return (self.op, *self.args)
+
+    @property
+    def final(self):
+        if self.op == 'push' and self.args[0] in (1, 0, -1):
+            op = {
+                1: 'push1',
+                0: 'push0',
+                -1: 'pushm1',
+            }[self.args[0]]
+            args = ()
+        else:
+            op = self.op
+            args = self.args
+
+        type_char = ''
+        if self.type:
+            type_char = self.type.type_char
+
+        src_type_char = ''
+        if self.src_type:
+            src_type_char = self.src_type.type_char
+
+        scope = ''
+        if self.scope:
+            scope = self.scope
+
+        op = op + scope + src_type_char + type_char
+        return (op, *args)
+
+    def __str__(self):
+        op, *args = self.final
+        args_str = ', '.join(str(i) for i in self.final_args)
+        return f'{op}\t{args_str}'
+
+    def __repr__(self):
+        op = self.final_op + self.type.type_char
+        tup = (op, *self.final_args)
+        return repr(tup)
+
+
 class QvmCode(BaseCode):
     def __init__(self):
         self._instrs = []
@@ -14,17 +100,17 @@ class QvmCode(BaseCode):
     def add(self, *instrs):
         if not all(isinstance(i, tuple) for i in instrs):
             raise InternalError('Instruction not a tuple')
-        self._instrs.extend(instrs)
+        self._instrs.extend([QvmInstr(*i) for i in instrs])
 
     def optimize(self):
         i = 0
         while i < len(self._instrs):
-            cur = self._parse_instr(self._instrs[i])
+            cur = self._instrs[i]
 
             if i < len(self._instrs) - 1:
-                next1 = self._parse_instr(self._instrs[i+1])
+                next1 = self._instrs[i+1]
             else:
-                next1 = self._parse_instr(('nop',))
+                next1 = QvmInstr('nop')
 
             # when we have a push and a conv instruction, and the
             # conv's source type is the same as the push's type, we
@@ -35,45 +121,19 @@ class QvmCode(BaseCode):
             #    conv!&
             # will be converted to:
             #    push&  1.0
-            if (cur['op'] == 'push' and
-                next1['op'] == 'conv' and
-                cur['type_char'] == next1['src_type_char']
+            if (cur.op == 'push' and
+                next1.op == 'conv' and
+                cur.type == next1.src_type
             ):
-                arg, = cur['args']
+                arg, = cur.args
 
                 # Convert the argument to the dest type
-                type_char = next1['type_char']
-                dest_type = expr.Type.from_type_char(type_char)
-                arg = dest_type.py_type(arg)
+                dest_type = next1.type
+                arg = next1.type.py_type(arg)
 
-                self._instrs[i] = (f'push{next1["type_char"]}',
-                                   arg)
+                self._instrs[i] = QvmInstr(
+                    f'push{next1.type.type_char}', arg)
                 del self._instrs[i+1]
-                continue
-
-            if (cur.get('push_no_arg') and
-                next1['op'] == 'conv' and
-                cur['type_char'] == next1['src_type_char']
-            ):
-                self._instrs[i] = (f'{cur["op"]}{next1["type_char"]}',)
-                del self._instrs[i+1]
-                continue
-
-            # Convert normal push instructions with -1, 0, or 1
-            # operands to a single instruction pushing the same value.
-            #
-            # Notice that it's important that this is after the
-            # previous optimization (fold push and conv), because it
-            # can then optimize the result of that optimization.
-            if cur['op'] == 'push' and \
-               cur['args'][0] in [-1, 0, 1]:
-                type_char = cur['type_char']
-                if cur['args'][0] == 0:
-                    self._instrs[i] = (f'push0{type_char}',)
-                elif cur['args'][0] == 1:
-                    self._instrs[i] = (f'push1{type_char}',)
-                else:
-                    self._instrs[i] = (f'pushm1{type_char}',)
                 continue
 
             # Eliminate pairs of compatible consecutive read/store or
@@ -85,11 +145,11 @@ class QvmCode(BaseCode):
             # or this pair:
             #    readg%  x
             #    storeg% x
-            ops = set([cur['op'], next1['op']])
+            ops = {cur.op, next1.op}
             if ops == {'read', 'store'} and \
-               cur['scope'] == next1['scope'] and \
-               cur['type_char'] == next1['type_char'] and \
-               cur['args'] == next1['args']:
+               cur.scope == next1.scope and \
+               cur.type.type_char == next1.type.type_char and \
+               cur.args == next1.args:
                 # remove both
                 del self._instrs[i]
                 del self._instrs[i]
@@ -101,33 +161,35 @@ class QvmCode(BaseCode):
                 continue
 
             # Fold push/unary-op
-            if (cur['op'] == 'push' and
-                cur['type_char'] == next1['type_char'] and
-                next1['op'] in ['not', 'neg']
+            if (cur.op == 'push' and
+                cur.type and next1.type and
+                cur.type.type_char == next1.type.type_char and
+                next1.op in ['not', 'neg']
             ):
-                value = cur['args'][0]
+                value = cur.args[0]
                 op = {
                     'not': expr.Operator.NOT,
                     'neg': expr.Operator.NEG,
-                }[next1['op']]
-                value_type = expr.Type.from_type_char(cur['type_char'])
-                value = expr.NumericLiteral(value, value_type)
+                }[next1.op]
+                value = expr.NumericLiteral(value, cur.type)
                 unary_expr = expr.UnaryOp(value, op)
                 value = unary_expr.eval()
 
-                self._instrs[i] = (f'push{cur["type_char"]}', value)
+                self._instrs[i] = QvmInstr(
+                    f'push{cur.type.type_char}', value)
                 del self._instrs[i+1]
 
                 continue
 
             # fold push/push/binary-op
+            # ...
 
             i += 1
 
     def __str__(self):
         s = ''
         for instr in self._instrs:
-            op, *args = instr
+            op, *args = instr.final
             if op == '_label':
                 label, = args
                 s += f'{label}:\n'
@@ -137,38 +199,6 @@ class QvmCode(BaseCode):
 
     def __bytes__(self):
         return b'<machine code>'
-
-    def _parse_instr(self, instr):
-        "Helper used by the optimize function"
-
-        op, *args = instr
-        type_chars = expr.Type.type_chars()
-        if any(op.endswith(c) for c in type_chars):
-            type_char = op[-1]
-            op = op[:-1]
-        else:
-            type_char = None
-
-        extras = {}
-        if op[:-1] == 'conv':
-            src_type_char = op[-1]
-            op = op[:-1]
-            extras = {'src_type_char': src_type_char}
-        if op[:-1] in ['store', 'read']:
-            scope = op[-1]
-            op = op[:-1]
-            extras = {'scope': scope}
-        if op in ['push1', 'push0', 'pushm1']:
-            extras['push_no_arg'] = True
-
-        result = {
-            'op': op,
-            'type_char': type_char,
-            'args': args,
-        }
-        result.update(extras)
-
-        return result
 
 
 class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
