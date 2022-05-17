@@ -1,6 +1,6 @@
 from .grammar import program
 from .stmt import Stmt, AssignmentStmt
-from .expr import Type, Expr, BinaryOp, UnaryOp
+from .expr import Type, Expr, BinaryOp, UnaryOp, Identifier
 from .program import Label
 from .codegen import CodeGen
 from .exceptions import ErrorCode as EC, InternalError, CompileError
@@ -16,6 +16,7 @@ class Routine:
     def __init__(self, name):
         self.name = name
         self.labels = set()
+        self.variables = set()
 
 
 class Compiler:
@@ -95,7 +96,10 @@ class Compiler:
         for child in expr.children:
             self._compile_expr(child)
 
-        if isinstance(expr, BinaryOp):
+        if isinstance(expr, Identifier):
+            if expr.name not in self.cur_routine.variables:
+                self.cur_routine.variables.add(expr.name)
+        elif isinstance(expr, BinaryOp):
             if expr.type == Type.UNKNOWN:
                 raise CompileError(EC.TYPE_MISMATCH, node=expr)
         elif isinstance(expr, UnaryOp):
