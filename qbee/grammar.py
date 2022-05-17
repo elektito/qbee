@@ -154,7 +154,7 @@ comment = single_quote + SkipTo(LineEnd())
 line_no = Located(Regex(r'\d+') + FollowedBy(White()))
 label = Located(
     ~keyword +
-    Regex(r'[a-z][a-z0-9]', re.I) +
+    Regex(r'[a-z][a-z0-9]*', re.I) +
     Literal(':').suppress()
 )
 
