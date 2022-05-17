@@ -298,7 +298,7 @@ def gen_binary_op(node, code, codegen):
             Operator.MUL: 'mul',
             Operator.DIV: 'div',
             Operator.MOD: 'mod',
-            Operator.INTDIV: 'intdiv',
+            Operator.INTDIV: 'idiv',
             Operator.EXP: 'exp',
             Operator.CMP_EQ: 'sub',
             Operator.CMP_NE: 'sub',
