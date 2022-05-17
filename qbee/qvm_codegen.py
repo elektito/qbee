@@ -21,6 +21,7 @@ final form which might be in the form ('push1&',).
             elements = elements[0]
 
         self.op, *self.args = elements
+        self.op = self.op.lower()
         assert isinstance(self.op, str)
 
         self.type = None
