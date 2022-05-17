@@ -265,8 +265,8 @@ def gen_binary_op(node, code, codegen):
             'Unaccounted for binary operator: {node.op}')
 
     codegen.gen_code_for_node(node.left, code)
-    if left_type != left_type:
-        from_char = node.type.type_char
+    if left_type != node.left.type:
+        from_char = node.left.type.type_char
         to_char = left_type.type_char
         code.add((f'conv{from_char}{to_char}',))
 
