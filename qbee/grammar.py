@@ -232,11 +232,10 @@ def parse_num_literal(s, loc, toks):
 def parse_identifier(toks):
     if len(toks) == 1:
         name = toks[0]
-        type = None
     else:
-        name, type_char = toks
-        type = Type.from_type_char(type_char)
-    return Identifier(name, type)
+        # Add the type_char to the name
+        name = toks[0] + toks[1]
+    return Identifier(name)
 
 
 @parse_action(addsub_expr)

@@ -20,6 +20,10 @@ class Type(Enum):
         # property, it would become a member of the enum
         return '%&!#$'
 
+    @staticmethod
+    def is_type_char(char):
+        return any(char == c for c in Type.type_chars())
+
     @property
     def is_numeric(self):
         return self in (
@@ -455,9 +459,8 @@ class UnaryOp(Expr):
 class Identifier(Expr):
     is_literal = False
 
-    def __init__(self, name, type:Type=None):
+    def __init__(self, name):
         self.name = name
-        self._type = type
 
     def __repr__(self):
         return f'<Identifier {self.name}>'
@@ -471,9 +474,6 @@ class Identifier(Expr):
 
     @property
     def type(self):
-        if self._type:
-            return self._type
-
         return self.compiler.get_identifier_type(self.name)
 
     @property
@@ -486,6 +486,13 @@ class Identifier(Expr):
                 'Attempting to evaluate non-const expression')
 
         return self.compiler.get_const_value(self.name)
+
+    @property
+    def canonical_name(self):
+        if Type.is_type_char(self.name[-1]):
+            return self.name
+
+        return self.name + self.type.type_char
 
 
 class StringLiteral(Expr):

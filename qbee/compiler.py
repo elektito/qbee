@@ -54,9 +54,12 @@ class Compiler:
 
         """
 
-        # for now DEF* statements are not supported, so always the
-        # default type
-        return Type.SINGLE
+        if Type.is_type_char(name[-1]):
+            return Type.from_type_char(name[-1])
+        else:
+            # for now DEF* statements are not supported, so always the
+            # default type
+            return Type.SINGLE
 
     def is_var_global(self, name):
         return False

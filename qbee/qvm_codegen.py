@@ -24,12 +24,12 @@ final form which might be in the form ('push1&',).
         assert isinstance(self.op, str)
 
         self.type = None
-        if any(self.op.endswith(c) for c in expr.Type.type_chars()):
+        if expr.Type.is_type_char(self.op[-1]):
             self.type = expr.Type.from_type_char(self.op[-1])
             self.op = self.op[:-1]
 
         self.src_type = None
-        if any(self.op.endswith(c) for c in expr.Type.type_chars()):
+        if expr.Type.is_type_char(self.op[-1]):
             self.src_type = expr.Type.from_type_char(self.op[-1])
             self.op = self.op[:-1]
 
@@ -226,7 +226,7 @@ def gen_identifier(node, code, codegen):
         scope = 'g' # global
     else:
         scope = 'l' # local
-    code.add((f'read{scope}{type_char}', node.name))
+    code.add((f'read{scope}{type_char}', node.canonical_name))
 
 
 @QvmCodeGen.generator_for(expr.BinaryOp)
