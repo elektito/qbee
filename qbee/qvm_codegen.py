@@ -113,6 +113,11 @@ class QvmCode(BaseCode):
             else:
                 next1 = QvmInstr('nop')
 
+            if i < len(self._instrs) - 2:
+                next2 = self._instrs[i+2]
+            else:
+                next2 = QvmInstr('nop')
+
             # when we have a push and a conv instruction, and the
             # conv's source type is the same as the push's type, we
             # can fold them into one push instruction.
@@ -135,6 +140,11 @@ class QvmCode(BaseCode):
                 self._instrs[i] = QvmInstr(
                     f'push{next1.type.type_char}', arg)
                 del self._instrs[i+1]
+
+                # Go back to allow for more chained optimizations
+                if i > 0:
+                    i -= 1
+
                 continue
 
             # Eliminate pairs of compatible consecutive read/store or
@@ -181,8 +191,44 @@ class QvmCode(BaseCode):
 
                 continue
 
-            # fold push/push/binary-op
-            # ...
+            # Fold push/push/binary-op
+            if (cur.op == 'push' and next1.op == 'push' and
+                cur.type == next1.type == next2.type and
+                next2.op in ['add', 'sub', 'mul', 'div', 'and', 'or',
+                             'xor', 'eqv', 'imp', 'idiv', 'mod']
+            ):
+                value1 = cur.args[0]
+                value2 = next1.args[0]
+                op = {
+                    'add': expr.Operator.ADD,
+                    'sub': expr.Operator.SUB,
+                    'mul': expr.Operator.MUL,
+                    'div': expr.Operator.DIV,
+                    'and': expr.Operator.AND,
+                    'or': expr.Operator.OR,
+                    'xor': expr.Operator.XOR,
+                    'eqv': expr.Operator.EQV,
+                    'imp': expr.Operator.IMP,
+                    'idiv': expr.Operator.INTDIV,
+                    'mod': expr.Operator.MOD,
+                }[next2.op]
+                value1 = expr.NumericLiteral(value1, cur.type)
+                value2 = expr.NumericLiteral(value2, next1.type)
+                binary_expr = expr.BinaryOp(value1, value2, op)
+                value = binary_expr.eval()
+
+                self._instrs[i] = QvmInstr(
+                    f'push{cur.type.type_char}', value)
+
+                # remove the next two instructions
+                del self._instrs[i+1]
+                del self._instrs[i+1]
+
+                # Go back to allow for more chained optimizations
+                if i > 0:
+                    i -= 1
+
+                continue
 
             i += 1
 
