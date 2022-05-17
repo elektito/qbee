@@ -460,7 +460,7 @@ class Identifier(Expr):
     is_literal = False
 
     def __init__(self, name):
-        self.name = name
+        self.original_name = name
 
     def __repr__(self):
         return f'<Identifier {self.name}>'
@@ -474,7 +474,7 @@ class Identifier(Expr):
 
     @property
     def type(self):
-        return self.compiler.get_identifier_type(self.name)
+        return self.compiler.get_identifier_type(self.original_name)
 
     @property
     def is_const(self):
@@ -488,11 +488,11 @@ class Identifier(Expr):
         return self.compiler.get_const_value(self.name)
 
     @property
-    def canonical_name(self):
-        if Type.is_type_char(self.name[-1]):
-            return self.name
+    def name(self):
+        if Type.is_type_char(self.original_name[-1]):
+            return self.original_name
 
-        return self.name + self.type.type_char
+        return self.original_name + self.type.type_char
 
 
 class StringLiteral(Expr):

@@ -226,7 +226,7 @@ def gen_identifier(node, code, codegen):
         scope = 'g' # global
     else:
         scope = 'l' # local
-    code.add((f'read{scope}{type_char}', node.canonical_name))
+    code.add((f'read{scope}{type_char}', node.name))
 
 
 @QvmCodeGen.generator_for(expr.BinaryOp)
