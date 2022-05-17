@@ -162,8 +162,7 @@ class QvmCode(BaseCode):
 
             # Fold push/unary-op
             if (cur.op == 'push' and
-                cur.type and next1.type and
-                cur.type.type_char == next1.type.type_char and
+                cur.type == next1.type and
                 next1.op in ['not', 'neg']
             ):
                 value = cur.args[0]
