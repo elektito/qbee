@@ -86,8 +86,8 @@ final form which might be in the form ('push1&',).
         return f'{op}\t{args_str}'
 
     def __repr__(self):
-        op = self.final_op + self.type.type_char
-        tup = (op, *self.final_args)
+        op, *args = self.final
+        tup = (op, *args)
         return repr(tup)
 
 
