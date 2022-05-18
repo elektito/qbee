@@ -13,8 +13,12 @@ from . import qvm_codegen
 class Routine:
     "Represents a SUB or a FUNCTION"
 
-    def __init__(self, name):
+    def __init__(self, name, type):
+        type = type.lower()
+        assert type in ('sub', 'function', 'toplevel')
+
         self.name = name
+        self.type = type
         self.labels = set()
         self.variables = set()
 
@@ -23,7 +27,7 @@ class Compiler:
     def __init__(self, optimization_level=0):
         self.optimization_level = optimization_level
 
-        self.cur_routine = Routine('_main')
+        self.cur_routine = Routine('_main', 'toplevel')
         self.routines = {'_main': self.cur_routine}
 
         self._codegen = CodeGen('qvm', self)
@@ -81,7 +85,7 @@ class Compiler:
                         EC.DUPLICATE_DEFINITION,
                         f'Duplicate sub-routine definition: {node.name}',
                         node=node)
-                routine = Routine(node.name)
+                routine = Routine(node.name, 'sub')
                 self.routines[node.name] = routine
                 self.cur_routine = routine
 
