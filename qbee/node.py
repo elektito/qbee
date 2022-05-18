@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from .exceptions import InternalError
 
 
 class Node(ABC):
