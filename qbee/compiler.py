@@ -89,16 +89,21 @@ class Compiler:
                 self._compile_tree(node)
             elif isinstance(node, Expr):
                 self._compile_expr(node)
-            elif isinstance(node, (LineNo, Label)):
-                if isinstance(node, LineNo):
-                    name = f'_label_{node.number}'
-                else:
-                    name = node.name
-                if name in self.cur_routine.labels:
-                    raise CompileError(EC.DUPLICATE_LABEL,
-                                       f'Duplicate label: {name}',
-                                       node=node)
-                self.cur_routine.labels.add(name)
+            elif isinstance(node, Label):
+                if node.name in self.cur_routine.labels:
+                    raise CompileError(
+                        EC.DUPLICATE_LABEL,
+                        f'Duplicate label: {node.name}',
+                        node=node)
+                self.cur_routine.labels.add(node.name)
+            elif isinstance(node, LineNo):
+                canonical_name = f'_label_{node.number}'
+                if canonical_name in self.cur_routine.labels:
+                    raise CompileError(
+                        EC.DUPLICATE_LABEL,
+                        f'Duplicate line number: {node.number}',
+                        node=node)
+                self.cur_routine.labels.add(canonical_name)
             else:
                 raise InternalError(
                     f'Do not know how to compile node: {node}')
