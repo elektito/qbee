@@ -82,7 +82,7 @@ final form which might be in the form ('push1&',).
 
     def __str__(self):
         op, *args = self.final
-        args_str = ', '.join(str(i) for i in self.final_args)
+        args_str = ', '.join(str(i) for i in args)
         return f'{op}\t{args_str}'
 
     def __repr__(self):
