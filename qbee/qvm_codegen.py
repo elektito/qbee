@@ -108,15 +108,15 @@ class QvmCode(BaseCode):
         while i < len(self._instrs):
             cur = self._instrs[i]
 
-            if i < len(self._instrs) - 1:
-                next1 = self._instrs[i+1]
+            if i > 0:
+                prev1 = self._instrs[i-1]
             else:
-                next1 = QvmInstr('nop')
+                prev1 = QvmInstr('nop')
 
-            if i < len(self._instrs) - 2:
-                next2 = self._instrs[i+2]
+            if i > 1:
+                prev2 = self._instrs[i-2]
             else:
-                next2 = QvmInstr('nop')
+                prev2 = QvmInstr('nop')
 
             # when we have a push and a conv instruction, and the
             # conv's source type is the same as the push's type, we
@@ -127,23 +127,20 @@ class QvmCode(BaseCode):
             #    conv!&
             # will be converted to:
             #    push&  1.0
-            if (cur.op == 'push' and
-                next1.op == 'conv' and
-                cur.type == next1.src_type
+            if (cur.op == 'conv' and
+                prev1.op == 'push' and
+                cur.src_type == prev1.type
             ):
-                arg, = cur.args
+                arg, = prev1.args
 
                 # Convert the argument to the dest type
-                dest_type = next1.type
-                arg = next1.type.py_type(arg)
+                arg = cur.type.py_type(arg)
 
-                self._instrs[i] = QvmInstr(
-                    f'push{next1.type.type_char}', arg)
-                del self._instrs[i+1]
+                self._instrs[i-1] = QvmInstr(
+                    f'push{cur.type.type_char}', arg)
 
-                # Go back to allow for more chained optimizations
-                if i > 0:
-                    i -= 1
+                del self._instrs[i]
+                i -= 1
 
                 continue
 
@@ -156,49 +153,49 @@ class QvmCode(BaseCode):
             # or this pair:
             #    readg%  x
             #    storeg% x
-            ops = {cur.op, next1.op}
-            if ops == {'read', 'store'} and \
-               cur.scope == next1.scope and \
-               cur.type.type_char == next1.type.type_char and \
-               cur.args == next1.args:
+            ops = {cur.op, prev1.op}
+            if (ops == {'read', 'store'} and
+               cur.scope == prev1.scope and
+               cur.type == prev1.type and
+               cur.args == prev1.args
+            ):
                 # remove both
                 del self._instrs[i]
-                del self._instrs[i]
-
-                # Go back to allow for more chained optimizations
-                if i > 0:
-                    i -= 1
+                del self._instrs[i-1]
+                i -= 2
 
                 continue
 
             # Fold push/unary-op
-            if (cur.op == 'push' and
-                cur.type == next1.type and
-                next1.op in ['not', 'neg']
+            if (prev1.op == 'push' and
+                cur.type == prev1.type and
+                cur.op in ['not', 'neg']
             ):
-                value = cur.args[0]
+                value = prev1.args[0]
                 op = {
                     'not': expr.Operator.NOT,
                     'neg': expr.Operator.NEG,
-                }[next1.op]
-                value = expr.NumericLiteral(value, cur.type)
+                }[cur.op]
+                value = expr.NumericLiteral(value, prev1.type)
                 unary_expr = expr.UnaryOp(value, op)
                 value = unary_expr.eval()
 
-                self._instrs[i] = QvmInstr(
+                self._instrs[i-1] = QvmInstr(
                     f'push{cur.type.type_char}', value)
-                del self._instrs[i+1]
+                del self._instrs[i]
+
+                i -= 1
 
                 continue
 
             # Fold push/push/binary-op
-            if (cur.op == 'push' and next1.op == 'push' and
-                cur.type == next1.type == next2.type and
-                next2.op in ['add', 'sub', 'mul', 'div', 'and', 'or',
-                             'xor', 'eqv', 'imp', 'idiv', 'mod']
+            if (prev1.op == 'push' and prev2.op == 'push' and
+                cur.type == prev1.type == prev2.type and
+                cur.op in ['add', 'sub', 'mul', 'div', 'and', 'or',
+                           'xor', 'eqv', 'imp', 'idiv', 'mod']
             ):
-                value1 = cur.args[0]
-                value2 = next1.args[0]
+                left = prev2.args[0]
+                right = prev1.args[0]
                 op = {
                     'add': expr.Operator.ADD,
                     'sub': expr.Operator.SUB,
@@ -211,22 +208,19 @@ class QvmCode(BaseCode):
                     'imp': expr.Operator.IMP,
                     'idiv': expr.Operator.INTDIV,
                     'mod': expr.Operator.MOD,
-                }[next2.op]
-                value1 = expr.NumericLiteral(value1, cur.type)
-                value2 = expr.NumericLiteral(value2, next1.type)
-                binary_expr = expr.BinaryOp(value1, value2, op)
+                }[cur.op]
+                left = expr.NumericLiteral(left, prev2.type)
+                right = expr.NumericLiteral(right, prev1.type)
+                binary_expr = expr.BinaryOp(left, right, op)
                 value = binary_expr.eval()
 
-                self._instrs[i] = QvmInstr(
+                self._instrs[i-2] = QvmInstr(
                     f'push{cur.type.type_char}', value)
 
                 # remove the next two instructions
-                del self._instrs[i+1]
-                del self._instrs[i+1]
-
-                # Go back to allow for more chained optimizations
-                if i > 0:
-                    i -= 1
+                del self._instrs[i]
+                del self._instrs[i-1]
+                i -= 2
 
                 continue
 
