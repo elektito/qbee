@@ -16,6 +16,21 @@ class Label(Node):
         return []
 
 
+class LineNo(Node):
+    def __init__(self, number):
+        self.number = number
+
+    def __repr__(self):
+        return f'<LineNo {self.number}>'
+
+    def replace_child(self, old_child, new_child):
+        pass
+
+    @property
+    def children(self):
+        return []
+
+
 class Program(Node):
     def __init__(self, nodes):
         self.nodes = nodes

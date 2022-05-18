@@ -4,16 +4,19 @@ from functools import wraps
 from functools import reduce
 from pyparsing import (
     ParserElement, CaselessKeyword, Literal, Regex, LineEnd, StringEnd,
-    Word, Forward, FollowedBy, White, Group, Empty, Located, SkipTo,
-    ParseException, alphas, alphanums, delimited_list, lineno, col
+    Word, Forward, FollowedBy, PrecededBy, White, Group, Empty, Located,
+    SkipTo, ParseException, alphas, alphanums, delimited_list, lineno,
 )
 from .exceptions import SyntaxError
 from .expr import (
     Type, Operator, NumericLiteral, Identifier, BinaryOp, UnaryOp,
     StringLiteral,
 )
-from .stmt import AssignmentStmt, BeepStmt, CallStmt, ClsStmt
-from .program import Program, Label
+from .stmt import (
+    AssignmentStmt, BeepStmt, CallStmt, ClsStmt, DataStmt, SubStmt,
+    SubBlock,
+)
+from .program import Program, Label, LineNo
 
 
 # Enable memoization
@@ -31,6 +34,7 @@ beep_kw = CaselessKeyword('beep')
 call_kw = CaselessKeyword('call')
 cls_kw = CaselessKeyword('cls')
 data_kw = CaselessKeyword('data')
+end_kw = CaselessKeyword('end')
 eqv_kw = CaselessKeyword('eqv')
 imp_kw = CaselessKeyword('imp')
 let_kw = CaselessKeyword('let')
@@ -38,6 +42,7 @@ mod_kw = CaselessKeyword('mod')
 not_kw = CaselessKeyword('not')
 or_kw = CaselessKeyword('or')
 rem_kw = CaselessKeyword('rem')
+sub_kw = CaselessKeyword('sub')
 xor_kw = CaselessKeyword('xor')
 
 # create a single rule matching all keywords
@@ -46,7 +51,7 @@ _kw_rules = [
     for name, rule in globals().items()
     if name.endswith('_kw')
 ]
-keyword = reduce(lambda a, b: a | b, _kw_rules)
+keyword = reduce(lambda a, b: a | b, _kw_rules).set_name('keyword')
 
 # Operators and punctuation
 
@@ -81,7 +86,7 @@ identifier = ~keyword + Word(alphas, alphanums) + type_char[...]
 expr = Forward()
 expr_list = delimited_list(expr, delim=',')
 func_call = identifier + lpar + Group(expr_list) + rpar
-paren_expr = Group(
+paren_expr = (
     lpar.suppress() + expr + rpar.suppress()
 )
 atom = (
@@ -115,6 +120,18 @@ expr <<= Located(imp_expr)
 
 # Statements
 
+line_no = PrecededBy('\n') + Located(Regex(r'\d+') + FollowedBy(White()))
+label = Located(
+    ~keyword +
+    PrecededBy('\n') +
+    Regex(r'[a-z][a-z0-9]*', re.I) +
+    Literal(':').suppress()
+).set_name('label')
+
+stmt = Forward()
+comment = single_quote + SkipTo(LineEnd())
+stmt_sep = (colon | LineEnd() | comment).suppress()
+
 quoted_string = Regex(r'"[^"]+"')
 unquoted_string = Regex(r'[^"\n:]+')
 unclosed_quoted_string = Regex(r'"[^"\n]+') + FollowedBy(LineEnd())
@@ -136,45 +153,45 @@ call_stmt = call_kw[...].suppress() + identifier + expr_list[...]
 
 cls_stmt = cls_kw
 
-stmt = Located(
+var_decl = identifier
+param_list = delimited_list(var_decl, delim=comma)
+sub_stmt = (
+    sub_kw.suppress() +
+    identifier +
+    (
+        lpar.suppress() +
+        param_list +
+        rpar.suppress()
+    )[...]
+).set_name('sub_stmt')
+end_sub_stmt = end_kw + sub_kw
+
+sub_block = (
+    sub_stmt + stmt_sep[1,...] +
+    stmt[...] +
+    end_sub_stmt.suppress()
+).set_name('sub_block')
+
+# program
+
+pure_stmt = (
     assignment_stmt |
     beep_stmt |
     call_stmt |
     cls_stmt |
     data_stmt |
     rem_stmt |
-    Empty()
-)
-stmts = stmt + (colon + stmt)[...]
-
-# Lines and program
-
-comment = single_quote + SkipTo(LineEnd())
-
-line_no = Located(Regex(r'\d+') + FollowedBy(White()))
-label = Located(
-    ~keyword +
-    Regex(r'[a-z][a-z0-9]*', re.I) +
-    Literal(':').suppress()
+    sub_block
 )
 
-line_rest = stmts
-line_prefix = line_no | label
-line_with_just_prefix = line_prefix
-line_without_prefix = line_rest
-line_with_prefix = line_prefix + line_rest
-line_without_nl = (
-    line_with_prefix |
-    line_with_just_prefix |
-    line_without_prefix
-)
-line = (
-    line_without_nl +
-    comment[...].suppress() +
-    LineEnd()[1, ...].suppress()
-)
+stmt <<= Located(
+    label |
+    line_no |
+    comment.suppress() |
+    (pure_stmt + stmt_sep[1,...])
+).set_name('stmt')
 
-program = line[...]
+program = stmt_sep[...] + stmt[...]
 
 # --- Parse actions ---
 
@@ -282,15 +299,6 @@ def parse_expr_list(toks):
     return list(toks)
 
 
-@parse_action(stmts)
-def parse_stmts(toks):
-    ret = []
-    for tok in toks:
-        if tok != ':':
-            ret.append(tok)
-    return ret
-
-
 @parse_action(assignment_stmt)
 def parse_assignment(toks):
     lvalue, expr = toks
@@ -312,6 +320,11 @@ def parse_cls(toks):
     return ClsStmt()
 
 
+@parse_action(data_stmt)
+def parse_data(toks):
+    return DataStmt(toks)
+
+
 @parse_action(label)
 def parse_label(toks):
     loc_start, (tok,), loc_end = toks
@@ -321,9 +334,30 @@ def parse_label(toks):
     return label
 
 
+
+@parse_action(line_no)
+def parse_line_no(toks):
+    loc_start, (tok,), loc_end = toks
+    lineno = LineNo(int(tok))
+    lineno.loc_start = loc_start
+    lineno.loc_end = loc_end
+    return lineno
+
+
 @parse_action(program)
 def parse_program(self, toks):
     return Program(toks)
+
+
+@parse_action(sub_stmt)
+def parse_sub_stmt(toks):
+    return SubStmt(toks[0].original_name, toks[1:])
+
+
+@parse_action(sub_block)
+def parse_sub_block(toks):
+    sub_stmt, *block = toks
+    return SubBlock(sub_stmt.name, sub_stmt.args, block)
 
 
 def main():
