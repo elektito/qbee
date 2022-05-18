@@ -30,6 +30,7 @@ class Compiler:
         self.cur_routine = Routine('_main', 'toplevel')
         self.routines = {'_main': self.cur_routine}
 
+        self.all_labels = set()
         self._codegen = CodeGen('qvm', self)
 
     def compile(self, input_string):
@@ -94,20 +95,22 @@ class Compiler:
             elif isinstance(node, Expr):
                 self._compile_expr(node)
             elif isinstance(node, Label):
-                if node.name in self.cur_routine.labels:
+                if node.name in self.all_labels:
                     raise CompileError(
                         EC.DUPLICATE_LABEL,
                         f'Duplicate label: {node.name}',
                         node=node)
                 self.cur_routine.labels.add(node.name)
+                self.all_labels.add(node.name)
             elif isinstance(node, LineNo):
                 canonical_name = f'_label_{node.number}'
-                if canonical_name in self.cur_routine.labels:
+                if canonical_name in self.all_labels:
                     raise CompileError(
                         EC.DUPLICATE_LABEL,
                         f'Duplicate line number: {node.number}',
                         node=node)
                 self.cur_routine.labels.add(canonical_name)
+                self.all_labels.add(canonical_name)
             else:
                 raise InternalError(
                     f'Do not know how to compile node: {node}')
