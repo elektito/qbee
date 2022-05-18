@@ -298,7 +298,7 @@ def parse_assignment(toks):
 
 
 @parse_action(beep_stmt)
-def parse_call(toks):
+def parse_beep(toks):
     return BeepStmt()
 
 
@@ -308,7 +308,7 @@ def parse_call(toks):
 
 
 @parse_action(cls_stmt)
-def parse_call(toks):
+def parse_cls(toks):
     return ClsStmt()
 
 
