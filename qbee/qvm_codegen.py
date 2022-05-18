@@ -88,7 +88,7 @@ final form which might be in the form ('push1&',).
                 'push0': 0,
                 'pushm1': -1,
             }[op]
-            op = Op.PUSH
+            op = 'push'
             self.args = (intrinsic_value,)
 
         self.op = Op[op.upper()]
