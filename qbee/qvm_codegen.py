@@ -1,7 +1,50 @@
+from enum import Enum, auto
 from .codegen import BaseCodeGen, BaseCode
 from .program import Label, LineNo
 from .exceptions import InternalError
 from . import stmt, expr
+
+
+class CanonicalOp(Enum):
+    "VM ops without scope, type, etc."
+
+    ADD = auto()
+    AND = auto()
+    CALL = auto()
+    CONV = auto()
+    DIV = auto()
+    EQV = auto()
+    EXP = auto()
+    IDIV = auto()
+    IMP = auto()
+    IOREQ = auto()
+    MOD = auto()
+    MUL = auto()
+    NEG = auto()
+    NOP = auto()
+    NOT = auto()
+    OR = auto()
+    PUSH = auto()
+    READ = auto()
+    RET = auto()
+    SUB = auto()
+    STORE = auto()
+    XOR = auto()
+
+    _LABEL = 10000
+
+    def __eq__(self, other):
+        if not isinstance(other, CanonicalOp):
+            raise InternalError(
+                f'Attempting to compare op with: '
+                f'{type(other).__name__}')
+        return super().__eq__(other)
+
+    def __hash__(self):
+        return hash(self.value)
+
+
+Op = CanonicalOp
 
 
 class QvmInstr:
@@ -20,33 +63,44 @@ final form which might be in the form ('push1&',).
             assert len(elements) == 1
             elements = elements[0]
 
-        self.op, *self.args = elements
-        self.op = self.op.lower()
-        assert isinstance(self.op, str)
+        op, *self.args = elements
+        op = op.lower()
+        assert isinstance(op, str)
 
         self.type = None
-        if expr.Type.is_type_char(self.op[-1]):
-            self.type = expr.Type.from_type_char(self.op[-1])
-            self.op = self.op[:-1]
+        if expr.Type.is_type_char(op[-1]):
+            self.type = expr.Type.from_type_char(op[-1])
+            op = op[:-1]
 
         self.src_type = None
-        if expr.Type.is_type_char(self.op[-1]):
-            self.src_type = expr.Type.from_type_char(self.op[-1])
-            self.op = self.op[:-1]
+        if expr.Type.is_type_char(op[-1]):
+            self.src_type = expr.Type.from_type_char(op[-1])
+            op = op[:-1]
 
         self.scope = None
-        if self.op in ('storel', 'storeg', 'readl', 'readg'):
-            self.scope = self.op[-1]
-            self.op = self.op[:-1]
+        if op in ('storel', 'storeg', 'readl', 'readg'):
+            self.scope = op[-1]
+            op = op[:-1]
 
-        if self.op in ('push1', 'push0', 'pushm1'):
+        if op in ('push1', 'push0', 'pushm1'):
             intrinsic_value = {
                 'push1': 1,
                 'push0': 0,
                 'pushm1': -1,
-            }[self.op]
-            self.op = 'push'
+            }[op]
+            op = Op.PUSH
             self.args = (intrinsic_value,)
+
+        self.op = Op[op.upper()]
+
+    @property
+    def op(self):
+        return self._op
+
+    @op.setter
+    def op(self, value):
+        assert isinstance(value, Op)
+        self._op = value
 
     @property
     def canonical(self):
@@ -54,7 +108,8 @@ final form which might be in the form ('push1&',).
 
     @property
     def final(self):
-        if self.op == 'push' and self.args[0] in (1, 0, -1):
+        op = self.op.name.lower()
+        if op == 'push' and self.args[0] in (1, 0, -1):
             op = {
                 1: 'push1',
                 0: 'push0',
@@ -62,7 +117,6 @@ final form which might be in the form ('push1&',).
             }[self.args[0]]
             args = ()
         else:
-            op = self.op
             args = self.args
 
         type_char = ''
@@ -144,8 +198,8 @@ class QvmCode(BaseCode):
             #    conv!&
             # will be converted to:
             #    push&  1.0
-            if (cur.op == 'conv' and
-                prev1.op == 'push' and
+            if (cur.op == Op.CONV and
+                prev1.op == Op.PUSH and
                 cur.src_type == prev1.type
             ):
                 arg, = prev1.args
@@ -171,7 +225,7 @@ class QvmCode(BaseCode):
             #    readg%  x
             #    storeg% x
             ops = {cur.op, prev1.op}
-            if (ops == {'read', 'store'} and
+            if (ops == {Op.READ, Op.STORE} and
                cur.scope == prev1.scope and
                cur.type == prev1.type and
                cur.args == prev1.args
@@ -184,14 +238,14 @@ class QvmCode(BaseCode):
                 continue
 
             # Fold push/unary-op
-            if (prev1.op == 'push' and
+            if (prev1.op == Op.PUSH and
                 cur.type == prev1.type and
-                cur.op in ['not', 'neg']
+                cur.op in [Op.NOT, Op.NEG]
             ):
                 value = prev1.args[0]
                 op = {
-                    'not': expr.Operator.NOT,
-                    'neg': expr.Operator.NEG,
+                    Op.NOT: expr.Operator.NOT,
+                    Op.NEG: expr.Operator.NEG,
                 }[cur.op]
                 value = expr.NumericLiteral(value, prev1.type)
                 unary_expr = expr.UnaryOp(value, op)
@@ -206,26 +260,27 @@ class QvmCode(BaseCode):
                 continue
 
             # Fold push/push/binary-op
-            if (prev1.op == 'push' and prev2.op == 'push' and
+            if (prev1.op == Op.PUSH and prev2.op == Op.PUSH and
                 cur.type == prev1.type == prev2.type and
-                cur.op in ['add', 'sub', 'mul', 'div', 'and', 'or',
-                           'xor', 'eqv', 'imp', 'idiv', 'mod', 'exp']
+                cur.op in [Op.ADD, Op.SUB, Op.MUL, Op.DIV, Op.AND,
+                           Op.OR, Op.XOR, Op.EQV, Op.IMP, Op.IDIV,
+                           Op.MOD, Op.EXP]
             ):
                 left = prev2.args[0]
                 right = prev1.args[0]
                 op = {
-                    'add': expr.Operator.ADD,
-                    'sub': expr.Operator.SUB,
-                    'mul': expr.Operator.MUL,
-                    'div': expr.Operator.DIV,
-                    'and': expr.Operator.AND,
-                    'or': expr.Operator.OR,
-                    'xor': expr.Operator.XOR,
-                    'eqv': expr.Operator.EQV,
-                    'imp': expr.Operator.IMP,
-                    'idiv': expr.Operator.INTDIV,
-                    'mod': expr.Operator.MOD,
-                    'exp': expr.Operator.EXP,
+                    Op.ADD: expr.Operator.ADD,
+                    Op.SUB: expr.Operator.SUB,
+                    Op.MUL: expr.Operator.MUL,
+                    Op.DIV: expr.Operator.DIV,
+                    Op.AND: expr.Operator.AND,
+                    Op.OR: expr.Operator.OR,
+                    Op.XOR: expr.Operator.XOR,
+                    Op.EQV: expr.Operator.EQV,
+                    Op.IMP: expr.Operator.IMP,
+                    Op.IDIV: expr.Operator.INTDIV,
+                    Op.MOD: expr.Operator.MOD,
+                    Op.EXP: expr.Operator.EXP,
                 }[cur.op]
                 left = expr.NumericLiteral(left, prev2.type)
                 right = expr.NumericLiteral(right, prev1.type)
@@ -243,7 +298,7 @@ class QvmCode(BaseCode):
                 continue
 
             # Eliminate consecutive returns
-            if cur.op == prev1.op == 'ret':
+            if cur.op == prev1.op == Op.RET:
                 del self._instrs[i]
                 i -= 1
 
