@@ -330,7 +330,10 @@ def main():
     parser = argparse.ArgumentParser(
         description='A script used for testing the grammar.')
 
-    parser.add_argument('expr', help='The value to parse.')
+    parser.add_argument('expr', nargs='?', help='The value to parse.')
+    parser.add_argument(
+        '--file', '-f',
+        help='The file to read the value to parse from.')
     parser.add_argument(
         '--rule', '-r', default='program',
         help='The rule to use for parsing. Defaults to "%(default)s".')
@@ -339,6 +342,18 @@ def main():
         help='If set, the parse_all flag is set to false.')
 
     args = parser.parse_args()
+
+    if not args.expr and not args.file:
+        print('Either specify an expression to parse or use --file.')
+        exit(1)
+
+    if args.expr and args.file:
+        print('Cannot use --file together with an expression to parse.')
+        exit(1)
+
+    if args.file:
+        with open(args.file) as f:
+            args.expr = f.read()
 
     rule = globals().get(args.rule)
     if not isinstance(rule, ParserElement):
