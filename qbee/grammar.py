@@ -168,7 +168,7 @@ end_sub_stmt = end_kw + sub_kw
 
 sub_block = (
     sub_stmt + stmt_sep[1,...] +
-    stmt[...] +
+    stmt[...] + stmt_sep[...] +
     end_sub_stmt.suppress()
 ).set_name('sub_block')
 
