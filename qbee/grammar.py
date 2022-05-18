@@ -304,7 +304,7 @@ def parse_beep(toks):
 
 @parse_action(call_stmt)
 def parse_call(toks):
-    return CallStmt(toks[0].name, toks[1:])
+    return CallStmt(toks[0].original_name, toks[1:])
 
 
 @parse_action(cls_stmt)
