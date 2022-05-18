@@ -456,3 +456,4 @@ def gen_cls(node, code, codegen):
     code.add(('_label', '_sub_' + node.name))
     for inner_stmt in node.block:
         codegen.gen_code_for_node(inner_stmt, code)
+    code.add(('ret',))
