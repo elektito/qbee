@@ -80,6 +80,14 @@ final form which might be in the form ('push1&',).
         op = op + scope + src_type_char + type_char
         return (op, *args)
 
+    def __eq__(self, other):
+        if isinstance(other, QvmInstr):
+            return self.final == other.final
+        elif isinstance(other, tuple):
+            return self.final == other
+        else:
+            raise TypeError('Cannot compare QvmInstr with {other!r}')
+
     def __str__(self):
         op, *args = self.final
         args_str = ', '.join(str(i) for i in args)
