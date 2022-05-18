@@ -137,7 +137,11 @@ quoted_string = Regex(r'"[^"]+"')
 unquoted_string = Regex(r'[^"\n:]+')
 unclosed_quoted_string = Regex(r'"[^"\n]+') + FollowedBy(LineEnd())
 data_clause = quoted_string | unquoted_string
-data_stmt = data_kw + (data_clause | comma)[...] + unclosed_quoted_string[...]
+data_stmt = (
+    data_kw.suppress() +
+    (data_clause | comma)[...] +
+    unclosed_quoted_string[...]
+).set_name('data_stmt')
 
 rem_stmt = (rem_kw + SkipTo(LineEnd())).suppress()
 
@@ -325,8 +329,18 @@ def parse_cls(toks):
 
 
 @parse_action(data_stmt)
-def parse_data(toks):
-    return DataStmt(toks)
+def parse_data(s, loc, toks):
+    # Re-join data items and have them properly parsed again
+    s = ' '.join(str(t) for t in toks)
+    ret = DataStmt(s)
+
+    if ret.items is None:
+        raise SyntaxError(
+            loc,
+            'Syntax Error in DATA. NOTE: In QBASIC this error is '
+            'raised when executing the READ statement.')
+
+    return ret
 
 
 @parse_action(label)

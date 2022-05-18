@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from collections import defaultdict
 from .codegen import BaseCodeGen, BaseCode
 from .program import Label, LineNo
 from .exceptions import InternalError
@@ -156,6 +157,7 @@ final form which might be in the form ('push1&',).
 class QvmCode(BaseCode):
     def __init__(self):
         self._instrs = []
+        self._data = defaultdict(list)
 
     def __repr__(self):
         return f'<QvmCode {self._instrs}>'
@@ -165,9 +167,9 @@ class QvmCode(BaseCode):
             raise InternalError('Instruction not a tuple')
         self._instrs.extend([QvmInstr(*i) for i in instrs])
 
-    def add_data(self, data):
-        # Ignoring fr now
-        pass
+    def add_data(self, data, label):
+        for part in data:
+            self._data[label].append(part)
 
     def optimize(self):
         i = 0
@@ -305,7 +307,17 @@ class QvmCode(BaseCode):
             i += 1
 
     def __str__(self):
-        s = ''
+        s = ';;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
+
+        if self._data:
+            s += '.data\n\n'
+            for label, data in self._data.items():
+                s += f'{label}:\n'
+                for item in data:
+                    s += f'    {item}\n'
+            s += '\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
+
+        s += '.code\n\n'
         for instr in self._instrs:
             op, *args = instr.final
             if op == '_label':
@@ -322,6 +334,7 @@ class QvmCode(BaseCode):
 class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
     def __init__(self, compiler):
         self.compiler = compiler
+        self.last_label = None
 
 
 # Code generators for expressions
@@ -460,12 +473,15 @@ def gen_unary_op(node, code, codegen):
 
 @QvmCodeGen.generator_for(Label)
 def gen_label(node, code, codegen):
+    codegen.last_label = node.name
     code.add(('_label', node.name))
 
 
 @QvmCodeGen.generator_for(LineNo)
 def gen_lineno(node, code, codegen):
-    code.add(('_label', f'_lineno_{node.number}'))
+    label = f'_lineno_{node.number}'
+    codegen.last_label = label
+    code.add(('_label', label))
 
 
 @QvmCodeGen.generator_for(stmt.AssignmentStmt)
@@ -508,7 +524,7 @@ def gen_cls(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.DataStmt)
 def gen_cls(node, code, codegen):
-    code.add_data(node.elements)
+    code.add_data(node.items, codegen.last_label)
 
 
 @QvmCodeGen.generator_for(stmt.ExitSubStmt)

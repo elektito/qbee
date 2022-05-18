@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from .node import Node
+from .utils import parse_data
 
 
 class Stmt(Node):
@@ -73,8 +74,9 @@ class ClsStmt(NoChildStmt):
 
 
 class DataStmt(NoChildStmt):
-    def __init__(self, elements):
-        self.elements = elements
+    def __init__(self, string):
+        self.string = string
+        self.items = parse_data(self.string)
 
     def __repr__(self):
         return '<DataStmt>'
