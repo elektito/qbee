@@ -105,7 +105,12 @@ class QvmCode(BaseCode):
 
     def optimize(self):
         i = 0
-        while i < len(self._instrs):
+        while self._instrs and i < len(self._instrs):
+            # in case in one of the iterations we move past the
+            # beginning of the list
+            if i < 0:
+                i = 0
+
             cur = self._instrs[i]
 
             if i > 0:
