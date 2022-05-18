@@ -205,7 +205,7 @@ class QvmCode(BaseCode):
             if (prev1.op == 'push' and prev2.op == 'push' and
                 cur.type == prev1.type == prev2.type and
                 cur.op in ['add', 'sub', 'mul', 'div', 'and', 'or',
-                           'xor', 'eqv', 'imp', 'idiv', 'mod']
+                           'xor', 'eqv', 'imp', 'idiv', 'mod', 'exp']
             ):
                 left = prev2.args[0]
                 right = prev1.args[0]
@@ -221,6 +221,7 @@ class QvmCode(BaseCode):
                     'imp': expr.Operator.IMP,
                     'idiv': expr.Operator.INTDIV,
                     'mod': expr.Operator.MOD,
+                    'exp': expr.Operator.EXP,
                 }[cur.op]
                 left = expr.NumericLiteral(left, prev2.type)
                 right = expr.NumericLiteral(right, prev1.type)
