@@ -242,6 +242,11 @@ class QvmCode(BaseCode):
 
                 continue
 
+            # Eliminate consecutive returns
+            if cur.op == prev1.op == 'ret':
+                del self._instrs[i]
+                i -= 1
+
             i += 1
 
     def __str__(self):
@@ -451,8 +456,13 @@ def gen_cls(node, code, codegen):
     code.add_data(node.elements)
 
 
+@QvmCodeGen.generator_for(stmt.ExitSubStmt)
+def gen_sub_block(node, code, codegen):
+    code.add(('ret',))
+
+
 @QvmCodeGen.generator_for(stmt.SubBlock)
-def gen_cls(node, code, codegen):
+def gen_sub_block(node, code, codegen):
     code.add(('_label', '_sub_' + node.name))
     for inner_stmt in node.block:
         codegen.gen_code_for_node(inner_stmt, code)

@@ -80,6 +80,11 @@ class DataStmt(NoChildStmt):
         return '<DataStmt>'
 
 
+class ExitSubStmt(NoChildStmt):
+    def __repr__(self):
+        return '<ExitSubStmt>'
+
+
 class SubStmt(Stmt):
     def __init__(self, name, args):
         self.name = name

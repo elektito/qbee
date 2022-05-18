@@ -14,7 +14,7 @@ from .expr import (
 )
 from .stmt import (
     AssignmentStmt, BeepStmt, CallStmt, ClsStmt, DataStmt, SubStmt,
-    SubBlock,
+    SubBlock, ExitSubStmt,
 )
 from .program import Program, Label, LineNo
 
@@ -35,6 +35,7 @@ call_kw = CaselessKeyword('call')
 cls_kw = CaselessKeyword('cls')
 data_kw = CaselessKeyword('data')
 end_kw = CaselessKeyword('end')
+exit_kw = CaselessKeyword('exit')
 eqv_kw = CaselessKeyword('eqv')
 imp_kw = CaselessKeyword('imp')
 let_kw = CaselessKeyword('let')
@@ -172,6 +173,8 @@ sub_block = (
     end_sub_stmt.suppress()
 ).set_name('sub_block')
 
+exit_sub_stmt = exit_kw + sub_kw
+
 # program
 
 pure_stmt = (
@@ -180,6 +183,7 @@ pure_stmt = (
     call_stmt |
     cls_stmt |
     data_stmt |
+    exit_sub_stmt |
     rem_stmt |
     sub_block
 )
@@ -358,6 +362,11 @@ def parse_sub_stmt(toks):
 def parse_sub_block(toks):
     sub_stmt, *block = toks
     return SubBlock(sub_stmt.name, sub_stmt.args, block)
+
+
+@parse_action(exit_sub_stmt)
+def parse_sub_block(toks):
+    return ExitSubStmt()
 
 
 def main():
