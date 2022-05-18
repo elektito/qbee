@@ -463,7 +463,7 @@ class Identifier(Expr):
         self.original_name = name
 
     def __repr__(self):
-        return f'<Identifier {self.name}>'
+        return f'<Identifier {self.original_name}>'
 
     def replace_child(self, old_child, new_child):
         pass
