@@ -17,7 +17,7 @@ class SyntaxError(Exception):
         self.msg = msg
 
     def __repr__(self):
-        return f'{self.msg}'
+        return f'Syntax {self.msg}'
 
     def __str__(self):
         return repr(self)
@@ -30,6 +30,8 @@ class CodeGenError(Exception):
 class ErrorCode(Enum):
     TYPE_MISMATCH = 'Type mismatch'
     DUPLICATE_LABEL = 'Duplicate label'
+    DUPLICATE_DEFINITION = 'Duplicate definition'
+    ILLEGAL_IN_SUB = 'Illegal in sub-routine'
 
 
 class CompileError(Exception):

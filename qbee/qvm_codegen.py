@@ -1,5 +1,5 @@
 from .codegen import BaseCodeGen, BaseCode
-from .program import Label
+from .program import Label, LineNo
 from .exceptions import InternalError
 from . import stmt, expr
 
@@ -110,6 +110,10 @@ class QvmCode(BaseCode):
         if not all(isinstance(i, tuple) for i in instrs):
             raise InternalError('Instruction not a tuple')
         self._instrs.extend([QvmInstr(*i) for i in instrs])
+
+    def add_data(self, data):
+        # Ignoring fr now
+        pass
 
     def optimize(self):
         i = 0
@@ -399,6 +403,11 @@ def gen_label(node, code, codegen):
     code.add(('_label', node.name))
 
 
+@QvmCodeGen.generator_for(LineNo)
+def gen_lineno(node, code, codegen):
+    code.add(('_label', f'_lineno_{node.number}'))
+
+
 @QvmCodeGen.generator_for(stmt.AssignmentStmt)
 def gen_assignment(node, code, codegen):
     codegen.gen_code_for_node(node.rvalue, code)
@@ -435,3 +444,15 @@ def gen_call(node, code, codegen):
 @QvmCodeGen.generator_for(stmt.ClsStmt)
 def gen_cls(node, code, codegen):
     code.add(('ioreq', 'screen', 'cls'))
+
+
+@QvmCodeGen.generator_for(stmt.DataStmt)
+def gen_cls(node, code, codegen):
+    code.add_data(node.elements)
+
+
+@QvmCodeGen.generator_for(stmt.SubBlock)
+def gen_cls(node, code, codegen):
+    code.add(('_label', '_sub_' + node.name))
+    for inner_stmt in node.block:
+        codegen.gen_code_for_node(inner_stmt, code)

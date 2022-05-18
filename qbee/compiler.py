@@ -1,7 +1,7 @@
 from .grammar import program
-from .stmt import Stmt, AssignmentStmt
+from .stmt import Stmt, AssignmentStmt, SubBlock
 from .expr import Type, Expr, BinaryOp, UnaryOp, Identifier
-from .program import Label
+from .program import Label, LineNo
 from .codegen import CodeGen
 from .exceptions import ErrorCode as EC, InternalError, CompileError
 
@@ -24,7 +24,7 @@ class Compiler:
         self.optimization_level = optimization_level
 
         self.cur_routine = Routine('_main')
-        self.routines = {'': self.cur_routine}
+        self.routines = {'_main': self.cur_routine}
 
         self._codegen = CodeGen('qvm', self)
 
@@ -67,30 +67,44 @@ class Compiler:
 
     def _compile_tree(self, tree):
         for node in tree.children:
+            if isinstance(node, AssignmentStmt):
+                if not node.lvalue.type.is_coercible_to(node.rvalue.type):
+                    raise CompileError(EC.TYPE_MISMATCH, node=node)
+            elif isinstance(node, SubBlock):
+                if self.cur_routine.name != '_main':
+                    raise CompileError(
+                        EC.ILLEGAL_IN_SUB,
+                        'Sub-routine only allowed in the top-level',
+                        node=node)
+                if node.name in self.routines:
+                    raise CompileError(
+                        EC.DUPLICATE_DEFINITION,
+                        f'Duplicate sub-routine definition: {node.name}',
+                        node=node)
+                routine = Routine(node.name)
+                self.routines[node.name] = routine
+                self.cur_routine = routine
+
             if isinstance(node, Stmt):
-                self._compile_stmt(node)
+                self._compile_tree(node)
             elif isinstance(node, Expr):
                 self._compile_expr(node)
-            elif isinstance(node, Label):
-                if node.name in self.cur_routine.labels:
+            elif isinstance(node, (LineNo, Label)):
+                if isinstance(node, LineNo):
+                    name = f'_label_{node.number}'
+                else:
+                    name = node.name
+                if name in self.cur_routine.labels:
                     raise CompileError(EC.DUPLICATE_LABEL,
-                                       f'Duplicate label: {node.name}',
+                                       f'Duplicate label: {name}',
                                        node=node)
-                self.cur_routine.labels.add(node.name)
+                self.cur_routine.labels.add(name)
             else:
                 raise InternalError(
                     f'Do not know how to compile node: {node}')
 
-    def _compile_stmt(self, stmt):
-        if isinstance(stmt, AssignmentStmt):
-            if not stmt.lvalue.type.is_coercible_to(stmt.rvalue.type):
-                raise CompileError(EC.TYPE_MISMATCH, node=stmt)
-
-        for child in stmt.children:
-            if isinstance(child, Expr):
-                self._compile_expr(child)
-            else:
-                self._compile_tree(child)
+            if isinstance(node, SubBlock):
+                self.cur_routine = self.routines['_main']
 
     def _compile_expr(self, expr):
         for child in expr.children:
