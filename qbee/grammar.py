@@ -74,21 +74,23 @@ exponent_op = Literal('^')
 compare_op = Regex(r'(<=|>=|<>|><|=<|=>|<|>|=)')
 
 numeric_literal = (
-    Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?") +
+    Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?") -
     type_char[...]
 )
 
 string_literal = Regex(r'"[^"]*"')
 
-identifier = ~keyword + Word(alphas, alphanums) + type_char[...]
+identifier = (
+    ~keyword + Word(alphas, alphanums) - type_char[...]
+).set_name('identifier')
 
 # Arithmetic Expressions
 
 expr = Forward()
 expr_list = delimited_list(expr, delim=',')
-func_call = identifier + lpar + Group(expr_list) + rpar
+func_call = identifier + lpar - Group(expr_list) + rpar
 paren_expr = (
-    lpar.suppress() + expr + rpar.suppress()
+    lpar.suppress() - expr + rpar.suppress()
 )
 atom = (
     addsub_op[...] +
@@ -101,68 +103,76 @@ exponent_expr = Forward()
 exponent_expr <<= atom + (exponent_op + exponent_expr)[...]
 not_expr = Forward()
 unary_expr = (
-    addsub_op[1, ...] + exponent_expr |
-    addsub_op[1, ...] + not_expr | # allow combination of the two
+    addsub_op[1, ...] - exponent_expr |
+    addsub_op[1, ...] - not_expr | # allow combination of the two
                                    # unaries without parentheses
     exponent_expr
 )
-muldiv_expr = unary_expr + (muldiv_op + unary_expr)[...]
-intdiv_expr = muldiv_expr + (intdiv_op + muldiv_expr)[...]
-mod_expr = intdiv_expr + (mod_kw + intdiv_expr)[...]
-addsub_expr = mod_expr + (addsub_op + mod_expr)[...]
-compare_expr = addsub_expr + (compare_op + addsub_expr)[...]
-not_expr <<= not_kw[...] + compare_expr
-and_expr = not_expr + (and_kw + not_expr)[...]
-or_expr = and_expr + (or_kw + and_expr)[...]
-xor_expr = or_expr + (xor_kw + or_expr)[...]
-eqv_expr = xor_expr + (xor_kw + xor_expr)[...]
-imp_expr = eqv_expr + (eqv_kw + eqv_expr)[...]
+muldiv_expr = unary_expr - (muldiv_op - unary_expr)[...]
+intdiv_expr = muldiv_expr - (intdiv_op - muldiv_expr)[...]
+mod_expr = intdiv_expr - (mod_kw - intdiv_expr)[...]
+addsub_expr = mod_expr - (addsub_op - mod_expr)[...]
+compare_expr = addsub_expr - (compare_op - addsub_expr)[...]
+not_expr <<= not_kw[...] - compare_expr
+and_expr = not_expr - (and_kw - not_expr)[...]
+or_expr = and_expr - (or_kw - and_expr)[...]
+xor_expr = or_expr - (xor_kw - or_expr)[...]
+eqv_expr = xor_expr - (xor_kw - xor_expr)[...]
+imp_expr = eqv_expr - (eqv_kw - eqv_expr)[...]
 expr <<= Located(imp_expr)
 
 # Statements
 
-line_no = PrecededBy('\n') + Located(Regex(r'\d+') + FollowedBy(White()))
+line_no = Located(
+    White()[...].suppress() +
+    Regex(r'\d+') - FollowedBy(White() | LineEnd())
+).set_name('line_number')
 label = Located(
+    White()[...].suppress() +
     ~keyword +
-    PrecededBy('\n') +
     Regex(r'[a-z][a-z0-9]*', re.I) +
     Literal(':').suppress() +
     LineEnd()[...].suppress()
 ).set_name('label')
 
 stmt = Forward()
-comment = single_quote + SkipTo(LineEnd())
-stmt_sep = (colon | LineEnd() | comment).suppress()
+comment = (
+    single_quote + SkipTo(LineEnd())
+).suppress().set_name('comment')
+stmt_sep = (colon | LineEnd() | comment).suppress().set_name('stmt_sep')
 
 quoted_string = Regex(r'"[^"]+"')
 unquoted_string = Regex(r'[^"\n:]+')
 unclosed_quoted_string = Regex(r'"[^"\n]+') + FollowedBy(LineEnd())
 data_clause = quoted_string | unquoted_string
 data_stmt = (
-    data_kw.suppress() +
+    data_kw.suppress() -
     (data_clause | comma)[...] +
     unclosed_quoted_string[...]
 ).set_name('data_stmt')
 
-rem_stmt = (rem_kw + SkipTo(LineEnd())).suppress()
+rem_stmt = (rem_kw + SkipTo(LineEnd())).suppress().set_name('rem_stmt')
 
 assignment_stmt = (
     let_kw[...].suppress() +
     identifier +
-    eq.suppress() +
+    eq.suppress() -
     expr
-)
+).set_name('assignment')
 
 beep_stmt = beep_kw
 
-call_stmt = call_kw[...].suppress() + identifier + expr_list[...]
+call_stmt = (
+    call_kw.suppress() - identifier + expr_list[...] |
+    call_kw[...].suppress() + identifier + expr_list[...]
+).set_name('call_stmt')
 
 cls_stmt = cls_kw
 
 var_decl = identifier
 param_list = delimited_list(var_decl, delim=comma)
 sub_stmt = (
-    sub_kw.suppress() +
+    sub_kw.suppress() -
     identifier +
     (
         lpar.suppress() +
@@ -173,7 +183,7 @@ sub_stmt = (
 end_sub_stmt = end_kw + sub_kw
 
 sub_block = (
-    sub_stmt + stmt_sep[1,...] +
+    sub_stmt - stmt_sep[1,...] +
     stmt[...] + stmt_sep[...] +
     end_sub_stmt.suppress()
 ).set_name('sub_block')
@@ -196,7 +206,7 @@ pure_stmt = (
 stmt <<= Located(
     label |
     line_no |
-    comment.suppress() |
+    comment |
     (pure_stmt + stmt_sep[1,...])
 ).set_name('stmt')
 
