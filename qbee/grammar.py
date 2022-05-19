@@ -126,7 +126,8 @@ label = Located(
     ~keyword +
     PrecededBy('\n') +
     Regex(r'[a-z][a-z0-9]*', re.I) +
-    Literal(':').suppress()
+    Literal(':').suppress() +
+    LineEnd()[...].suppress()
 ).set_name('label')
 
 stmt = Forward()
