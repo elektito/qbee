@@ -11,13 +11,14 @@ fixed.
 
 
 class SyntaxError(Exception):
-    def __init__(self, loc, msg):
+    def __init__(self, loc, msg=None):
         self.loc_start = loc
         self.loc_end = None
-        self.msg = msg
+        if msg is None:
+            self.msg = 'Syntax Error'
 
     def __repr__(self):
-        return f'Syntax {self.msg}'
+        return self.msg
 
     def __str__(self):
         return repr(self)
