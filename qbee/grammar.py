@@ -14,9 +14,9 @@ from .expr import (
 )
 from .stmt import (
     AssignmentStmt, BeepStmt, CallStmt, ClsStmt, DataStmt, SubStmt,
-    SubBlock, ExitSubStmt,
+    EndSubStmt, ExitSubStmt,
 )
-from .program import Program, Label, LineNo
+from .program import Program, Label, LineNo, Line
 
 
 # Enable memoization
@@ -198,9 +198,10 @@ pure_stmt = (
     call_stmt |
     cls_stmt |
     data_stmt |
+    sub_stmt |
+    end_sub_stmt |
     exit_sub_stmt |
-    rem_stmt |
-    sub_block
+    rem_stmt
 )
 
 stmt <<= Located(
@@ -210,7 +211,15 @@ stmt <<= Located(
     (pure_stmt + stmt_sep[1,...])
 ).set_name('stmt')
 
-program = stmt_sep[...] + stmt[...]
+line_prefix = label | line_no
+stmt_group = (
+    pure_stmt + (colon[1,...].suppress() + pure_stmt)[...]
+)
+line = (
+    line_prefix[...] +
+    stmt_group[...] +
+    comment[...]
+).set_name('line')
 
 # --- Parse actions ---
 
@@ -373,9 +382,9 @@ def parse_line_no(toks):
     return lineno
 
 
-@parse_action(program)
-def parse_program(self, toks):
-    return Program(toks)
+@parse_action(line)
+def parse_line(toks):
+    return Line(list(toks))
 
 
 @parse_action(sub_stmt)
@@ -383,14 +392,13 @@ def parse_sub_stmt(toks):
     return SubStmt(toks[0].original_name, toks[1:])
 
 
-@parse_action(sub_block)
-def parse_sub_block(toks):
-    sub_stmt, *block = toks
-    return SubBlock(sub_stmt.name, sub_stmt.args, block)
+@parse_action(end_sub_stmt)
+def parse_end_sub(toks):
+    return EndSubStmt()
 
 
 @parse_action(exit_sub_stmt)
-def parse_sub_block(toks):
+def parse_exit_sub(toks):
     return ExitSubStmt()
 
 
@@ -403,7 +411,7 @@ def main():
         '--file', '-f',
         help='The file to read the value to parse from.')
     parser.add_argument(
-        '--rule', '-r', default='program',
+        '--rule', '-r', default='line',
         help='The rule to use for parsing. Defaults to "%(default)s".')
     parser.add_argument(
         '--not-all', '-n', action='store_true',
@@ -433,7 +441,7 @@ def main():
     except ParseException as e:
         print(e.explain())
         exit(1)
-    if hasattr(result, '__len__') and isinstance(result[0], Program):
+    if hasattr(result, '__len__') and isinstance(result[0], Line):
         for node in result[0].nodes:
             print(node)
     else:

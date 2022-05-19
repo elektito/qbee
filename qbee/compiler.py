@@ -1,9 +1,9 @@
-from .grammar import program
 from .stmt import Stmt, AssignmentStmt, SubBlock
 from .expr import Type, Expr, BinaryOp, UnaryOp, Identifier
 from .program import Label, LineNo
 from .codegen import CodeGen
 from .exceptions import ErrorCode as EC, InternalError, CompileError
+from .parser import parse_string
 
 # Import codegen implementations to enable them (this is needed even
 # though we don't directly use the imported module)
@@ -34,8 +34,7 @@ class Compiler:
         self._codegen = CodeGen('qvm', self)
 
     def compile(self, input_string):
-        tree = program.parse_string(input_string, parse_all=True)
-        tree = tree[0]
+        tree = parse_string(input_string)
         tree.bind(self)
 
         self._compile_tree(tree)
