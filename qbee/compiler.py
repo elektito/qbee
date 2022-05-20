@@ -1,4 +1,4 @@
-from .stmt import Stmt, AssignmentStmt, SubBlock
+from .stmt import Stmt, AssignmentStmt, SubBlock, ExitSubStmt
 from .expr import Type, Expr, BinaryOp, UnaryOp, Identifier
 from .program import Label, LineNo
 from .codegen import CodeGen
@@ -88,6 +88,13 @@ class Compiler:
                 routine = Routine(node.name, 'sub')
                 self.routines[node.name] = routine
                 self.cur_routine = routine
+            elif isinstance(node, ExitSubStmt):
+                if self.cur_routine.name == '_main' or \
+                   self.cur_routine.type != 'sub':
+                    raise CompileError(
+                        EC.INVALID_EXIT,
+                        'EXIT SUB can only be used inside a SUB',
+                        node=node)
 
             if isinstance(node, Stmt):
                 self._compile_tree(node)
