@@ -3,7 +3,7 @@ from .node import Node
 
 class Label(Node):
     def __init__(self, name):
-        self.name = name
+        self.name = self.canonical_name = name
 
     def __repr__(self):
         return f'<Label {self.name}>'
@@ -22,6 +22,7 @@ class Label(Node):
 class LineNo(Node):
     def __init__(self, number):
         self.number = number
+        self.canonical_name = self.get_canonical_name(number)
 
     def __repr__(self):
         return f'<LineNo {self.number}>'
@@ -35,6 +36,11 @@ class LineNo(Node):
     @property
     def children(self):
         return []
+
+    @staticmethod
+    def get_canonical_name(line_number: int):
+        assert isinstance(line_number, int)
+        return f'_lineno_{line_number}'
 
 
 class Line(Node):

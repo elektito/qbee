@@ -473,16 +473,10 @@ def gen_unary_op(node, code, codegen):
 # Code generators for statements
 
 @QvmCodeGen.generator_for(Label)
-def gen_label(node, code, codegen):
-    codegen.last_label = node.name
-    code.add(('_label', node.name))
-
-
 @QvmCodeGen.generator_for(LineNo)
-def gen_lineno(node, code, codegen):
-    label = f'_lineno_{node.number}'
-    codegen.last_label = label
-    code.add(('_label', label))
+def gen_label(node, code, codegen):
+    codegen.last_label = node.canonical_name
+    code.add(('_label', node.canonical_name))
 
 
 @QvmCodeGen.generator_for(stmt.AssignmentStmt)
@@ -525,10 +519,7 @@ def gen_cls(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.GotoStmt)
 def gen_goto(node, code, codegen):
-    target = node.target
-    if isinstance(target, int):
-        target = f'_lineno_{node.target}'
-    code.add(('jmp', target))
+    code.add(('jmp', node.canonical_target))
 
 
 @QvmCodeGen.generator_for(stmt.DataStmt)

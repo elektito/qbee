@@ -38,6 +38,7 @@ class ErrorCode(Enum):
     DUPLICATE_DEFINITION = 'Duplicate definition'
     ILLEGAL_IN_SUB = 'Illegal in sub-routine'
     INVALID_EXIT = 'EXIT statement in invalid context'
+    LABEL_NOT_DEFINED = 'Label not defined'
 
 
 class CompileError(Exception):

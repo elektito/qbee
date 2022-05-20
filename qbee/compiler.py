@@ -41,6 +41,7 @@ class Compiler:
         tree.bind(self)
 
         self._compile_tree(tree, _pass=1)
+        self._compile_tree(tree, _pass=2)
 
         if self.optimization_level > 0:
             tree.fold()
@@ -87,10 +88,13 @@ class Compiler:
             func(tree)
 
         for node in tree.children:
+            if _pass == 1:
+                node.parent_routine = self.cur_routine
+
             # Recurse the children
-            if isinstance(node, (Stmt, Expr)):
+            if isinstance(node, (Stmt, Expr, Label, LineNo)):
                 self._compile_tree(node, _pass)
-            elif not isinstance(node, (Label, LineNo)):
+            else:
                 raise InternalError(
                     f'Do not know how to compile node: {node}')
 
@@ -117,14 +121,13 @@ class Compiler:
         self.all_labels.add(node.name)
 
     def _compile_lineno_pass1_pre(self, node):
-        canonical_name = f'_label_{node.number}'
-        if canonical_name in self.all_labels:
+        if node.canonical_name in self.all_labels:
             raise CompileError(
                 EC.DUPLICATE_LABEL,
                 f'Duplicate line number: {node.number}',
                 node=node)
-        self.cur_routine.labels.add(canonical_name)
-        self.all_labels.add(canonical_name)
+        self.cur_routine.labels.add(node.canonical_name)
+        self.all_labels.add(node.canonical_name)
 
     def _compile_identifier_pass1_pre(self, node):
         if node.name not in self.cur_routine.variables:
@@ -160,8 +163,7 @@ class Compiler:
         self.cur_routine = routine
 
     def _compile_sub_block_pass1_post(self, node):
-        if isinstance(node, SubBlock):
-            self.cur_routine = self.routines['_main']
+        self.cur_routine = self.routines['_main']
 
     def _compile_exit_sub_pass1_pre(self, node):
         if self.cur_routine.name == '_main' or \
@@ -169,4 +171,22 @@ class Compiler:
             raise CompileError(
                 EC.INVALID_EXIT,
                 'EXIT SUB can only be used inside a SUB',
+                node=node)
+
+    def _compile_goto_pass2_pre(self, node):
+        if isinstance(node.target, int):
+            label_type = 'Line number'
+        else:
+            label_type = 'Label'
+
+        if node.canonical_target not in self.all_labels:
+            raise CompileError(
+                EC.LABEL_NOT_DEFINED,
+                f'{label_type} not defined: {node.target}',
+                node=node)
+        if node.canonical_target not in node.parent_routine.labels:
+            print('xx', node.parent_routine, node.parent_routine.labels)
+            raise CompileError(
+                EC.LABEL_NOT_DEFINED,
+                f'{label_type} not in the same routine as GOTO: {node.target}',
                 node=node)

@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from .node import Node
+from .program import LineNo
 from .utils import parse_data, split_camel
 
 
@@ -88,8 +89,13 @@ class GotoStmt(NoChildStmt):
     def __init__(self, target):
         self.target = target
 
+        if isinstance(target, int):
+            self.canonical_target = LineNo.get_canonical_name(target)
+        else:
+            self.canonical_target = target
+
     def __repr__(self):
-        return '<GotoStmt {self.target}>'
+        return f'<GotoStmt {self.target}>'
 
 
 class DataStmt(NoChildStmt):
