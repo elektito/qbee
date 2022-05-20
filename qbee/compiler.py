@@ -187,7 +187,8 @@ class Compiler:
         if node.canonical_target not in node.parent_routine.labels:
             raise CompileError(
                 EC.LABEL_NOT_DEFINED,
-                f'{label_type} not in the same routine as GOTO: {node.target}',
+                (f'{label_type} not in the same routine as GOTO: '
+                 f'{node.target}'),
                 node=node)
 
     def _compile_else_if_pass1_pre(self, node):
