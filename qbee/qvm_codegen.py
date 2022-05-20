@@ -12,16 +12,23 @@ class CanonicalOp(Enum):
     ADD = auto()
     AND = auto()
     CALL = auto()
+    CMP = auto()
     CONV = auto()
     DIV = auto()
+    EQ = auto()
     EQV = auto()
     EXP = auto()
+    GE = auto()
+    GT = auto()
     IDIV = auto()
     IMP = auto()
     IOREQ = auto()
     JMP = auto()
+    LE = auto()
+    LT = auto()
     MOD = auto()
     MUL = auto()
+    NE = auto()
     NEG = auto()
     NOP = auto()
     NOT = auto()
@@ -411,7 +418,7 @@ def gen_binary_op(node, code, codegen):
     if node.op.is_comparison:
         # both operands are of the same type, so it doesn't matter we
         # use which one here
-        op = f'sub{left_type.type_char}'
+        op = f'cmp{left_type.type_char}'
         code.add((op,))
 
         op = {
