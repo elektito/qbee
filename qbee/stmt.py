@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from .node import Node
-from .expr import Expr
+from .expr import Expr, Type
 from .program import LineNo
 from .utils import parse_data, split_camel
 from .exceptions import SyntaxError
@@ -234,22 +234,50 @@ class DataStmt(NoChildStmt):
         return '<DataStmt>'
 
 
-class SubStmt(Stmt):
-    def __init__(self, name, args):
+class VarDeclClause(NoChildStmt):
+    def __init__(self, name, var_type_name):
         self.name = name
-        self.args = args
+        self.var_type_name = var_type_name
 
     def __repr__(self):
-        return f'<SubStmt {self.name} with {len(self.args)} param(s)>'
+        type_desc = ''
+        if self.var_type_name:
+            type_desc = f' as {self.var_type_name}'
+        return f'<Var {self.name}{type_desc}>'
+
+    def type(self):
+        if self.type_name:
+            return {
+                'integer': Type.INTEGER,
+                'long': Type.LONG,
+                'single': Type.SINGLE,
+                'double': Type.DOUBLE,
+                'string': Type.STRING
+            }.get(self.type_name, Type.USER_DEFINED)
+
+        return self.compiler.get_identifier_type(self.name)
+
+    @classmethod
+    def type_name(cls):
+        return 'VAR CLAUSE'
+
+
+class SubStmt(Stmt):
+    def __init__(self, name, params):
+        self.name = name
+        self.params = params
+
+    def __repr__(self):
+        return f'<SubStmt {self.name} with {len(self.params)} param(s)>'
 
     @property
     def children(self):
-        return self.args
+        return self.params
 
     def replace_child(self, old_child, new_child):
-        for i in range(len(self.args)):
-            if self.args[i] == old_child:
-                self.args[i] = new_child
+        for i in range(len(self.params)):
+            if self.params[i] == old_child:
+                self.params[i] = new_child
                 return
 
         raise InternalError(
@@ -437,21 +465,21 @@ class IfBlock(Block, start=IfBeginStmt, end=EndIfStmt):
 
 
 class SubBlock(Block, start=SubStmt, end=EndSubStmt):
-    def __init__(self, name, args, block):
+    def __init__(self, name, params, block):
         self.name = name
-        self.args = args
+        self.params = params
         self.block = block
 
     def __repr__(self):
         return (
-            f'<SubBlock "{self.name}" with {len(self.args)} arg(s) '
+            f'<SubBlock "{self.name}" with {len(self.params)} arg(s) '
             f'and {len(self.block)} statement(s)>'
         )
 
     def replace_child(self, old_child, new_child):
-        for i in range(len(self.args)):
-            if self.args[i] == old_child:
-                self.args[i] = new_child
+        for i in range(len(self.params)):
+            if self.params[i] == old_child:
+                self.params[i] = new_child
                 return
 
         for i in range(len(self.block)):
@@ -464,8 +492,8 @@ class SubBlock(Block, start=SubStmt, end=EndSubStmt):
 
     @property
     def children(self):
-        return self.args + self.block
+        return self.params + self.block
 
     @classmethod
     def create_block(cls, sub_stmt, end_sub_stmt, body):
-        return cls(sub_stmt.name, sub_stmt.args, body)
+        return cls(sub_stmt.name, sub_stmt.params, body)

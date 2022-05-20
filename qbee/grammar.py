@@ -5,8 +5,8 @@ from functools import reduce
 from pyparsing import (
     ParserElement, CaselessKeyword, Literal, Regex, LineEnd, StringEnd,
     Word, Forward, FollowedBy, PrecededBy, White, Group, Empty, Located,
-    SkipTo, ParseException, ParseSyntaxException, alphas, alphanums,
-    delimited_list, lineno,
+    SkipTo, Combine, ParseException, ParseSyntaxException, alphas,
+    alphanums, delimited_list, lineno,
 )
 from .exceptions import SyntaxError
 from .expr import (
@@ -16,7 +16,7 @@ from .expr import (
 from .stmt import (
     AssignmentStmt, BeepStmt, CallStmt, ClsStmt, DataStmt, GotoStmt,
     IfStmt, ElseClause, IfBeginStmt, ElseStmt, ElseIfStmt, EndIfStmt,
-    SubStmt, EndSubStmt, ExitSubStmt,
+    SubStmt, VarDeclClause, EndSubStmt, ExitSubStmt,
 )
 from .program import Program, Label, LineNo, Line
 
@@ -104,7 +104,7 @@ string_literal = Regex(r'"[^"]*"')
 
 identifier_name = Word(alphas, alphanums)
 identifier = (
-    ~keyword + identifier_name - type_char[0, 1]
+    ~keyword + Combine(identifier_name - type_char[0, 1])
 ).set_name('identifier')
 
 # Arithmetic Expressions
@@ -226,9 +226,13 @@ elseif_stmt = (
 else_stmt = (else_kw).set_name('else_stmt')
 end_if_stmt = (end_kw + if_kw).set_name('end_if_stmt')
 
-var_decl = Group(
-    identifier + (as_kw + (type_name | identifier))[0, 1]
-).set_name('var_decl')
+var_decl = Located(Group(
+    identifier +
+    (
+        as_kw +
+        (type_name | identifier)
+    )[0, 1]
+)).set_name('var_decl')
 param_list = delimited_list(var_decl, delim=comma)
 sub_stmt = (
     sub_kw.suppress() -
@@ -336,11 +340,7 @@ def parse_num_literal(s, loc, toks):
 
 @parse_action(identifier)
 def parse_identifier(toks):
-    if len(toks) == 1:
-        name = toks[0]
-    else:
-        # Add the type_char to the name
-        name = toks[0] + toks[1]
+    name = toks[0]
     return Identifier(name)
 
 
@@ -505,7 +505,28 @@ def parse_line(toks):
 @parse_action(sub_stmt)
 def parse_sub_stmt(toks):
     name, *params = toks
-    return SubStmt(name, toks[1:])
+    return SubStmt(name, params)
+
+
+@parse_action(var_decl)
+def parse_var_decl(toks):
+    loc_start, (param,), loc_end = toks
+
+    if len(param) == 1:
+        name = param[0]
+        type_name = None
+    else:
+        name, _, type_name = param
+        if any(name.endswith(c) for c in Type.type_chars()):
+            raise SyntaxError(
+                loc=loc_start,
+                msg='Variable name cannot end with a type char')
+
+    clause = VarDeclClause(name, type_name)
+    clause.loc_start = loc_start
+    clause.loc_end = loc_end
+
+    return clause
 
 
 @parse_action(end_sub_stmt)
