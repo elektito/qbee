@@ -12,10 +12,14 @@ fixed.
 
 class SyntaxError(Exception):
     def __init__(self, loc, msg=None):
+        assert isinstance(loc, int)
+
         self.loc_start = loc
         self.loc_end = None
         if msg is None:
             self.msg = 'Syntax Error'
+        else:
+            self.msg = msg
 
     def __repr__(self):
         return self.msg
