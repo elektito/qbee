@@ -87,6 +87,14 @@ class ClsStmt(NoChildStmt):
         return '<ClsStmt>'
 
 
+class GotoStmt(NoChildStmt):
+    def __init__(self, target):
+        self.target = target
+
+    def __repr__(self):
+        return '<GotoStmt {self.target}>'
+
+
 class DataStmt(NoChildStmt):
     def __init__(self, string):
         self.string = string

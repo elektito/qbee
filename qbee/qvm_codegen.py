@@ -19,6 +19,7 @@ class CanonicalOp(Enum):
     IDIV = auto()
     IMP = auto()
     IOREQ = auto()
+    JMP = auto()
     MOD = auto()
     MUL = auto()
     NEG = auto()
@@ -520,6 +521,14 @@ def gen_call(node, code, codegen):
 @QvmCodeGen.generator_for(stmt.ClsStmt)
 def gen_cls(node, code, codegen):
     code.add(('ioreq', 'screen', 'cls'))
+
+
+@QvmCodeGen.generator_for(stmt.GotoStmt)
+def gen_goto(node, code, codegen):
+    target = node.target
+    if isinstance(target, int):
+        target = f'_lineno_{node.target}'
+    code.add(('jmp', target))
 
 
 @QvmCodeGen.generator_for(stmt.DataStmt)

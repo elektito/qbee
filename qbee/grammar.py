@@ -13,8 +13,8 @@ from .expr import (
     StringLiteral,
 )
 from .stmt import (
-    AssignmentStmt, BeepStmt, CallStmt, ClsStmt, DataStmt, SubStmt,
-    EndSubStmt, ExitSubStmt,
+    AssignmentStmt, BeepStmt, CallStmt, ClsStmt, DataStmt, GotoStmt,
+    SubStmt, EndSubStmt, ExitSubStmt,
 )
 from .program import Program, Label, LineNo, Line
 
@@ -37,6 +37,7 @@ data_kw = CaselessKeyword('data')
 end_kw = CaselessKeyword('end')
 exit_kw = CaselessKeyword('exit')
 eqv_kw = CaselessKeyword('eqv')
+goto_kw = CaselessKeyword('goto')
 imp_kw = CaselessKeyword('imp')
 let_kw = CaselessKeyword('let')
 mod_kw = CaselessKeyword('mod')
@@ -80,8 +81,9 @@ numeric_literal = (
 
 string_literal = Regex(r'"[^"]*"')
 
+identifier_name = Word(alphas, alphanums)
 identifier = (
-    ~keyword + Word(alphas, alphanums) - type_char[0, 1]
+    ~keyword + identifier_name - type_char[0, 1]
 ).set_name('identifier')
 
 # Arithmetic Expressions
@@ -123,8 +125,9 @@ expr <<= Located(imp_expr)
 
 # Statements
 
+line_no_value = Regex(r'\d+')
 line_no = Located(
-    Regex(r'\d+') - FollowedBy(White() | LineEnd())
+    line_no_value - FollowedBy(White() | LineEnd())
 ).set_name('line_number')
 label = Located(
     ~keyword +
@@ -164,6 +167,8 @@ call_stmt = (
 
 cls_stmt = cls_kw
 
+goto_stmt = goto_kw.suppress() - (identifier_name | line_no_value)
+
 var_decl = identifier
 param_list = delimited_list(var_decl, delim=comma)
 sub_stmt = (
@@ -190,6 +195,7 @@ stmt = Located(
     sub_stmt |
     end_sub_stmt |
     exit_sub_stmt |
+    goto_stmt |
     rem_stmt
 ).set_name('stmt')
 
@@ -333,6 +339,15 @@ def parse_call(toks):
 @parse_action(cls_stmt)
 def parse_cls(toks):
     return ClsStmt()
+
+
+@parse_action(goto_stmt)
+def parse_goto(toks):
+    target = toks[0]
+    if target[0].isnumeric():
+        # it's a line number
+        target = int(target)
+    return GotoStmt(target)
 
 
 @parse_action(data_stmt)
