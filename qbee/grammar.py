@@ -200,6 +200,7 @@ stmt_group = (
     colon[...].suppress()
 )
 line = (
+    White()[...].suppress() +
     line_prefix[0, 1] +
     stmt_group[0, 1] +
     colon[...].suppress() +
