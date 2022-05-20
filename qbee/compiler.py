@@ -22,6 +22,9 @@ class Routine:
         self.labels = set()
         self.variables = set()
 
+    def __repr__(self):
+        return f'<Routine {self.type} {self.name}>'
+
 
 class Compiler:
     def __init__(self, optimization_level=0):
