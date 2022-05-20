@@ -75,13 +75,13 @@ compare_op = Regex(r'(<=|>=|<>|><|=<|=>|<|>|=)')
 
 numeric_literal = (
     Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?") -
-    type_char[...]
+    type_char[0, 1]
 )
 
 string_literal = Regex(r'"[^"]*"')
 
 identifier = (
-    ~keyword + Word(alphas, alphanums) - type_char[...]
+    ~keyword + Word(alphas, alphanums) - type_char[0, 1]
 ).set_name('identifier')
 
 # Arithmetic Expressions
@@ -124,22 +124,17 @@ expr <<= Located(imp_expr)
 # Statements
 
 line_no = Located(
-    White()[...].suppress() +
     Regex(r'\d+') - FollowedBy(White() | LineEnd())
 ).set_name('line_number')
 label = Located(
-    White()[...].suppress() +
     ~keyword +
     Regex(r'[a-z][a-z0-9]*', re.I) +
-    Literal(':').suppress() +
-    LineEnd()[...].suppress()
+    Literal(':').suppress()
 ).set_name('label')
 
-stmt = Forward()
 comment = (
-    single_quote + SkipTo(LineEnd())
+    single_quote + SkipTo(LineEnd() | StringEnd())
 ).suppress().set_name('comment')
-stmt_sep = (colon | LineEnd() | comment).suppress().set_name('stmt_sep')
 
 quoted_string = Regex(r'"[^"]+"')
 unquoted_string = Regex(r'[^"\n:]+')
@@ -154,7 +149,7 @@ data_stmt = (
 rem_stmt = (rem_kw + SkipTo(LineEnd())).suppress().set_name('rem_stmt')
 
 assignment_stmt = (
-    let_kw[...].suppress() +
+    let_kw[0, 1].suppress() +
     identifier +
     eq.suppress() -
     expr
@@ -163,8 +158,8 @@ assignment_stmt = (
 beep_stmt = beep_kw
 
 call_stmt = (
-    call_kw.suppress() - identifier + expr_list[...] |
-    call_kw[...].suppress() + identifier + expr_list[...]
+    call_kw.suppress() - identifier + expr_list[0, 1] |
+    identifier + expr_list[0, 1]
 ).set_name('call_stmt')
 
 cls_stmt = cls_kw
@@ -178,21 +173,15 @@ sub_stmt = (
         lpar.suppress() +
         param_list +
         rpar.suppress()
-    )[...]
+    )[0, 1]
 ).set_name('sub_stmt')
 end_sub_stmt = end_kw + sub_kw
-
-sub_block = (
-    sub_stmt - stmt_sep[1,...] +
-    stmt[...] + stmt_sep[...] +
-    end_sub_stmt.suppress()
-).set_name('sub_block')
 
 exit_sub_stmt = exit_kw + sub_kw
 
 # program
 
-pure_stmt = (
+stmt = Located(
     assignment_stmt |
     beep_stmt |
     call_stmt |
@@ -202,23 +191,20 @@ pure_stmt = (
     end_sub_stmt |
     exit_sub_stmt |
     rem_stmt
-)
-
-stmt <<= Located(
-    label |
-    line_no |
-    comment |
-    (pure_stmt + stmt_sep[1,...])
 ).set_name('stmt')
 
 line_prefix = label | line_no
 stmt_group = (
-    pure_stmt + (colon[1,...].suppress() + pure_stmt)[...]
+    stmt +
+    (colon[1,...].suppress() + stmt)[...] +
+    colon[...].suppress()
 )
 line = (
-    line_prefix[...] +
-    stmt_group[...] +
-    comment[...]
+    line_prefix[0, 1] +
+    stmt_group[0, 1] +
+    colon[...].suppress() +
+    comment[0, 1] +
+    LineEnd()
 ).set_name('line')
 
 # --- Parse actions ---
@@ -441,7 +427,9 @@ def main():
     except ParseException as e:
         print(e.explain())
         exit(1)
-    if hasattr(result, '__len__') and isinstance(result[0], Line):
+    if hasattr(result, '__len__') and \
+       len(result) and \
+       isinstance(result[0], Line):
         for node in result[0].nodes:
             print(node)
     else:
