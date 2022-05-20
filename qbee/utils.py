@@ -54,3 +54,47 @@ def parse_data(s):
         items.append(item)
 
     return items
+
+
+def display_with_context(text, loc_start, loc_end=None, msg='Error'):
+    n_context_lines = 3
+
+    prev_lines = []
+    next_lines = []
+    target_lines = []
+    i = 0
+    target_col = None
+    while i < len(text):
+        try:
+            nl = text.index('\n', i)
+        except ValueError:
+            text += '\n'
+            nl = len(text) - 1
+
+        line = text[i:nl]
+        if ((loc_end is not None and
+             (i <= loc_start <= nl or
+              (loc_start >=i and
+               loc_end <= nl))) or
+            (loc_end is None and i <= loc_start <= nl)):
+            target_lines.append(line)
+            target_col = loc_start - i + 1
+        elif i < loc_start:
+            prev_lines.append(line)
+        else:
+            next_lines.append(line)
+
+        if len(next_lines) == n_context_lines:
+            break
+
+        i = nl + 1
+
+    for line in prev_lines[-n_context_lines:]:
+        eprint(' || ', line)
+    for line in target_lines:
+        eprint(' >> ', line)
+    if len(target_lines) == 1:
+        eprint(' :: ' + ' ' * target_col + '^')
+        eprint(' :: ' + ' ' * target_col + msg)
+    for line in next_lines:
+        eprint(' || ', line)

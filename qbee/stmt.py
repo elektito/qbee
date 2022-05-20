@@ -9,6 +9,20 @@ class Stmt(Node):
         for child in self.children:
             child.bind(compiler)
 
+    @classmethod
+    def type_name(cls):
+        if cls.__name__.endswith('Stmt'):
+            name = ''
+            for c in cls.__name__[:-4]:
+                if c.isupper():
+                    name += ' ' + c
+                else:
+                    name += c
+            return name.strip().upper()
+        raise NameError(
+            'Default Stmt.name() implementation only works if class '
+            'name ends with "Stmt"')
+
 
 class NoChildStmt(Stmt):
     @property
@@ -115,7 +129,8 @@ class ExitSubStmt(NoChildStmt):
 
 
 # Blocks
-""
+
+
 class BlockNodeMetaclass(type):
     def __new__(cls, name, bases, attrs, **kwargs):
         if name == 'Block':
@@ -174,13 +189,23 @@ themselves in this class method.
 
     @classmethod
     def create(cls, start_stmt, end_stmt, body):
-        block_type = cls.known_blocks[type(start_stmt)]
+        block_type = Block.known_blocks[type(start_stmt)]
         expected_end_stmt = block_type.end_stmt
         if not isinstance(end_stmt, expected_end_stmt):
             raise SyntaxError(*syntax_error_args)
 
         block = block_type.create_block(start_stmt, end_stmt, body)
         return block
+
+    @classmethod
+    def start_stmt_from_end(cls, end_stmt):
+        if isinstance(end_stmt, Stmt):
+            end_stmt = type(end_stmt)
+        if not issubclass(end_stmt, Stmt):
+            raise ValueError
+        for start, block in Block.known_blocks.items():
+            if block.end_stmt == end_stmt:
+                return block.start_stmt
 
 
 class SubBlock(Block, start=SubStmt, end=EndSubStmt):

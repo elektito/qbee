@@ -1,7 +1,8 @@
-from pyparsing import ParseException
+from pyparsing import ParseException, ParseSyntaxException
 from .grammar import line as line_rule
 from .program import Program
 from .stmt import Block
+from .exceptions import SyntaxError
 
 
 def parse_string(input_string):
@@ -12,29 +13,56 @@ def parse_string(input_string):
     entered_blocks = []
     cur_block_body = []
 
+    line_loc = 0
     for line in input_string.split('\n'):
         try:
             line_node = line_rule.parse_string(line, parse_all=True)
-        except ParseException as e:
-            print(e.explain())
-            exit(1)
-            #raise SyntaxError(*syntax_error_args)
+        except (ParseException, ParseSyntaxException) as e:
+            raise SyntaxError(loc=line_loc + e.loc)
 
         for stmt in line_node[0].nodes:
+            update_node_loc(stmt, line_loc)
             if isinstance(stmt, block_start_types):
                 entered_blocks.append((stmt, cur_block_body))
                 cur_block_body = []
             elif isinstance(stmt, block_end_types):
-                block_start, prev_body = entered_blocks.pop()
                 block_end = stmt
+                if not entered_blocks:
+                    expected_start = Block.start_stmt_from_end(
+                        block_end)
+                    raise SyntaxError(
+                        loc=line_loc,
+                        msg=(f'{block_end.type_name()} without '
+                             f'{expected_start.type_name()}'))
+                block_start, prev_body = entered_blocks.pop()
                 block = Block.create(block_start, block_end, cur_block_body)
                 prev_body.append(block)
                 cur_block_body = prev_body
             else:
                 cur_block_body.append(stmt)
 
+        line_loc += len(line) + 1
+
     if entered_blocks:
-        raise SytnaxError(*some_args,
-                          f'Block {start_block_name} not closed')
+        block, _ = entered_blocks[-1]
+        raise SyntaxError(
+            loc=block.loc_start,
+            msg=f'{block.type_name()} block not closed')
 
     return Program(cur_block_body)
+
+
+def update_node_loc(node, offset):
+    """
+Since we parse each line separately, the location values set by the
+parser are based on the beginning of the line. This function can then
+be used to add the offset of the beginning of the line to a node and
+all its children.
+
+    """
+    if node.loc_start is not None:
+        node.loc_start += offset
+    if node.loc_end is not None:
+        node.loc_end += offset
+    for child in node.children:
+        update_node_loc(child, offset)

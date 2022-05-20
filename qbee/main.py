@@ -2,7 +2,7 @@ import argparse
 import sys
 from .compiler import Compiler
 from .exceptions import SyntaxError, CompileError
-from .utils import eprint
+from .utils import eprint, display_with_context
 
 
 def main():
@@ -44,18 +44,7 @@ def main():
     try:
         code = compiler.compile(input_string)
     except (SyntaxError, CompileError) as e:
-        error_type = {
-            SyntaxError: 'Syntax',
-            CompileError: 'Compile',
-        }[type(e)]
-        if e.loc_start and e.loc_end:
-            eprint(f'{error_type} error from loc {e.loc_start} to loc '
-                   f'{e.loc_end}: {e}')
-        elif e.loc_start:
-            eprint(f'{error_type} error at loc {e.loc_start} : {e}')
-        else:
-            eprint(f'{error_type} error: {e}')
-
+        display_with_context(input_string, loc_start=e.loc_start, msg=str(e))
         exit(1)
 
     if args.asm:
