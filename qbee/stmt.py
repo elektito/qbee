@@ -195,6 +195,8 @@ themselves in this class method.
             raise SyntaxError(*syntax_error_args)
 
         block = block_type.create_block(start_stmt, end_stmt, body)
+        block.loc_start = start_stmt.loc_start
+        block.loc_end = end_stmt.loc_end
         return block
 
     @classmethod
