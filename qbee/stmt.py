@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from .node import Node
-from .utils import parse_data
+from .utils import parse_data, split_camel
 
 
 class Stmt(Node):
@@ -12,16 +12,13 @@ class Stmt(Node):
     @classmethod
     def type_name(cls):
         if cls.__name__.endswith('Stmt'):
-            name = ''
-            for c in cls.__name__[:-4]:
-                if c.isupper():
-                    name += ' ' + c
-                else:
-                    name += c
-            return name.strip().upper()
+            name = cls.__name__[:-4]
+            name_parts = split_camel(name)
+            name = ' '.join(name_parts)
+            return name.upper()
         raise NameError(
-            'Default Stmt.name() implementation only works if class '
-            'name ends with "Stmt"')
+            'Default Stmt.type_name() implementation only works if '
+            'class name ends with "Stmt"')
 
 
 class NoChildStmt(Stmt):
@@ -185,6 +182,18 @@ class Block(Stmt, metaclass=BlockMetaclass):
     # relevant block types (like SubBlock). This is populated by the
     # meta-class.
     known_blocks = {}
+
+    @classmethod
+    def type_name(cls):
+        if cls.__name__.endswith('Block'):
+            name = cls.__name__[:-5]
+            name_parts = split_camel(name)
+            name = ' '.join(name_parts)
+            name += '_block'
+            return name.upper()
+        raise NameError(
+            'Default Block.name() implementation only works if class '
+            'name ends with "Block"')
 
     @classmethod
     @abstractmethod

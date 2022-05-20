@@ -98,3 +98,19 @@ def display_with_context(text, loc_start, loc_end=None, msg='Error'):
         eprint(' :: ' + ' ' * target_col + msg)
     for line in next_lines:
         eprint(' || ', line)
+
+
+def split_camel(name):
+    """Split a camel/pascal case name into words. For exaple ExitSubStmt
+is split into ['Exit', 'Sub', 'Stmt']."""
+
+    parts = []
+    cur = ''
+    for c in name:
+        if c.isupper() and cur:
+            parts.append(cur)
+            cur = ''
+        cur += c
+    if cur:
+        parts.append(cur)
+    return parts

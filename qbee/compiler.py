@@ -37,7 +37,7 @@ class Compiler:
         tree = parse_string(input_string)
         tree.bind(self)
 
-        self._compile_tree(tree)
+        self._compile_tree(tree, _pass=1)
 
         if self.optimization_level > 0:
             tree.fold()
@@ -69,73 +69,101 @@ class Compiler:
     def is_var_global(self, name):
         return False
 
-    def _compile_tree(self, tree):
-        for node in tree.children:
-            if isinstance(node, AssignmentStmt):
-                if not node.lvalue.type.is_coercible_to(node.rvalue.type):
-                    raise CompileError(EC.TYPE_MISMATCH, node=node)
-            elif isinstance(node, SubBlock):
-                if self.cur_routine.name != '_main':
-                    raise CompileError(
-                        EC.ILLEGAL_IN_SUB,
-                        'Sub-routine only allowed in the top-level',
-                        node=node)
-                if node.name in self.routines:
-                    raise CompileError(
-                        EC.DUPLICATE_DEFINITION,
-                        f'Duplicate sub-routine definition: {node.name}',
-                        node=node)
-                routine = Routine(node.name, 'sub')
-                self.routines[node.name] = routine
-                self.cur_routine = routine
-            elif isinstance(node, ExitSubStmt):
-                if self.cur_routine.name == '_main' or \
-                   self.cur_routine.type != 'sub':
-                    raise CompileError(
-                        EC.INVALID_EXIT,
-                        'EXIT SUB can only be used inside a SUB',
-                        node=node)
+    def _compile_tree(self, tree, _pass):
+        # This function recursively processes the given node. Before
+        # recursing the children, a "pre" function for the node is
+        # called, and afterwards, a "post" function. Function names
+        # are deduced from node type names. For example, on pass1, for
+        # the ExitSubStmt nodes we call the
+        # `_compile_exit_sub_pass1_pre` and
+        # `_compile_exit_sub_pass1_post` functions.
 
-            if isinstance(node, Stmt):
-                self._compile_tree(node)
-            elif isinstance(node, Expr):
-                self._compile_expr(node)
-            elif isinstance(node, Label):
-                if node.name in self.all_labels:
-                    raise CompileError(
-                        EC.DUPLICATE_LABEL,
-                        f'Duplicate label: {node.name}',
-                        node=node)
-                self.cur_routine.labels.add(node.name)
-                self.all_labels.add(node.name)
-            elif isinstance(node, LineNo):
-                canonical_name = f'_label_{node.number}'
-                if canonical_name in self.all_labels:
-                    raise CompileError(
-                        EC.DUPLICATE_LABEL,
-                        f'Duplicate line number: {node.number}',
-                        node=node)
-                self.cur_routine.labels.add(canonical_name)
-                self.all_labels.add(canonical_name)
-            else:
+        # call pre-children compile functions for this pass
+        func = self._get_node_compile_func(tree, 'pre', _pass)
+        if func is not None:
+            func(tree)
+
+        for node in tree.children:
+            # Recurse the children
+            if isinstance(node, (Stmt, Expr)):
+                self._compile_tree(node, _pass)
+            elif not isinstance(node, (Label, LineNo)):
                 raise InternalError(
                     f'Do not know how to compile node: {node}')
 
-            if isinstance(node, SubBlock):
-                self.cur_routine = self.routines['_main']
+        # call post-children compile functions for this pass
+        func = self._get_node_compile_func(tree, 'post', _pass)
+        if func is not None:
+            func(tree)
 
-    def _compile_expr(self, expr):
-        for child in expr.children:
-            self._compile_expr(child)
+    def _get_node_compile_func(self, node, pre_or_pos, _pass):
+        assert pre_or_pos in ['pre', 'post']
 
-        if isinstance(expr, Identifier):
-            if expr.name not in self.cur_routine.variables:
-                self.cur_routine.variables.add(expr.name)
-        elif isinstance(expr, BinaryOp):
-            if expr.type == Type.UNKNOWN:
-                raise CompileError(EC.TYPE_MISMATCH, node=expr)
-        elif isinstance(expr, UnaryOp):
-            # unary operators (NOT, +, -) are only valid on numeric
-            # expressions.
-            if not expr.arg.type.is_numeric:
-                raise CompileError(EC.TYPE_MISMATCH, node=expr)
+        type_name = node.type_name().lower().replace(' ', '_')
+        func_name = f'_compile_{type_name}_pass{_pass}_{pre_or_pos}'
+        func = getattr(self, func_name, None)
+        return func
+
+    def _compile_label_pass1_pre(self, node):
+        if node.name in self.all_labels:
+            raise CompileError(
+                EC.DUPLICATE_LABEL,
+                f'Duplicate label: {node.name}',
+                node=node)
+        self.cur_routine.labels.add(node.name)
+        self.all_labels.add(node.name)
+
+    def _compile_lineno_pass1_pre(self, node):
+        canonical_name = f'_label_{node.number}'
+        if canonical_name in self.all_labels:
+            raise CompileError(
+                EC.DUPLICATE_LABEL,
+                f'Duplicate line number: {node.number}',
+                node=node)
+        self.cur_routine.labels.add(canonical_name)
+        self.all_labels.add(canonical_name)
+
+    def _compile_identifier_pass1_pre(self, node):
+        if node.name not in self.cur_routine.variables:
+            self.cur_routine.variables.add(node.name)
+
+    def _compile_binary_op_pass1_pre(self, node):
+        if node.type == Type.UNKNOWN:
+            raise CompileError(EC.TYPE_MISMATCH, node=node)
+
+    def _compile_unary_op_pass1_pre(self, node):
+        # unary operators (NOT, +, -) are only valid on numeric
+        # expressions.
+        if not node.arg.type.is_numeric:
+            raise CompileError(EC.TYPE_MISMATCH, node=node)
+
+    def _compile_assignment_pass1_pre(self, node):
+        if not node.lvalue.type.is_coercible_to(node.rvalue.type):
+            raise CompileError(EC.TYPE_MISMATCH, node=node)
+
+    def _compile_sub_block_pass1_pre(self, node):
+        if self.cur_routine.name != '_main':
+            raise CompileError(
+                EC.ILLEGAL_IN_SUB,
+                'Sub-routine only allowed in the top-level',
+                node=node)
+        if node.name in self.routines:
+            raise CompileError(
+                EC.DUPLICATE_DEFINITION,
+                f'Duplicate sub-routine definition: {node.name}',
+                node=node)
+        routine = Routine(node.name, 'sub')
+        self.routines[node.name] = routine
+        self.cur_routine = routine
+
+    def _compile_sub_block_pass1_post(self, node):
+        if isinstance(node, SubBlock):
+            self.cur_routine = self.routines['_main']
+
+    def _compile_exit_sub_pass1_pre(self, node):
+        if self.cur_routine.name == '_main' or \
+           self.cur_routine.type != 'sub':
+            raise CompileError(
+                EC.INVALID_EXIT,
+                'EXIT SUB can only be used inside a SUB',
+                node=node)

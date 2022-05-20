@@ -8,6 +8,9 @@ class Label(Node):
     def __repr__(self):
         return f'<Label {self.name}>'
 
+    def type_name(self):
+        return 'LABEL'
+
     def replace_child(self, old_child, new_child):
         pass
 
@@ -22,6 +25,9 @@ class LineNo(Node):
 
     def __repr__(self):
         return f'<LineNo {self.number}>'
+
+    def type_name(self):
+        return 'LINENO'
 
     def replace_child(self, old_child, new_child):
         pass
@@ -41,6 +47,9 @@ class Line(Node):
             f'<Line with {len(self.nodes)} '
             f'{"node" if len(self.nodes) == 1 else "nodes"}>'
         )
+
+    def type_name(self):
+        return 'LINE'
 
     def replace_child(self, old_child, new_child):
         for i in range(len(self.nodes)):
@@ -65,6 +74,9 @@ class Program(Node):
             f'<Program with {len(self.nodes)} '
             f'{"node" if len(self.nodes) == 1 else "nodes"}>'
         )
+
+    def type_name(self):
+        return 'PROGRAM'
 
     def replace_child(self, old_child, new_child):
         for i in range(len(self.nodes)):

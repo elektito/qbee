@@ -2,6 +2,7 @@ from enum import Enum
 from abc import ABC, abstractmethod
 from .exceptions import InternalError
 from .node import Node
+from .utils import split_camel
 
 
 class Type(Enum):
@@ -172,6 +173,12 @@ class Expr(Node):
     # after the expression is parsed, so for example the parse action
     # for NumericLiteral will not have access to these.
     loc_start = loc_end = None
+
+    def type_name(self):
+        name = type(self).__name__
+        parts = split_camel(name)
+        name = ' '.join(parts)
+        return name.upper()
 
     @property
     @abstractmethod
