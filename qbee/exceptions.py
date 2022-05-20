@@ -40,6 +40,7 @@ class ErrorCode(Enum):
     INVALID_EXIT = 'EXIT statement in invalid context'
     LABEL_NOT_DEFINED = 'Label not defined'
     ELSE_WITHOUT_IF = 'ELSE without IF'
+    SUBPROGRAM_NOT_FOUND = 'Sub-program not found'
 
 
 class CompileError(Exception):

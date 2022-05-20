@@ -147,6 +147,17 @@ class Compiler:
         if not node.lvalue.type.is_coercible_to(node.rvalue.type):
             raise CompileError(EC.TYPE_MISMATCH, node=node)
 
+    def _compile_call_pass2_pre(self, node):
+        routine = self.routines.get(node.name)
+        if routine is None:
+            raise CompileError(EC.SUBPROGRAM_NOT_FOUND, node=node)
+        if routine.type != 'sub':
+            raise CompileError(EC.SUBPROGRAM_NOT_FOUND,
+                               msg='Routine is a FUNCTION not a SUB',
+                               node=node)
+
+        # check arguments too
+
     def _compile_sub_block_pass1_pre(self, node):
         if self.cur_routine.name != '_main':
             raise CompileError(
