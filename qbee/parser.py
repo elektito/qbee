@@ -20,8 +20,13 @@ def parse_string(input_string):
         except (ParseException, ParseSyntaxException) as e:
             raise SyntaxError(loc=line_loc + e.loc)
 
-        for stmt in line_node[0].nodes:
+        # the line is always a list of one containing the actual Line
+        # node
+        line_node = line_node[0]
+
+        for stmt in line_node.nodes:
             update_node_loc(stmt, line_loc)
+
             if isinstance(stmt, block_start_types):
                 entered_blocks.append((stmt, cur_block_body))
                 cur_block_body = []

@@ -24,6 +24,7 @@ class CanonicalOp(Enum):
     IMP = auto()
     IOREQ = auto()
     JMP = auto()
+    JZ = auto()
     LE = auto()
     LT = auto()
     MOD = auto()
@@ -343,6 +344,12 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
     def __init__(self, compiler):
         self.compiler = compiler
         self.last_label = None
+        self.label_counter = 1
+
+    def get_label(self, name):
+        label = f'_{name}_{self.label_counter}'
+        self.label_counter += 1
+        return label
 
 
 # Code generators for expressions
@@ -527,6 +534,41 @@ def gen_cls(node, code, codegen):
 @QvmCodeGen.generator_for(stmt.GotoStmt)
 def gen_goto(node, code, codegen):
     code.add(('jmp', node.canonical_target))
+
+
+@QvmCodeGen.generator_for(stmt.IfBlock)
+def gen_if_block(node, code, codegen):
+    endif_label = codegen.get_label('endif')
+
+    for cond, body in node.if_blocks:
+        else_label = codegen.get_label('else')
+        codegen.gen_code_for_node(cond, code)
+        code.add(('jz', else_label))
+        for stmt in body:
+            codegen.gen_code_for_node(stmt, code)
+        code.add(('jmp', endif_label))
+        code.add(('_label', else_label))
+
+    for stmt in node.else_body:
+        codegen.gen_code_for_node(stmt, code)
+    code.add(('_label', endif_label))
+
+
+@QvmCodeGen.generator_for(stmt.IfStmt)
+def gen_if_stmt(node, code, codegen):
+    else_label = codegen.get_label('else')
+    endif_label = codegen.get_label('endif')
+
+    codegen.gen_code_for_node(node.cond, code)
+    code.add(('jz', else_label))
+    for stmt in node.then_stmts:
+        codegen.gen_code_for_node(stmt, code)
+    code.add(('jmp', endif_label))
+    code.add(('_label', else_label))
+    if node.else_clause:
+        for stmt in node.else_clause.stmts:
+            codegen.gen_code_for_node(stmt, code)
+    code.add(('_label', endif_label))
 
 
 @QvmCodeGen.generator_for(stmt.DataStmt)

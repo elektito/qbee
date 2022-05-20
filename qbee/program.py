@@ -73,6 +73,7 @@ class Line(Node):
 
 class Program(Node):
     def __init__(self, nodes):
+        self.parent = None
         self.nodes = nodes
 
     def __repr__(self):

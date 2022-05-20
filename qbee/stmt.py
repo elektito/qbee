@@ -1,15 +1,12 @@
 from abc import ABCMeta, abstractmethod
 from .node import Node
+from .expr import Expr
 from .program import LineNo
 from .utils import parse_data, split_camel
+from .exceptions import SyntaxError
 
 
 class Stmt(Node):
-    def bind(self, compiler):
-        self._compiler = compiler
-        for child in self.children:
-            child.bind(compiler)
-
     @classmethod
     def type_name(cls):
         if cls.__name__.endswith('Stmt'):
@@ -96,6 +93,136 @@ class GotoStmt(NoChildStmt):
 
     def __repr__(self):
         return f'<GotoStmt {self.target}>'
+
+
+class IfStmt(Stmt):
+    # Denotes an IF statement with at least one statement after THEN,
+    # and possibly an ELSE clause.
+
+    def __init__(self, cond, then_stmts, else_clause):
+        self.cond = cond
+        self.then_stmts = then_stmts
+        self.else_clause = else_clause
+
+    def __repr__(self):
+        if len(self.then_stmts):
+            then_desc = f'then=<{len(self.then_stmts)} stmt(s)>'
+        else:
+            then_desc = 'then=empty'
+        if self.else_clause and len(self.else_clause.stmts):
+            else_desc = f'else=<{len(self.else_clause.stmts)} stmt(s)>'
+        else:
+            else_desc = 'else=empty'
+        return f'<IfStmt cond={self.cond} {then_desc} {else_desc}>'
+
+    @property
+    def children(self):
+        ret = [self.cond]
+        ret += self.then_stmts
+        if self.else_clause:
+            ret += [self.else_clause]
+        return ret
+
+    def replace_child(self, old_child, new_child):
+        if self.cond == old_child:
+            self.cond = new_child
+            return
+
+        if self.else_clause == old_child:
+            self.else_clause = new_child
+            return
+
+        for i in range(len(self.then_stmts)):
+            if self.then_stmts[i] == old_child:
+                self.then_stmts[i] = new_child
+                return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
+
+
+class IfBeginStmt(Stmt):
+    # An IF statement without anything after THEN, denoting the start of
+    # an IF block.
+
+    def __init__(self, cond):
+        self.cond = cond
+
+    def __repr__(self):
+        return f'<IfBeginStmt cond={self.cond}>'
+
+    @property
+    def children(self):
+        return [self.cond]
+
+    def replace_child(self, old_child, new_child):
+        if old_child == self.cond:
+            self.cond = new_child
+
+
+class ElseClause(Stmt):
+    def __init__(self, stmts):
+        self.stmts = stmts
+
+    def __repr__(self):
+        return f'<ElseClause stmts={len(self.stmts)}>'
+
+    @classmethod
+    def type_name(cls):
+        return 'ELSE CLAUSE'
+
+    @property
+    def children(self):
+        return self.stmts
+
+    def replace_child(self, old_child, new_child):
+        for i in range(len(self.stmts)):
+            if self.stmts[i] == old_child:
+                self.stmts[i] = new_child
+                return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
+
+
+class ElseStmt(NoChildStmt):
+    def __repr__(self):
+        return '<ElseStmt>'
+
+
+class ElseIfStmt(Stmt):
+    def __init__(self, cond, then_stmts):
+        self.cond = cond
+        self.then_stmts = then_stmts
+
+    def __repr__(self):
+        if len(self.then_stmts):
+            then_desc = f'then=<{len(self.then_stmts)} stmt(s)>'
+        else:
+            then_desc = 'then=empty'
+        return f'<ElseIfStmt cond={self.cond} {then_desc}>'
+
+    @property
+    def children(self):
+        return [self.cond] + self.then_stmts
+
+    def replace_child(self, old_child, new_child):
+        if self.cond == old_child:
+            self.cond = new_child
+            return
+
+        for i in range(len(self.then_stmts)):
+            if self.then_stmts[i] == old_child:
+                self.then_stmts[i] = new_child
+                return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
+
+
+class EndIfStmt(NoChildStmt):
+    def __repr__(self):
+        return '<EndIfStmt>'
 
 
 class DataStmt(NoChildStmt):
@@ -215,7 +342,10 @@ themselves in this class method.
         block_type = Block.known_blocks[type(start_stmt)]
         expected_end_stmt = block_type.end_stmt
         if not isinstance(end_stmt, expected_end_stmt):
-            raise SyntaxError(*syntax_error_args)
+            raise SyntaxError(
+                end_stmt.loc_start,
+                msg=f'Expected {expected_end_stmt.type_name()}',
+            )
 
         block = block_type.create_block(start_stmt, end_stmt, body)
         block.loc_start = start_stmt.loc_start
@@ -231,6 +361,79 @@ themselves in this class method.
         for start, block in Block.known_blocks.items():
             if block.end_stmt == end_stmt:
                 return block.start_stmt
+
+
+class IfBlock(Block, start=IfBeginStmt, end=EndIfStmt):
+    def __init__(self, if_blocks, else_body):
+        # if blocks is a list of tuples, each being a pair in the form
+        # of (condition, body) denoting the top-level if block and any
+        # elseif blocks.
+        assert all(
+            isinstance(cond, Expr) and isinstance(body, list)
+            for cond, body in if_blocks
+        )
+        self.if_blocks = if_blocks
+
+        assert else_body is None or isinstance(else_body, list)
+        self.else_body = else_body or []
+
+    def __repr__(self):
+        then_desc = f'then_blocks={len(self.if_blocks)}'
+        if self.else_body:
+            else_desc = f'with {len(self.else_body)} stmt(s) in else'
+        return f'<IfBlock {then_desc} {else_desc}>'
+
+    @classmethod
+    def create_block(cls, if_stmt, end_if_stmt, body):
+        cur_if_cond = if_stmt.cond
+        cur_if_body = []
+        if_blocks = []
+        else_body = []
+        for stmt in body:
+            if isinstance(stmt, ElseIfStmt):
+                if_blocks.append((cur_if_cond, cur_if_body))
+                cur_if_body = stmt.then_stmts
+                cur_if_cond = stmt.cond
+            elif isinstance(stmt, ElseStmt):
+                if_blocks.append((cur_if_cond, cur_if_body))
+                cur_if_cond = None
+            elif cur_if_cond:
+                cur_if_body.append(stmt)
+            else:
+                else_body.append(stmt)
+
+        if cur_if_cond:
+            if_blocks.append((cur_if_cond, cur_if_body))
+
+        return cls(if_blocks, else_body)
+
+    def replace_child(self, old_child, new_child):
+        blocks = []
+        conds = []
+        for i in range(len(self.if_blocks)):
+            cond, body = self.if_blocks[i]
+            if cond == old_child:
+                self.if_blocks[i] = (new_child, body)
+                return
+
+            for j in range(len(body)):
+                if body[j] == old_child:
+                    body[j] = new_child
+                    return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
+
+    @property
+    def children(self):
+        ret = []
+        for cond, body in self.if_blocks:
+            ret += [cond]
+            ret += body
+        for stmt in self.else_body:
+            ret.append(stmt)
+
+        return ret
 
 
 class SubBlock(Block, start=SubStmt, end=EndSubStmt):

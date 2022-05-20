@@ -1,4 +1,4 @@
-from .stmt import Stmt, AssignmentStmt, SubBlock, ExitSubStmt
+from .stmt import Stmt, AssignmentStmt, IfBlock, SubBlock, ExitSubStmt
 from .expr import Type, Expr, BinaryOp, UnaryOp, Identifier
 from .program import Label, LineNo
 from .codegen import CodeGen
@@ -185,8 +185,21 @@ class Compiler:
                 f'{label_type} not defined: {node.target}',
                 node=node)
         if node.canonical_target not in node.parent_routine.labels:
-            print('xx', node.parent_routine, node.parent_routine.labels)
             raise CompileError(
                 EC.LABEL_NOT_DEFINED,
                 f'{label_type} not in the same routine as GOTO: {node.target}',
+                node=node)
+
+    def _compile_else_if_pass1_pre(self, node):
+        if not any(isinstance(p, IfBlock) for p in node.parents()):
+            raise CompileError(
+                EC.ELSE_WITHOUT_IF,
+                'ELSEIF outside IF block',
+                node=node)
+
+    def _compile_else_pass1_pre(self, node):
+        if not any(isinstance(p, IfBlock) for p in node.parents()):
+            raise CompileError(
+                EC.ELSE_WITHOUT_IF,
+                'ELSE outside IF block',
                 node=node)

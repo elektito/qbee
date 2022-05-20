@@ -8,6 +8,7 @@ class Node(ABC):
     def bind(self, compiler):
         self._compiler = compiler
         for child in self.children:
+            child.parent = self
             child.bind(compiler)
 
     @property
@@ -45,3 +46,16 @@ class Node(ABC):
     @abstractmethod
     def replace_child(self, old_child, new_child):
         pass
+
+    def parents(self):
+        if not hasattr(self, 'parent'):
+            print(self)
+            raise InternalError(
+                'Cannot get parents of unbound node')
+
+        results = []
+        node = self
+        while node.parent:
+            results.append(node.parent)
+            node = node.parent
+        return results

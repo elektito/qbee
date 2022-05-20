@@ -5,7 +5,8 @@ from functools import reduce
 from pyparsing import (
     ParserElement, CaselessKeyword, Literal, Regex, LineEnd, StringEnd,
     Word, Forward, FollowedBy, PrecededBy, White, Group, Empty, Located,
-    SkipTo, ParseException, alphas, alphanums, delimited_list, lineno,
+    SkipTo, ParseException, ParseSyntaxException, alphas, alphanums,
+    delimited_list, lineno,
 )
 from .exceptions import SyntaxError
 from .expr import (
@@ -14,6 +15,7 @@ from .expr import (
 )
 from .stmt import (
     AssignmentStmt, BeepStmt, CallStmt, ClsStmt, DataStmt, GotoStmt,
+    IfStmt, ElseClause, IfBeginStmt, ElseStmt, ElseIfStmt, EndIfStmt,
     SubStmt, EndSubStmt, ExitSubStmt,
 )
 from .program import Program, Label, LineNo, Line
@@ -34,10 +36,13 @@ beep_kw = CaselessKeyword('beep')
 call_kw = CaselessKeyword('call')
 cls_kw = CaselessKeyword('cls')
 data_kw = CaselessKeyword('data')
+else_kw = CaselessKeyword('else')
+elseif_kw = CaselessKeyword('elseif')
 end_kw = CaselessKeyword('end')
 exit_kw = CaselessKeyword('exit')
 eqv_kw = CaselessKeyword('eqv')
 goto_kw = CaselessKeyword('goto')
+if_kw = CaselessKeyword('if')
 imp_kw = CaselessKeyword('imp')
 let_kw = CaselessKeyword('let')
 mod_kw = CaselessKeyword('mod')
@@ -45,6 +50,7 @@ not_kw = CaselessKeyword('not')
 or_kw = CaselessKeyword('or')
 rem_kw = CaselessKeyword('rem')
 sub_kw = CaselessKeyword('sub')
+then_kw = CaselessKeyword('then')
 xor_kw = CaselessKeyword('xor')
 
 # create a single rule matching all keywords
@@ -88,7 +94,7 @@ identifier = (
 
 # Arithmetic Expressions
 
-expr = Forward()
+expr = Forward().set_name('expr')
 expr_list = delimited_list(expr, delim=',')
 func_call = identifier + lpar - Group(expr_list) + rpar
 paren_expr = (
@@ -124,6 +130,8 @@ imp_expr = eqv_expr - (eqv_kw - eqv_expr)[...]
 expr <<= Located(imp_expr)
 
 # Statements
+
+stmt_group = Forward()
 
 line_no_value = Regex(r'\d+')
 line_no = Located(
@@ -169,6 +177,32 @@ cls_stmt = cls_kw
 
 goto_stmt = goto_kw.suppress() - (identifier_name | line_no_value)
 
+else_clause = Located(
+    else_kw -
+    stmt_group[0, 1]
+).set_name('else_clause')
+if_stmt = (
+    if_kw.suppress() +
+    expr +
+    then_kw.suppress() +
+    stmt_group +
+    else_clause[0, 1]
+).set_name('if_stmt')
+
+if_block_begin = (
+    if_kw.suppress() +
+    expr +
+    then_kw.suppress()
+).set_name('if_block_begin')
+elseif_stmt = (
+    elseif_kw.suppress() -
+    expr -
+    then_kw.suppress() -
+    stmt_group[0, 1]
+).set_name('elseif_stmt')
+else_stmt = (else_kw).set_name('else_stmt')
+end_if_stmt = (end_kw + if_kw).set_name('end_if_stmt')
+
 var_decl = identifier
 param_list = delimited_list(var_decl, delim=comma)
 sub_stmt = (
@@ -191,6 +225,15 @@ stmt = Located(
     beep_stmt |
     call_stmt |
     cls_stmt |
+
+    # the order of the following is important. in particular, if_stmt
+    # must be before if_block_begin.
+    if_stmt |
+    if_block_begin |
+    else_stmt |
+    elseif_stmt |
+    end_if_stmt |
+
     data_stmt |
     sub_stmt |
     end_sub_stmt |
@@ -200,11 +243,11 @@ stmt = Located(
 ).set_name('stmt')
 
 line_prefix = label | line_no
-stmt_group = (
+stmt_group <<= (
     stmt +
     (colon[1,...].suppress() + stmt)[...] +
     colon[...].suppress()
-)
+).set_name('stmt_group')
 line = (
     White()[...].suppress() +
     line_prefix[0, 1] +
@@ -350,6 +393,51 @@ def parse_goto(toks):
     return GotoStmt(target)
 
 
+@parse_action(if_stmt)
+def parse_if(toks):
+    toks = list(toks)
+    cond, *stmts = toks
+    if stmts and isinstance(stmts[-1], ElseClause):
+        else_stmt = stmts[-1]
+        stmts = stmts[:-1]
+    else:
+        else_stmt = None
+    return IfStmt(cond, stmts, else_stmt)
+
+
+@parse_action(if_block_begin)
+def parse_if_block_begin(toks):
+    cond = toks[0]
+    return IfBeginStmt(cond)
+
+
+@parse_action(else_stmt)
+def parse_else_stmt(toks):
+    return ElseStmt()
+
+
+@parse_action(else_clause)
+def parse_else_clause(toks):
+    loc_start, toks, loc_end = toks
+    stmts = list(toks[1:]) # drop else keyword
+    else_clause = ElseClause(stmts)
+    else_clause.loc_start = loc_start
+    else_clause.loc_end = loc_end
+    return else_clause
+
+
+@parse_action(elseif_stmt)
+def parse_elseif(toks):
+    toks = list(toks)
+    cond, *stmts = toks
+    return ElseIfStmt(cond, stmts)
+
+
+@parse_action(end_if_stmt)
+def parse_end_if(toks):
+    return EndIfStmt()
+
+
 @parse_action(data_stmt)
 def parse_data(s, loc, toks):
     # Re-join data items and have them properly parsed again
@@ -440,7 +528,7 @@ def main():
 
     try:
         result = rule.parse_string(args.expr, parse_all=not args.not_all)
-    except ParseException as e:
+    except (ParseException, ParseSyntaxException) as e:
         print(e.explain())
         exit(1)
     if hasattr(result, '__len__') and \
