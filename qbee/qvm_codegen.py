@@ -22,7 +22,7 @@ class CanonicalOp(Enum):
     GT = auto()
     IDIV = auto()
     IMP = auto()
-    IOREQ = auto()
+    IO = auto()
     JMP = auto()
     JZ = auto()
     LE = auto()
@@ -513,7 +513,7 @@ def gen_assignment(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.BeepStmt)
 def gen_beep(node, code, codegen):
-    code.add(('ioreq', 'pcspkr', 'beep'))
+    code.add(('io', 'pcspkr', 'beep'))
 
 
 @QvmCodeGen.generator_for(stmt.CallStmt)
@@ -528,7 +528,7 @@ def gen_call(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.ClsStmt)
 def gen_cls(node, code, codegen):
-    code.add(('ioreq', 'screen', 'cls'))
+    code.add(('io', 'screen', 'cls'))
 
 
 @QvmCodeGen.generator_for(stmt.GotoStmt)
