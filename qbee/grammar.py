@@ -32,10 +32,12 @@ ParserElement.set_default_whitespace_chars(' \t')
 # Keywords
 
 and_kw = CaselessKeyword('and')
+as_kw = CaselessKeyword('as')
 beep_kw = CaselessKeyword('beep')
 call_kw = CaselessKeyword('call')
 cls_kw = CaselessKeyword('cls')
 data_kw = CaselessKeyword('data')
+double_kw = CaselessKeyword('double')
 else_kw = CaselessKeyword('else')
 elseif_kw = CaselessKeyword('elseif')
 end_kw = CaselessKeyword('end')
@@ -44,11 +46,15 @@ eqv_kw = CaselessKeyword('eqv')
 goto_kw = CaselessKeyword('goto')
 if_kw = CaselessKeyword('if')
 imp_kw = CaselessKeyword('imp')
+integer_kw = CaselessKeyword('integer')
 let_kw = CaselessKeyword('let')
+long_kw = CaselessKeyword('long')
 mod_kw = CaselessKeyword('mod')
 not_kw = CaselessKeyword('not')
 or_kw = CaselessKeyword('or')
 rem_kw = CaselessKeyword('rem')
+single_kw = CaselessKeyword('single')
+string_kw = CaselessKeyword('string')
 sub_kw = CaselessKeyword('sub')
 then_kw = CaselessKeyword('then')
 xor_kw = CaselessKeyword('xor')
@@ -60,6 +66,15 @@ _kw_rules = [
     if name.endswith('_kw')
 ]
 keyword = reduce(lambda a, b: a | b, _kw_rules).set_name('keyword')
+
+# built-in types
+type_name = (
+    integer_kw |
+    long_kw |
+    single_kw |
+    double_kw |
+    string_kw
+).set_name('type_name')
 
 # Operators and punctuation
 
@@ -211,11 +226,13 @@ elseif_stmt = (
 else_stmt = (else_kw).set_name('else_stmt')
 end_if_stmt = (end_kw + if_kw).set_name('end_if_stmt')
 
-var_decl = identifier
+var_decl = Group(
+    identifier + (as_kw + (type_name | identifier))[0, 1]
+).set_name('var_decl')
 param_list = delimited_list(var_decl, delim=comma)
 sub_stmt = (
     sub_kw.suppress() -
-    identifier +
+    identifier_name +
     (
         lpar.suppress() +
         param_list +
@@ -487,7 +504,8 @@ def parse_line(toks):
 
 @parse_action(sub_stmt)
 def parse_sub_stmt(toks):
-    return SubStmt(toks[0].original_name, toks[1:])
+    name, *params = toks
+    return SubStmt(name, toks[1:])
 
 
 @parse_action(end_sub_stmt)
