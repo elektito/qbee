@@ -155,7 +155,7 @@ final form which might be in the form ('push1&',).
     def __str__(self):
         op, *args = self.final
         args_str = ', '.join(str(i) for i in args)
-        return f'{op}\t{args_str}'
+        return f'{op: <12}{args_str}'
 
     def __repr__(self):
         op, *args = self.final
@@ -333,7 +333,7 @@ class QvmCode(BaseCode):
                 label, = args
                 s += f'{label}:\n'
             else:
-                s += f'    {op}\t{", ".join(str(i) for i in args)}\n'
+                s += f'    {op: <12}{", ".join(str(i) for i in args)}\n'
         return s
 
     def __bytes__(self):
