@@ -169,7 +169,15 @@ assignment_stmt = (
 beep_stmt = beep_kw
 
 call_stmt = (
-    call_kw.suppress() - identifier + expr_list[0, 1] |
+    (
+        call_kw.suppress() -
+        identifier -
+        (
+            lpar.suppress() -
+            expr_list -
+            rpar.suppress()
+        )[0, 1]
+    ) |
     identifier + expr_list[0, 1]
 ).set_name('call_stmt')
 
