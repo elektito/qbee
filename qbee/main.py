@@ -34,7 +34,7 @@ def main():
         else:
             args.output = 'a.mod'
 
-    with open(args.input, encoding='ascii') as f:
+    with open(args.input, encoding='cp437') as f:
         input_string = f.read()
 
     compiler = Compiler(
