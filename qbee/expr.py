@@ -16,6 +16,16 @@ class Type(Enum):
     UNKNOWN = 200
 
     @staticmethod
+    def builtin_types():
+        return (
+            Type.INTEGER,
+            Type.LONG,
+            Type.SINGLE,
+            Type.DOUBLE,
+            Type.STRING,
+        )
+
+    @staticmethod
     def type_chars():
         # we have to make this a method, because if we make it a
         # property, it would become a member of the enum

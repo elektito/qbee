@@ -225,6 +225,27 @@ class EndIfStmt(NoChildStmt):
         return '<EndIfStmt>'
 
 
+class PrintStmt(Stmt):
+    def __init__(self, items):
+        self.items = items
+
+    def __repr__(self):
+        return f'<PrintStmt {" ".join(str(i) for i in self.items)}>'
+
+    @property
+    def children(self):
+        return [i for i in self.items if isinstance(i, Node)]
+
+    def replace_child(self, old_child, new_child):
+        for i in range(len(self.items)):
+            if self.items[i] == old_child:
+                self.items[i] = new_child
+                return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
+
+
 class DataStmt(NoChildStmt):
     def __init__(self, string):
         self.string = string

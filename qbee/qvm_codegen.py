@@ -571,6 +571,21 @@ def gen_if_stmt(node, code, codegen):
     code.add(('_label', endif_label))
 
 
+@QvmCodeGen.generator_for(stmt.PrintStmt)
+def gen_print_stmt(node, code, codegen):
+    for item in node.items:
+        if isinstance(item, expr.Expr):
+            code.add(('push%', 0))
+            codegen.gen_code_for_node(item, code)
+        elif item == ';':
+            code.add(('push%', 1))
+        elif item == ',':
+            code.add(('push%', 2))
+        else:
+            assert False
+    code.add(('io', 'screen', 'print'))
+
+
 @QvmCodeGen.generator_for(stmt.DataStmt)
 def gen_cls(node, code, codegen):
     code.add_data(node.items, codegen.last_label)

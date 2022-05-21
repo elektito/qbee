@@ -215,3 +215,12 @@ class Compiler:
                 EC.ELSE_WITHOUT_IF,
                 'ELSE outside IF block',
                 node=node)
+
+    def _compile_print_pass1_pre(self, node):
+        for item in node.items:
+            if isinstance(item, Expr):
+                if item.type not in Type.builtin_types():
+                    raise CompileError(
+                        EC.TYPE_MISMATCH,
+                        f'Cannot print value: {item}',
+                        node=node)

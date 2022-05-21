@@ -16,7 +16,7 @@ from .expr import (
 from .stmt import (
     AssignmentStmt, BeepStmt, CallStmt, ClsStmt, DataStmt, GotoStmt,
     IfStmt, ElseClause, IfBeginStmt, ElseStmt, ElseIfStmt, EndIfStmt,
-    SubStmt, VarDeclClause, EndSubStmt, ExitSubStmt,
+    PrintStmt, SubStmt, VarDeclClause, EndSubStmt, ExitSubStmt,
 )
 from .program import Program, Label, LineNo, Line
 
@@ -52,6 +52,7 @@ long_kw = CaselessKeyword('long')
 mod_kw = CaselessKeyword('mod')
 not_kw = CaselessKeyword('not')
 or_kw = CaselessKeyword('or')
+print_kw = CaselessKeyword('print')
 rem_kw = CaselessKeyword('rem')
 single_kw = CaselessKeyword('single')
 string_kw = CaselessKeyword('string')
@@ -83,6 +84,7 @@ single_quote = Literal("'")
 eq = Literal('=')
 comma = Literal(',')
 colon = Literal(':')
+semicolon = Literal(';')
 lpar = Literal("(")
 rpar = Literal(")")
 plus = Literal('+')
@@ -226,6 +228,13 @@ elseif_stmt = (
 else_stmt = (else_kw).set_name('else_stmt')
 end_if_stmt = (end_kw + if_kw).set_name('end_if_stmt')
 
+print_sep = semicolon | comma
+print_stmt = (
+    print_kw.suppress() +
+    (expr[0, 1] + print_sep)[...]
+    + expr[0, 1]
+).set_name('print_stmt')
+
 var_decl = Located(Group(
     identifier +
     (
@@ -268,6 +277,7 @@ stmt = Located(
     end_sub_stmt |
     exit_sub_stmt |
     goto_stmt |
+    print_stmt |
     rem_stmt
 ).set_name('stmt')
 
@@ -461,6 +471,12 @@ def parse_elseif(toks):
 @parse_action(end_if_stmt)
 def parse_end_if(toks):
     return EndIfStmt()
+
+
+@parse_action(print_stmt)
+def parse_print(toks):
+    items = list(toks)
+    return PrintStmt(items)
 
 
 @parse_action(data_stmt)
