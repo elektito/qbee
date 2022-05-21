@@ -119,11 +119,13 @@ final form which might be in the form ('push1&',).
     @property
     def final(self):
         op = self.op.name.lower()
-        if op == 'push' and self.args[0] in (1, 0, -1):
+        if op == 'push' and self.args[0] in (-2, -1, 0, 1, 2):
             op = {
+                2: 'push2',
                 1: 'push1',
                 0: 'push0',
                 -1: 'pushm1',
+                -2: 'pushm2',
             }[self.args[0]]
             args = ()
         else:
