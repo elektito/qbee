@@ -533,6 +533,32 @@ def gen_cls(node, code, codegen):
     code.add(('io', 'screen', 'cls'))
 
 
+@QvmCodeGen.generator_for(stmt.ColorStmt)
+def gen_color(node, code, codegen):
+    if node.foreground is not None:
+        codegen.gen_code_for_node(node.foreground, code)
+        if node.foreground.type != expr.Type.INTEGER:
+            code.add((f'conv{node.foreground.type.type_char}%',))
+    else:
+        code.add(('push%', -1))
+
+    if node.background is not None:
+        codegen.gen_code_for_node(node.background, code)
+        if node.background.type != expr.Type.INTEGER:
+            code.add((f'conv{node.background.type.type_char}%',))
+    else:
+        code.add(('push%', -1))
+
+    if node.border is not None:
+        codegen.gen_code_for_node(node.border, code)
+        if node.border.type != expr.Type.INTEGER:
+            code.add((f'conv{node.border.type.type_char}%',))
+    else:
+        code.add(('push%', -1))
+
+    code.add(('io', 'screen', 'color'))
+
+
 @QvmCodeGen.generator_for(stmt.GotoStmt)
 def gen_goto(node, code, codegen):
     code.add(('jmp', node.canonical_target))

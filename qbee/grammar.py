@@ -14,9 +14,10 @@ from .expr import (
     StringLiteral,
 )
 from .stmt import (
-    AssignmentStmt, BeepStmt, CallStmt, ClsStmt, DataStmt, GotoStmt,
-    IfStmt, ElseClause, IfBeginStmt, ElseStmt, ElseIfStmt, EndIfStmt,
-    PrintStmt, SubStmt, VarDeclClause, EndSubStmt, ExitSubStmt,
+    AssignmentStmt, BeepStmt, CallStmt, ClsStmt, ColorStmt, DataStmt,
+    GotoStmt, IfStmt, ElseClause, IfBeginStmt, ElseStmt, ElseIfStmt,
+    EndIfStmt, PrintStmt, SubStmt, VarDeclClause, EndSubStmt,
+    ExitSubStmt,
 )
 from .program import Program, Label, LineNo, Line
 
@@ -36,6 +37,7 @@ as_kw = CaselessKeyword('as')
 beep_kw = CaselessKeyword('beep')
 call_kw = CaselessKeyword('call')
 cls_kw = CaselessKeyword('cls')
+color_kw = CaselessKeyword('color')
 data_kw = CaselessKeyword('data')
 double_kw = CaselessKeyword('double')
 else_kw = CaselessKeyword('else')
@@ -200,6 +202,15 @@ call_stmt = (
 
 cls_stmt = cls_kw
 
+color_stmt = (
+    (color_kw.suppress() + expr + comma + expr) |
+    (color_kw.suppress() + expr + comma + expr + comma - expr) |
+    (color_kw.suppress() + expr + comma + comma - expr) |
+    (color_kw.suppress() + comma + expr) |
+    (color_kw.suppress() + comma + comma - expr) |
+    (color_kw.suppress() - expr)
+).set_name('color_stmt')
+
 goto_stmt = goto_kw.suppress() - (identifier_name | line_no_value)
 
 else_clause = Located(
@@ -263,6 +274,7 @@ stmt = Located(
     beep_stmt |
     call_stmt |
     cls_stmt |
+    color_stmt |
 
     # the order of the following is important. in particular, if_stmt
     # must be before if_block_begin.
@@ -417,6 +429,18 @@ def parse_call(toks):
 @parse_action(cls_stmt)
 def parse_cls(toks):
     return ClsStmt()
+
+
+@parse_action(color_stmt)
+def parse_color(toks):
+    colors = []
+    for tok in toks:
+        if tok == ',':
+            colors.append(None)
+        else:
+            colors.append(tok)
+    colors += [None] * (3 - len(colors))
+    return ColorStmt(*colors)
 
 
 @parse_action(goto_stmt)

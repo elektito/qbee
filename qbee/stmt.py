@@ -82,6 +82,32 @@ class ClsStmt(NoChildStmt):
         return '<ClsStmt>'
 
 
+class ColorStmt(Stmt):
+    def __init__(self, foreground, background, border):
+        self.foreground = foreground
+        self.background = background
+        self.border = border
+
+    @property
+    def children(self):
+        ret = []
+        if self.foreground is not None:
+            ret.append(self.foreground)
+        if self.background is not None:
+            ret.append(self.background)
+        if self.border is not None:
+            ret.append(self.border)
+        return ret
+
+    def replace_child(self, old_child, new_child):
+        if self.foreground == old_child:
+            self.foreground = new_child
+        elif self.background == old_child:
+            self.background == new_child
+        elif self.border == old_child:
+            self.border = new_child
+
+
 class GotoStmt(NoChildStmt):
     def __init__(self, target):
         self.target = target
