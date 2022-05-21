@@ -251,6 +251,37 @@ class EndIfStmt(NoChildStmt):
         return '<EndIfStmt>'
 
 
+class InputStmt(Stmt):
+    def __init__(self, same_line: bool, prompt: str,
+                 prompt_question: bool, var_list: list):
+        self.same_line = same_line
+        self.prompt = prompt
+        self.prompt_question = prompt_question
+        self.var_list = var_list
+
+    def __repr__(self):
+        return (
+            f'<InputStmt "{self.prompt}" {len(self.var_list)} var(s)>'
+        )
+
+    @property
+    def children(self):
+        return [self.prompt] + self.var_list
+
+    def replace_child(self, old_child, new_child):
+        if self.prompt == old_child:
+            self.prompt = new_child
+            return
+
+        for i in range(len(self.var_list)):
+            if self.var_list[i] == old_child:
+                self.var_list[i] = new_child
+                return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
+
+
 class PrintStmt(Stmt):
     def __init__(self, items):
         self.items = items

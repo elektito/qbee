@@ -16,7 +16,7 @@ from .expr import (
 from .stmt import (
     AssignmentStmt, BeepStmt, CallStmt, ClsStmt, ColorStmt, DataStmt,
     GotoStmt, IfStmt, ElseClause, IfBeginStmt, ElseStmt, ElseIfStmt,
-    EndIfStmt, PrintStmt, SubStmt, VarDeclClause, EndSubStmt,
+    EndIfStmt, InputStmt, PrintStmt, SubStmt, VarDeclClause, EndSubStmt,
     ExitSubStmt,
 )
 from .program import Program, Label, LineNo, Line
@@ -47,6 +47,7 @@ exit_kw = CaselessKeyword('exit')
 eqv_kw = CaselessKeyword('eqv')
 goto_kw = CaselessKeyword('goto')
 if_kw = CaselessKeyword('if')
+input_kw = CaselessKeyword('input')
 imp_kw = CaselessKeyword('imp')
 integer_kw = CaselessKeyword('integer')
 let_kw = CaselessKeyword('let')
@@ -178,9 +179,10 @@ data_stmt = (
 
 rem_stmt = (rem_kw + SkipTo(LineEnd())).suppress().set_name('rem_stmt')
 
+lvalue = (identifier).set_name('lvalue')
 assignment_stmt = (
     let_kw[0, 1].suppress() +
-    identifier +
+    lvalue +
     eq.suppress() -
     expr
 ).set_name('assignment')
@@ -239,6 +241,16 @@ elseif_stmt = (
 else_stmt = (else_kw).set_name('else_stmt')
 end_if_stmt = (end_kw + if_kw).set_name('end_if_stmt')
 
+input_stmt = (
+    input_kw.suppress() -
+    semicolon[0, 1] +
+    (
+        string_literal[0, 1] +
+        (semicolon | comma)
+    )[0, 1] +
+    delimited_list(lvalue, delim=',')
+).set_name('input_stmt')
+
 print_sep = semicolon | comma
 print_stmt = (
     print_kw.suppress() +
@@ -289,6 +301,7 @@ stmt = Located(
     end_sub_stmt |
     exit_sub_stmt |
     goto_stmt |
+    input_stmt |
     print_stmt |
     rem_stmt
 ).set_name('stmt')
@@ -495,6 +508,25 @@ def parse_elseif(toks):
 @parse_action(end_if_stmt)
 def parse_end_if(toks):
     return EndIfStmt()
+
+
+@parse_action(input_stmt)
+def parse_input(toks):
+    same_line = False
+    if toks[0] == ';':
+        same_line = True
+        toks.pop(0)
+
+    prompt = StringLiteral('')
+    prompt_question = True
+    if isinstance(toks[0], StringLiteral):
+        prompt = toks.pop(0)
+        sep = toks.pop(0)
+        prompt_question = (sep == ';')
+
+    var_list = list(toks)
+
+    return InputStmt(same_line, prompt, prompt_question, var_list)
 
 
 @parse_action(print_stmt)

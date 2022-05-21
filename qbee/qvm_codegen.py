@@ -103,6 +103,11 @@ final form which might be in the form ('push1&',).
 
         self.op = Op[op.upper()]
 
+        if self.op == Op.PUSH and self.type == expr.Type.STRING:
+            if not self.args[0].startswith('"') or \
+               not self.args[0].endswith('"'):
+                raise InternalError('push$ argument should be quoted')
+
     @property
     def op(self):
         return self._op
@@ -597,6 +602,23 @@ def gen_if_stmt(node, code, codegen):
         for stmt in node.else_clause.stmts:
             codegen.gen_code_for_node(stmt, code)
     code.add(('_label', endif_label))
+
+
+@QvmCodeGen.generator_for(stmt.InputStmt)
+def gen_input(node, code, codegen):
+    same_line = -1 if node.same_line else 0
+    prompt_question = -1 if node.prompt_question else 0
+    code.add(('push%', same_line))
+    code.add(('push$', f'"{node.prompt.value}"'))
+    code.add(('push%', prompt_question))
+
+    code.add(('push%', len(node.var_list)))
+    for var in node.var_list:
+        code.add(('push%', var.type.value))
+    code.add(('io', 'keyboard', 'input'))
+
+    for var in node.var_list:
+        code.add((f'store{var.type.type_char}', var.name))
 
 
 @QvmCodeGen.generator_for(stmt.PrintStmt)
