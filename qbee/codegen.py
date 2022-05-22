@@ -27,7 +27,8 @@ class CodeGen:
 
 
 class CodeGenMetaclass(type):
-    """Metaclass for all code generator classes, applied through the base
+    """
+Metaclass for all code generator classes, applied through the base
 class BaseCodeGen. It expects two arguments, 'cg_name' and 'code_class',
 to be passed to the class.
 
