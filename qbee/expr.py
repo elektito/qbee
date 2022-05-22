@@ -387,7 +387,8 @@ class BinaryOp(Expr):
         left = self.type.py_type(self.left.eval())
         right = self.type.py_type(self.right.eval())
 
-        if self.left == Type.INTEGER and self.right == Type.INTEGER:
+        if self.left.type == Type.INTEGER and \
+           self.right.type == Type.INTEGER:
             mask = 0xffff
         else:
             mask = 0xffff_ffff
