@@ -28,6 +28,39 @@ class NoChildStmt(Stmt):
         pass
 
 
+class VarDeclClause(NoChildStmt):
+    def __init__(self, name, var_type_name):
+        self.name = name
+        self.var_type_name = var_type_name
+
+    def __repr__(self):
+        type_desc = ''
+        if self.var_type_name:
+            type_desc = f' as {self.var_type_name}'
+        return f'<VarDeclClause {self.name}{type_desc}>'
+
+    @property
+    def type(self):
+        if self.var_type_name:
+            return {
+                'integer': Type.INTEGER,
+                'long': Type.LONG,
+                'single': Type.SINGLE,
+                'double': Type.DOUBLE,
+                'string': Type.STRING
+            }.get(self.var_type_name, Type.USER_DEFINED)
+
+        # parameter default types are based on the DEF* statements in
+        # the module level
+        top_level_routine = self.compiler.routines['_main']
+        return self.compiler.get_identifier_type(
+            self.name, top_level_routine)
+
+    @classmethod
+    def type_name(cls):
+        return 'VAR CLAUSE'
+
+
 class AssignmentStmt(Stmt):
     def __init__(self, lvalue, rvalue):
         self.lvalue = lvalue
@@ -106,6 +139,31 @@ class ColorStmt(Stmt):
             self.background == new_child
         elif self.border == old_child:
             self.border = new_child
+
+
+class DimStmt(Stmt):
+    def __init__(self, var_decls):
+        assert all(
+            isinstance(decl, VarDeclClause)
+            for decl in var_decls
+        )
+        self.var_decls = var_decls
+
+    def __repr__(self):
+        return f'<DimStmt {self.var_decls}>'
+
+    @property
+    def children(self):
+        return self.var_decls
+
+    def replace_child(self, old_child, new_child):
+        for i in range(len(self.var_decls)):
+            if self.var_decls[i] == old_child:
+                self.var_decls[i] = new_child
+                return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
 
 
 class GotoStmt(NoChildStmt):
@@ -310,39 +368,6 @@ class DataStmt(NoChildStmt):
 
     def __repr__(self):
         return '<DataStmt>'
-
-
-class VarDeclClause(NoChildStmt):
-    def __init__(self, name, var_type_name):
-        self.name = name
-        self.var_type_name = var_type_name
-
-    def __repr__(self):
-        type_desc = ''
-        if self.var_type_name:
-            type_desc = f' as {self.var_type_name}'
-        return f'<VarDeclClause {self.name}{type_desc}>'
-
-    @property
-    def type(self):
-        if self.var_type_name:
-            return {
-                'integer': Type.INTEGER,
-                'long': Type.LONG,
-                'single': Type.SINGLE,
-                'double': Type.DOUBLE,
-                'string': Type.STRING
-            }.get(self.var_type_name, Type.USER_DEFINED)
-
-        # parameter default types are based on the DEF* statements in
-        # the module level
-        top_level_routine = self.compiler.routines['_main']
-        return self.compiler.get_identifier_type(
-            self.name, top_level_routine)
-
-    @classmethod
-    def type_name(cls):
-        return 'VAR CLAUSE'
 
 
 class SubStmt(Stmt):

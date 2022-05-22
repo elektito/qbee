@@ -20,6 +20,7 @@ class Routine:
         self.name = name
         self.type = type
         self.params = params
+        self.local_vars: dict[str, VarDecl] = {}
         self.labels = set()
         self.variables = set()
 
@@ -76,6 +77,12 @@ into account the DEF* statements and the DIM statements in the routine.
         if Type.is_type_char(var[-1]):
             return Type.from_type_char(var[-1])
         else:
+            # remove this when we add support for global variables
+            assert not self.is_var_global(var)
+
+            if var in routine.local_vars:
+                return routine.local_vars[var].type
+
             # for now DEF* statements are not supported, so always the
             # default type
             return Type.SINGLE
@@ -189,6 +196,14 @@ into account the DEF* statements and the DIM statements in the routine.
                 raise CompileError(EC.TYPE_MISMATCH,
                                    msg=error_msg,
                                    node=arg)
+
+    def _compile_dim_pass1_pre(self, node):
+        for decl in node.var_decls:
+            if decl.name in self.cur_routine.local_vars:
+                raise CompileError(
+                    EC.DUPLICATE_DEFINITION,
+                    node=decl)
+            self.cur_routine.local_vars[decl.name] = decl
 
     def _compile_sub_block_pass1_pre(self, node):
         if self.cur_routine.name != '_main':

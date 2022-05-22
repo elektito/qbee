@@ -15,9 +15,9 @@ from .expr import (
 )
 from .stmt import (
     AssignmentStmt, BeepStmt, CallStmt, ClsStmt, ColorStmt, DataStmt,
-    GotoStmt, IfStmt, ElseClause, IfBeginStmt, ElseStmt, ElseIfStmt,
-    EndIfStmt, InputStmt, PrintStmt, SubStmt, VarDeclClause, EndSubStmt,
-    ExitSubStmt
+    DimStmt, GotoStmt, IfStmt, ElseClause, IfBeginStmt, ElseStmt,
+    ElseIfStmt, EndIfStmt, InputStmt, PrintStmt, SubStmt,
+    VarDeclClause, EndSubStmt, ExitSubStmt
 )
 from .program import Program, Label, LineNo, Line
 
@@ -39,6 +39,7 @@ call_kw = CaselessKeyword('call')
 cls_kw = CaselessKeyword('cls')
 color_kw = CaselessKeyword('color')
 data_kw = CaselessKeyword('data')
+dim_kw = CaselessKeyword('dim')
 double_kw = CaselessKeyword('double')
 else_kw = CaselessKeyword('else')
 elseif_kw = CaselessKeyword('elseif')
@@ -245,6 +246,19 @@ color_stmt = (
     (color_kw.suppress() - expr)
 ).set_name('color_stmt')
 
+var_decl = Located(
+    (
+        untyped_identifier +
+        as_kw +
+        type_name
+    ) |
+    identifier
+).set_name('var_decl')
+dim_stmt =(
+    dim_kw.suppress() -
+    delimited_list(var_decl, delim=comma)
+).set_name('dim_stmt')
+
 goto_stmt = goto_kw.suppress() - (untyped_identifier | line_no_value)
 
 else_clause = Located(
@@ -290,15 +304,7 @@ print_stmt = (
     + expr[0, 1]
 ).set_name('print_stmt')
 
-param_decl = (
-    (
-        untyped_identifier +
-        as_kw +
-        type_name
-    ) |
-    identifier
-).set_name('param_decl')
-param_list = delimited_list(param_decl, delim=comma)
+param_list = delimited_list(var_decl, delim=comma)
 sub_stmt = (
     sub_kw.suppress() -
     untyped_identifier +
@@ -319,6 +325,8 @@ stmt = Located(
     call_stmt |
     cls_stmt |
     color_stmt |
+    data_stmt |
+    dim_stmt |
 
     # the order of the following is important. in particular, if_stmt
     # must be before if_block_begin.
@@ -328,7 +336,6 @@ stmt = Located(
     elseif_stmt |
     end_if_stmt |
 
-    data_stmt |
     sub_stmt |
     end_sub_stmt |
     exit_sub_stmt |
@@ -488,6 +495,12 @@ def parse_color(toks):
     return ColorStmt(*colors)
 
 
+@parse_action(dim_stmt)
+def parse_dim(toks):
+    var_decls = list(toks)
+    return DimStmt(var_decls)
+
+
 @parse_action(goto_stmt)
 def parse_goto(toks):
     target = toks[0]
@@ -612,8 +625,10 @@ def parse_sub_stmt(toks):
     return SubStmt(name, params)
 
 
-@parse_action(param_decl)
+@parse_action(var_decl)
 def parse_var_decl(toks):
+    loc_start, toks, loc_end = toks
+
     if len(toks) == 1:
         name = toks[0]
         type_name = None
@@ -625,6 +640,8 @@ def parse_var_decl(toks):
                 msg='Variable name cannot end with a type char')
 
     clause = VarDeclClause(name, type_name)
+    clause.loc_start = loc_start
+    clause.loc_end = loc_end
 
     return clause
 
