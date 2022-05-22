@@ -177,8 +177,17 @@ into account the DEF* statements and the DIM statements in the routine.
 
         for param, arg in zip(routine.params, node.args):
             if not arg.type.is_coercible_to(param.type):
+                expected_type_name = param.type.name
+                if param.type == Type.USER_DEFINED:
+                    expected_type_name = 'user-defined type '
+                    expected_type_name += param.type.user_type_name
+                error_msg = (
+                    f'Argument type mismatch: '
+                    f'expected {expected_type_name}, '
+                    f'got {arg.type.name}'
+                )
                 raise CompileError(EC.TYPE_MISMATCH,
-                                   msg='Argument type mismatch',
+                                   msg=error_msg,
                                    node=arg)
 
     def _compile_sub_block_pass1_pre(self, node):
