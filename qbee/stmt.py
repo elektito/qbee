@@ -325,7 +325,7 @@ class VarDeclClause(NoChildStmt):
 
     @property
     def type(self):
-        if self.type_name:
+        if self.var_type_name:
             return {
                 'integer': Type.INTEGER,
                 'long': Type.LONG,
@@ -334,7 +334,11 @@ class VarDeclClause(NoChildStmt):
                 'string': Type.STRING
             }.get(self.var_type_name, Type.USER_DEFINED)
 
-        return self.compiler.get_variable_type(self.name)
+        # parameter default types are based on the DEF* statements in
+        # the module level
+        top_level_routine = self.compiler.routines['_main']
+        return self.compiler.get_identifier_type(
+            self.name, top_level_routine)
 
     @classmethod
     def type_name(cls):

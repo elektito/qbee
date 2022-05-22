@@ -58,6 +58,12 @@ class Compiler:
         "Return whether the given name is a const or not"
         return False
 
+    def get_identifier_type(self, identifier: str, routine: Routine):
+        # DEF* statements not supported yet. when support is added,
+        # the "routine" parameter needs to be used, because DEF*
+        # statements are local to the current routine.
+        return Type.SINGLE
+
     def get_variable_type(self, var: str, routine: Routine) -> Type:
         """
 Return the type of the given variable name, in the given routine, taking
