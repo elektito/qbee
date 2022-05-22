@@ -371,15 +371,23 @@ def gen_num_literal(node, code, codegen):
     code.add((f'push{node.type.type_char}', node.value))
 
 
-@QvmCodeGen.generator_for(expr.Identifier)
-def gen_identifier(node, code, codegen):
-    identifier_type = codegen.compiler.get_identifier_type(node.name)
-    type_char = identifier_type.type_char
-    if codegen.compiler.is_var_global(node.name):
+@QvmCodeGen.generator_for(expr.Lvalue)
+def gen_lvalue(node, code, codegen):
+    # notice that this function is only called for reading lvalues;
+    # writing is performed in other code generators like those for
+    # assignment, input, etc.
+
+    # just so we won't forget updating here when arrays and dotted
+    # variables are supported.
+    assert not node.array_indices
+    assert not node.dotted_vars
+
+    type_char = node.type.type_char
+    if codegen.compiler.is_var_global(node.base_var):
         scope = 'g' # global
     else:
         scope = 'l' # local
-    code.add((f'read{scope}{type_char}', node.name))
+    code.add((f'read{scope}{type_char}', node.base_var))
 
 
 @QvmCodeGen.generator_for(expr.BinaryOp)
@@ -510,12 +518,17 @@ def gen_assignment(node, code, codegen):
         src_type_char = node.rvalue.type.type_char
         code.add((f'conv{src_type_char}{dest_type_char}',))
 
-    if codegen.compiler.is_var_global(node.lvalue.name):
+    # just so we won't forget updating here when arrays and dotted
+    # variables are supported.
+    assert not node.lvalue.array_indices
+    assert not node.lvalue.dotted_vars
+
+    if codegen.compiler.is_var_global(node.lvalue.base_var):
         scope = 'g' # global
     else:
         scope = 'l' # local
 
-    code.add((f'store{scope}{dest_type_char}', node.lvalue.name))
+    code.add((f'store{scope}{dest_type_char}', node.lvalue.base_var))
 
 
 @QvmCodeGen.generator_for(stmt.BeepStmt)
@@ -618,7 +631,16 @@ def gen_input(node, code, codegen):
     code.add(('io', 'keyboard', 'input'))
 
     for var in node.var_list:
-        code.add((f'store{var.type.type_char}', var.name))
+        # just so we won't forget updating here when arrays and dotted
+        # variables are supported.
+        assert not var.array_indices
+        assert not var.dotted_vars
+
+        if codegen.compiler.is_var_global(var):
+            scope = 'g'
+        else:
+            scope = 'l'
+        code.add((f'store{scope}{var.type.type_char}', var.base_var))
 
 
 @QvmCodeGen.generator_for(stmt.PrintStmt)

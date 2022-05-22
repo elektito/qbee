@@ -40,7 +40,9 @@ def parse_string(input_string):
                         msg=(f'{block_end.type_name()} without '
                              f'{expected_start.type_name()}'))
                 block_start, prev_body = entered_blocks.pop()
-                block = Block.create(block_start, block_end, cur_block_body)
+                block = Block.create(block_start,
+                                     block_end,
+                                     cur_block_body)
                 prev_body.append(block)
                 cur_block_body = prev_body
             else:

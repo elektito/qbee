@@ -1,5 +1,5 @@
 from .stmt import Stmt, AssignmentStmt, IfBlock, SubBlock, ExitSubStmt
-from .expr import Type, Expr, BinaryOp, UnaryOp, Identifier
+from .expr import Type, Expr, BinaryOp, UnaryOp, Lvalue
 from .program import Label, LineNo
 from .codegen import CodeGen
 from .exceptions import ErrorCode as EC, InternalError, CompileError
@@ -57,14 +57,17 @@ class Compiler:
         "Return whether the given name is a const or not"
         return False
 
-    def get_identifier_type(self, name: str) -> Type:
-        """Return the type of the given name, taking into account the DEF*
-        statements encountered so far.
-
+    def get_variable_type(self, var: str, routine: Routine) -> Type:
+        """
+Return the type of the given variable name, in the given routine, taking
+into account the DEF* statements and the DIM statements in the routine.
         """
 
-        if Type.is_type_char(name[-1]):
-            return Type.from_type_char(name[-1])
+        assert isinstance(var, str)
+        assert isinstance(routine, Routine)
+
+        if Type.is_type_char(var[-1]):
+            return Type.from_type_char(var[-1])
         else:
             # for now DEF* statements are not supported, so always the
             # default type
@@ -89,10 +92,10 @@ class Compiler:
 
         for node in tree.children:
             if _pass == 1:
-                node.parent_routine = self.cur_routine
+                self._set_parent_routine(node, self.cur_routine)
 
             # Recurse the children
-            if isinstance(node, (Stmt, Expr, Label, LineNo)):
+            if isinstance(node, (Stmt, Expr, Label, LineNo, Lvalue)):
                 self._compile_tree(node, _pass)
             else:
                 raise InternalError(
@@ -110,6 +113,11 @@ class Compiler:
         func_name = f'_compile_{type_name}_pass{_pass}_{pre_or_pos}'
         func = getattr(self, func_name, None)
         return func
+
+    def _set_parent_routine(self, node, routine):
+        node.parent_routine = routine
+        for child in node.children:
+            self._set_parent_routine(child, routine)
 
     def _compile_label_pass1_pre(self, node):
         if node.name in self.all_labels:

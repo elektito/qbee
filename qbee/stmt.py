@@ -333,7 +333,7 @@ class VarDeclClause(NoChildStmt):
                 'string': Type.STRING
             }.get(self.type_name, Type.USER_DEFINED)
 
-        return self.compiler.get_identifier_type(self.name)
+        return self.compiler.get_variable_type(self.name)
 
     @classmethod
     def type_name(cls):
@@ -342,6 +342,7 @@ class VarDeclClause(NoChildStmt):
 
 class SubStmt(Stmt):
     def __init__(self, name, params):
+        assert all(isinstance(p, VarDeclClause) for p in params)
         self.name = name
         self.params = params
 
@@ -350,16 +351,10 @@ class SubStmt(Stmt):
 
     @property
     def children(self):
-        return self.params
+        return []
 
     def replace_child(self, old_child, new_child):
-        for i in range(len(self.params)):
-            if self.params[i] == old_child:
-                self.params[i] = new_child
-                return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
+        return
 
 
 class EndSubStmt(NoChildStmt):

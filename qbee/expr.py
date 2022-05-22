@@ -1,6 +1,6 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-from .exceptions import InternalError
+from .exceptions import InternalError, CompileError
 from .node import Node
 from .utils import split_camel
 
@@ -60,7 +60,7 @@ class Type(Enum):
     @property
     def type_char(self):
         if self == Type.USER_DEFINED or self == Type.UNKNOWN:
-            raise ValueError('Cannot get type_char of {self}')
+            raise ValueError(f'Cannot get type_char of {self}')
 
         return {
             Type.INTEGER: '%',
@@ -473,43 +473,97 @@ class UnaryOp(Expr):
         return value
 
 
-class Identifier(Expr):
+class Lvalue(Expr):
     is_literal = False
 
-    def __init__(self, name):
-        self.original_name = name
+    def __init__(self, base_var, array_indices, dotted_vars):
+        # x
+        # Lvalue(base_var='x', array_indices=[], dotted_vars=[])
+        #
+        # x$
+        # Lvalue(base_var='x$', array_indices=[], dotted_vars=[])
+        #
+        # x.y.z
+        # Lvalue(base_var='x', array_indices=[], dotted_vars=['y', 'z'])
+        #
+        # x(1, 2)
+        # Lvalue(base_var='x',
+        #        array_indices=[NumericLiteral(1), NumericLiteral(2)],
+        #        dotted_vars=['y', 'z'])
+        #
+        # x(5).y
+        # Lvalue(base_var='x',
+        #        array_indices=[NumericLiteral(5)],
+        #        dotted_vars=['y'])
 
-    def __repr__(self):
-        return f'<Identifier {self.original_name}>'
+        assert isinstance(base_var, str)
+        assert isinstance(array_indices, list)
+        assert isinstance(dotted_vars, list)
 
-    def replace_child(self, old_child, new_child):
-        pass
-
-    @property
-    def children(self):
-        return []
-
-    @property
-    def type(self):
-        return self.compiler.get_identifier_type(self.original_name)
+        self.base_var = base_var
+        self.array_indices = array_indices
+        self.dotted_vars = dotted_vars
 
     @property
     def is_const(self):
-        return self.compiler.is_const(self.name)
+        if self.array_indices or self.dotted_vars:
+            return False
+
+        return self.compiler.is_const(self.base_var)
+
+    @property
+    def type(self):
+        var_type = self.compiler.get_variable_type(
+            self.base_var,
+            self.parent_routine)
+
+        # No handling needed for when base variable is an array, since
+        # the return value of get_variable_type should already have
+        # is_array set properly.
+
+        if self.dotted_vars and var_type != Type.USER_DEFINED:
+            # special case: QBASIC allows a name like x.y.z as a
+            # single variable name, as long as x is not defined as a
+            # user-defined type.
+            var_name = self.base_var + '.'.join(self.dotted_vars)
+            return self.compiler.get_variable_type(
+                var_name,
+                self.parent_routine)
+
+        for var in self.dotted_vars:
+            if var_type != Type.USER_DEFINED:
+                raise CompileError(
+                    EC.INVALID_IDENTIFIER,
+                    'Identifier cannot include period',
+                    node=self)
+            var_type = self.compiler.get_user_type_field_type(
+                var_type.user_type_name, var)
+
+        return var_type
+
+    @property
+    def children(self):
+        return self.array_indices
+
+    def replace_child(self, old_child, new_child):
+        for i in range(len(self.array_indices)):
+            if self.array_indices[i] == old_child:
+                self.array_indices[i] = new_child
+                return
+
+        raise InternalError('No such child to replace')
 
     def eval(self):
         if not self.is_const:
             raise InternalError(
                 'Attempting to evaluate non-const expression')
 
-        return self.compiler.get_const_value(self.name)
+        return self.compiler.get_const_value(self.base_var)
 
-    @property
-    def name(self):
-        if Type.is_type_char(self.original_name[-1]):
-            return self.original_name
 
-        return self.original_name + self.type.type_char
+class Variable(Expr):
+    is_literal = False
+    is_const = False
 
 
 class StringLiteral(Expr):
@@ -520,7 +574,7 @@ class StringLiteral(Expr):
         self.value = value
 
     def __repr__(self):
-        return f'<StringLiteral {self.value}>'
+        return f'<StringLiteral "{self.value}">'
 
     @property
     def type(self):

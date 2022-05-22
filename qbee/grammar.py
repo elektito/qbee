@@ -5,19 +5,19 @@ from functools import reduce
 from pyparsing import (
     ParserElement, CaselessKeyword, Literal, Regex, LineEnd, StringEnd,
     Word, Forward, FollowedBy, PrecededBy, White, Group, Empty, Located,
-    SkipTo, Combine, ParseException, ParseSyntaxException, alphas,
+    SkipTo, Combine, Opt, ParseException, ParseSyntaxException, alphas,
     alphanums, delimited_list, lineno,
 )
 from .exceptions import SyntaxError
 from .expr import (
-    Type, Operator, NumericLiteral, Identifier, BinaryOp, UnaryOp,
+    Type, Operator, NumericLiteral, BinaryOp, UnaryOp, Lvalue,
     StringLiteral,
 )
 from .stmt import (
     AssignmentStmt, BeepStmt, CallStmt, ClsStmt, ColorStmt, DataStmt,
     GotoStmt, IfStmt, ElseClause, IfBeginStmt, ElseStmt, ElseIfStmt,
     EndIfStmt, InputStmt, PrintStmt, SubStmt, VarDeclClause, EndSubStmt,
-    ExitSubStmt,
+    ExitSubStmt
 )
 from .program import Program, Label, LineNo, Line
 
@@ -88,6 +88,7 @@ eq = Literal('=')
 comma = Literal(',')
 colon = Literal(':')
 semicolon = Literal(';')
+dot = Literal('.')
 lpar = Literal("(")
 rpar = Literal(")")
 plus = Literal('+')
@@ -107,23 +108,37 @@ numeric_literal = (
 
 string_literal = Regex(r'"[^"]*"')
 
-identifier_name = Word(alphas, alphanums)
+untyped_identifier = (
+    ~keyword + Word(alphas, alphanums)
+)
+typed_identifier = Combine(untyped_identifier + type_char)
 identifier = (
-    ~keyword + Combine(identifier_name - type_char[0, 1])
+    typed_identifier |
+    untyped_identifier
 ).set_name('identifier')
 
-# Arithmetic Expressions
+type_name = (
+    integer_kw |
+    long_kw |
+    single_kw |
+    double_kw |
+    string_kw |
+    untyped_identifier
+).set_name('type_name')
 
+# Expressions
+
+lvalue = Forward().set_name('lvalue')
 expr = Forward().set_name('expr')
-expr_list = delimited_list(expr, delim=',')
-func_call = identifier + lpar - Group(expr_list) + rpar
+
+expr_list = delimited_list(expr, delim=',', min=1)
 paren_expr = (
     lpar.suppress() - expr + rpar.suppress()
 )
 atom = (
     addsub_op[...] +
     (
-        (func_call | numeric_literal | string_literal | identifier) |
+        (lvalue | numeric_literal | string_literal) |
         paren_expr
     )
 )
@@ -148,6 +163,21 @@ xor_expr = or_expr - (xor_kw - or_expr)[...]
 eqv_expr = xor_expr - (xor_kw - xor_expr)[...]
 imp_expr = eqv_expr - (eqv_kw - eqv_expr)[...]
 expr <<= Located(imp_expr)
+
+array_indices = Group(
+    lpar.suppress() +
+    expr_list +
+    rpar.suppress()
+)
+dotted_vars = Group(
+    dot.suppress() +
+    delimited_list(untyped_identifier, delim=dot)
+)
+lvalue <<= (
+    identifier +
+    Opt(array_indices, default=[]) +
+    Opt(dotted_vars, default=[])
+).set_name('lvalue')
 
 # Statements
 
@@ -179,7 +209,6 @@ data_stmt = (
 
 rem_stmt = (rem_kw + SkipTo(LineEnd())).suppress().set_name('rem_stmt')
 
-lvalue = (identifier).set_name('lvalue')
 assignment_stmt = (
     let_kw[0, 1].suppress() +
     lvalue +
@@ -199,7 +228,10 @@ call_stmt = (
             rpar.suppress()
         )[0, 1]
     ) |
-    identifier + expr_list[0, 1]
+    (
+        identifier +
+        expr_list[0, 1]
+    )
 ).set_name('call_stmt')
 
 cls_stmt = cls_kw
@@ -213,7 +245,7 @@ color_stmt = (
     (color_kw.suppress() - expr)
 ).set_name('color_stmt')
 
-goto_stmt = goto_kw.suppress() - (identifier_name | line_no_value)
+goto_stmt = goto_kw.suppress() - (untyped_identifier | line_no_value)
 
 else_clause = Located(
     else_kw -
@@ -258,17 +290,18 @@ print_stmt = (
     + expr[0, 1]
 ).set_name('print_stmt')
 
-var_decl = Located(Group(
-    identifier +
-    (
+param_decl = Located(
+    Group(
+        untyped_identifier +
         as_kw +
-        (type_name | identifier)
-    )[0, 1]
-)).set_name('var_decl')
-param_list = delimited_list(var_decl, delim=comma)
+        type_name
+    ) |
+    identifier
+).set_name('param_decl')
+param_list = delimited_list(param_decl, delim=comma)
 sub_stmt = (
     sub_kw.suppress() -
-    identifier_name +
+    untyped_identifier +
     (
         lpar.suppress() +
         param_list +
@@ -276,7 +309,6 @@ sub_stmt = (
     )[0, 1]
 ).set_name('sub_stmt')
 end_sub_stmt = end_kw + sub_kw
-
 exit_sub_stmt = exit_kw + sub_kw
 
 # program
@@ -373,12 +405,6 @@ def parse_num_literal(s, loc, toks):
         raise SyntaxError(loc, 'Illegal number')
 
 
-@parse_action(identifier)
-def parse_identifier(toks):
-    name = toks[0]
-    return Identifier(name)
-
-
 @parse_action(addsub_expr)
 @parse_action(muldiv_expr)
 @parse_action(intdiv_expr)
@@ -423,6 +449,12 @@ def parse_expr_list(toks):
     return list(toks)
 
 
+@parse_action(lvalue)
+def parse_lvalue(toks):
+    base_var, array_indices, dotted_vars = toks
+    return Lvalue(base_var, array_indices, dotted_vars)
+
+
 @parse_action(assignment_stmt)
 def parse_assignment(toks):
     lvalue, expr = toks
@@ -436,7 +468,7 @@ def parse_beep(toks):
 
 @parse_action(call_stmt)
 def parse_call(toks):
-    return CallStmt(toks[0].original_name, toks[1:])
+    return CallStmt(toks[0], toks[1:])
 
 
 @parse_action(cls_stmt)
@@ -580,7 +612,7 @@ def parse_sub_stmt(toks):
     return SubStmt(name, params)
 
 
-@parse_action(var_decl)
+@parse_action(param_decl)
 def parse_var_decl(toks):
     loc_start, (param,), loc_end = toks
 
@@ -646,7 +678,8 @@ def main():
         exit(1)
 
     try:
-        result = rule.parse_string(args.expr, parse_all=not args.not_all)
+        result = rule.parse_string(args.expr,
+                                   parse_all=not args.not_all)
     except (ParseException, ParseSyntaxException) as e:
         print(e.explain())
         exit(1)
