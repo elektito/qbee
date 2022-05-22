@@ -42,6 +42,7 @@ class ErrorCode(Enum):
     ELSE_WITHOUT_IF = 'ELSE without IF'
     SUBPROGRAM_NOT_FOUND = 'Sub-program not found'
     INVALID_IDENTIFIER = 'Invalid identifier'
+    ARGUMENT_COUNT_MISMATCH = 'Argument count mismatch'
 
 
 class CompileError(Exception):

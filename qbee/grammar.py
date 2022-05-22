@@ -290,8 +290,8 @@ print_stmt = (
     + expr[0, 1]
 ).set_name('print_stmt')
 
-param_decl = Located(
-    Group(
+param_decl = (
+    (
         untyped_identifier +
         as_kw +
         type_name
@@ -614,21 +614,17 @@ def parse_sub_stmt(toks):
 
 @parse_action(param_decl)
 def parse_var_decl(toks):
-    loc_start, (param,), loc_end = toks
-
-    if len(param) == 1:
-        name = param[0]
+    if len(toks) == 1:
+        name = toks[0]
         type_name = None
     else:
-        name, _, type_name = param
+        name, _, type_name = toks
         if any(name.endswith(c) for c in Type.type_chars()):
             raise SyntaxError(
                 loc=loc_start,
                 msg='Variable name cannot end with a type char')
 
     clause = VarDeclClause(name, type_name)
-    clause.loc_start = loc_start
-    clause.loc_end = loc_end
 
     return clause
 

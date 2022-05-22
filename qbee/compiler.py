@@ -13,12 +13,13 @@ from . import qvm_codegen
 class Routine:
     "Represents a SUB or a FUNCTION"
 
-    def __init__(self, name, type):
+    def __init__(self, name, type, params):
         type = type.lower()
         assert type in ('sub', 'function', 'toplevel')
 
         self.name = name
         self.type = type
+        self.params = params
         self.labels = set()
         self.variables = set()
 
@@ -30,7 +31,7 @@ class Compiler:
     def __init__(self, optimization_level=0):
         self.optimization_level = optimization_level
 
-        self.cur_routine = Routine('_main', 'toplevel')
+        self.cur_routine = Routine('_main', 'toplevel', params=[])
         self.routines = {'_main': self.cur_routine}
 
         self.all_labels = set()
@@ -163,8 +164,16 @@ into account the DEF* statements and the DIM statements in the routine.
             raise CompileError(EC.SUBPROGRAM_NOT_FOUND,
                                msg='Routine is a FUNCTION not a SUB',
                                node=node)
+        if len(node.args) != len(routine.params):
+            raise CompileError(
+                EC.ARGUMENT_COUNT_MISMATCH,
+                node=node)
 
-        # check arguments too
+        for param, arg in zip(routine.params, node.args):
+            if not arg.type.is_coercible_to(param.type):
+                raise CompileError(EC.TYPE_MISMATCH,
+                                   msg='Argument type mismatch',
+                                   node=arg)
 
     def _compile_sub_block_pass1_pre(self, node):
         if self.cur_routine.name != '_main':
@@ -177,7 +186,7 @@ into account the DEF* statements and the DIM statements in the routine.
                 EC.DUPLICATE_DEFINITION,
                 f'Duplicate sub-routine definition: {node.name}',
                 node=node)
-        routine = Routine(node.name, 'sub')
+        routine = Routine(node.name, 'sub', node.params)
         self.routines[node.name] = routine
         self.cur_routine = routine
 

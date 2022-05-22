@@ -538,8 +538,13 @@ def gen_beep(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.CallStmt)
 def gen_call(node, code, codegen):
-    for arg in node.args:
+    routine = codegen.compiler.routines[node.name]
+    for arg, param in zip(node.args, routine.params):
         codegen.gen_code_for_node(arg, code)
+        if arg.type != param.type:
+            from_type_char = arg.type.type_char
+            to_type_char = param.type.type_char
+            code.add((f'conv{from_type_char}{to_type_char}',))
     code.add(
         ('push%', len(node.args)),
         ('call', node.name),

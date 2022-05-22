@@ -321,8 +321,9 @@ class VarDeclClause(NoChildStmt):
         type_desc = ''
         if self.var_type_name:
             type_desc = f' as {self.var_type_name}'
-        return f'<Var {self.name}{type_desc}>'
+        return f'<VarDeclClause {self.name}{type_desc}>'
 
+    @property
     def type(self):
         if self.type_name:
             return {
@@ -331,7 +332,7 @@ class VarDeclClause(NoChildStmt):
                 'single': Type.SINGLE,
                 'double': Type.DOUBLE,
                 'string': Type.STRING
-            }.get(self.type_name, Type.USER_DEFINED)
+            }.get(self.var_type_name, Type.USER_DEFINED)
 
         return self.compiler.get_variable_type(self.name)
 

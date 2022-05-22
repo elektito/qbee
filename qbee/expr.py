@@ -15,6 +15,25 @@ class Type(Enum):
     USER_DEFINED = 100
     UNKNOWN = 200
 
+    def __init__(self, *args):
+        super().__init__()
+
+        self.user_type_name = None
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        if not isinstance(other, Type):
+            raise TypeError(
+                'Can only compare Type with another Type or with None')
+
+        if self.user_type_name != other.user_type_name:
+            return False
+        return super().__eq__(other)
+
+    def __hash__(self):
+        return super().__hash__()
+
     @staticmethod
     def builtin_types():
         return (
