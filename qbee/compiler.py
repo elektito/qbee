@@ -189,6 +189,7 @@ into account the DEF* statements and the DIM statements in the routine.
         if node.base_var not in self.cur_routine.local_vars:
             # Implicitly defined variable
             decl = VarDeclClause(node.base_var, None)
+            decl.bind(self)
             self.cur_routine.local_vars[node.base_var] = decl
 
             # These are here to make sure we won't forget to check
