@@ -50,7 +50,6 @@ class Node(ABC):
 
     def parents(self):
         if not hasattr(self, 'parent'):
-            print(self)
             raise InternalError(
                 'Cannot get parents of unbound node')
 
