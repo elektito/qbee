@@ -192,10 +192,10 @@ into account the DEF* statements and the DIM statements in the routine.
             decl.bind(self)
             self.cur_routine.local_vars[node.base_var] = decl
 
-            # These are here to make sure we won't forget to check
-            # indices and dotted variables when they're implemented.
-            assert not node.array_indices
-            assert not node.dotted_vars
+        # These are here to make sure we won't forget to check
+        # indices and dotted variables when they're implemented.
+        assert not node.array_indices
+        assert not node.dotted_vars
 
     def _compile_binary_op_pass1_pre(self, node):
         if node.type == Type.UNKNOWN:
