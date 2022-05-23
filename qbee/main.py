@@ -5,6 +5,11 @@ from .exceptions import SyntaxError, CompileError
 from .utils import display_with_context
 
 
+# Import codegen implementations to enable them (this is needed even
+# though we don't directly use the imported module)
+from . import qvm_codegen  # noqa
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Yet another QBASIC compiler',
@@ -38,6 +43,7 @@ def main():
         input_string = f.read()
 
     compiler = Compiler(
+        codegen_name='qvm',
         optimization_level=args.optimize,
     )
 

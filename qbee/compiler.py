@@ -5,10 +5,6 @@ from .codegen import CodeGen
 from .exceptions import ErrorCode as EC, InternalError, CompileError
 from .parser import parse_string
 
-# Import codegen implementations to enable them (this is needed even
-# though we don't directly use the imported module)
-from . import qvm_codegen
-
 
 class Routine:
     "Represents a SUB or a FUNCTION"
@@ -29,14 +25,14 @@ class Routine:
 
 
 class Compiler:
-    def __init__(self, optimization_level=0):
+    def __init__(self, codegen_name, optimization_level=0):
         self.optimization_level = optimization_level
 
         self.cur_routine = Routine('_main', 'toplevel', params=[])
         self.routines = {'_main': self.cur_routine}
 
         self.all_labels = set()
-        self._codegen = CodeGen('qvm', self)
+        self._codegen = CodeGen(codegen_name, self)
 
     def compile(self, input_string):
         tree = parse_string(input_string)
