@@ -148,8 +148,8 @@ exponent_expr <<= atom + (exponent_op + exponent_expr)[...]
 not_expr = Forward()
 unary_expr = (
     addsub_op[1, ...] - exponent_expr |
-    addsub_op[1, ...] - not_expr | # allow combination of the two
-                                   # unaries without parentheses
+    addsub_op[1, ...] - not_expr |  # allow combination of the two
+                                    # unaries without parentheses
     exponent_expr
 )
 muldiv_expr = unary_expr - (muldiv_op - unary_expr)[...]
@@ -254,7 +254,7 @@ var_decl = Located(
     ) |
     identifier
 ).set_name('var_decl')
-dim_stmt =(
+dim_stmt = (
     dim_kw.suppress() -
     delimited_list(var_decl, delim=comma)
 ).set_name('dim_stmt')
@@ -348,7 +348,7 @@ stmt = Located(
 line_prefix = label | line_no
 stmt_group <<= (
     stmt +
-    (colon[1,...].suppress() + stmt)[...] +
+    (colon[1, ...].suppress() + stmt)[...] +
     colon[...].suppress()
 ).set_name('stmt_group')
 line = (
@@ -360,7 +360,9 @@ line = (
     LineEnd()
 ).set_name('line')
 
+
 # --- Parse actions ---
+
 
 def parse_action(rule):
     def wrapper(func):
@@ -536,7 +538,7 @@ def parse_else_stmt(toks):
 @parse_action(else_clause)
 def parse_else_clause(toks):
     loc_start, toks, loc_end = toks
-    stmts = list(toks[1:]) # drop else keyword
+    stmts = list(toks[1:])  # drop else keyword
     else_clause = ElseClause(stmts)
     else_clause.loc_start = loc_start
     else_clause.loc_end = loc_end
@@ -602,7 +604,6 @@ def parse_label(toks):
     label.loc_start = loc_start
     label.loc_end = loc_end
     return label
-
 
 
 @parse_action(line_no)

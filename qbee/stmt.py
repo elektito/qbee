@@ -539,8 +539,6 @@ class IfBlock(Block, start=IfBeginStmt, end=EndIfStmt):
         return cls(if_blocks, else_body)
 
     def replace_child(self, old_child, new_child):
-        blocks = []
-        conds = []
         for i in range(len(self.if_blocks)):
             cond, body = self.if_blocks[i]
             if cond == old_child:

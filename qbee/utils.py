@@ -74,9 +74,9 @@ def display_with_context(text, loc_start, loc_end=None, msg='Error'):
         line = text[i:nl]
         if ((loc_end is not None and
              (i <= loc_start <= nl or
-              (loc_start >=i and
-               loc_end <= nl))) or
-            (loc_end is None and i <= loc_start <= nl)):
+              (loc_start >= i and loc_end <= nl))) or
+            (loc_end is None and i <= loc_start <= nl)
+        ):
             target_lines.append(line)
             target_col = loc_start - i + 1
         elif i < loc_start:

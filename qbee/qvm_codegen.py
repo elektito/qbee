@@ -256,9 +256,7 @@ class QvmCode(BaseCode):
                 continue
 
             # Fold push/unary-op
-            if (prev1.op == Op.PUSH and
-                cur.op in [Op.NOT, Op.NEG]
-            ):
+            if (prev1.op == Op.PUSH and cur.op in [Op.NOT, Op.NEG]):
                 value = prev1.args[0]
                 op = {
                     Op.NOT: expr.Operator.NOT,
@@ -362,7 +360,7 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
 
 @QvmCodeGen.generator_for(expr.StringLiteral)
 def gen_str_literal(node, code, codegen):
-    code.add((f'push$', f'"{node.value}"'))
+    code.add(('push$', f'"{node.value}"'))
 
 
 @QvmCodeGen.generator_for(expr.NumericLiteral)
@@ -382,9 +380,9 @@ def gen_lvalue(node, code, codegen):
     assert not node.dotted_vars
 
     if codegen.compiler.is_var_global(node.base_var):
-        scope = 'g' # global
+        scope = 'g'  # global
     else:
-        scope = 'l' # local
+        scope = 'l'  # local
     code.add((f'read{scope}', node.base_var))
 
 
@@ -394,19 +392,19 @@ def gen_binary_op(node, code, codegen):
     Type = expr.Type
     if node.op in [Operator.ADD, Operator.SUB, Operator.MUL,
                    Operator.DIV, Operator.EXP, Operator.NEG]:
-       # Convert both operands to the type of the resulting expression
-       left_type = node.type
-       right_type = node.type
+        # Convert both operands to the type of the resulting expression
+        left_type = node.type
+        right_type = node.type
     elif node.op.is_comparison:
         # Convert both operands to the bigger type of both
         if node.left.type == Type.DOUBLE or \
            node.right.type == Type.DOUBLE:
             left_type = right_type = Type.DOUBLE
-        elif node.left.type == Type.SINGLE or \
-             node.right.type == Type.SINGLE:
+        elif (node.left.type == Type.SINGLE or
+              node.right.type == Type.SINGLE):
             left_type = right_type = Type.SINGLE
-        elif node.left.type == Type.LONG or \
-             node.right.type == Type.LONG:
+        elif (node.left.type == Type.LONG or
+              node.right.type == Type.LONG):
             left_type = right_type = Type.LONG
         else:
             left_type = right_type = Type.INTEGER
@@ -468,11 +466,11 @@ def gen_binary_op(node, code, codegen):
         if op is not None:
             code.add((op,))
 
+
 @QvmCodeGen.generator_for(expr.UnaryOp)
 def gen_unary_op(node, code, codegen):
     codegen.gen_code_for_node(node.arg, code)
     if node.op == expr.Operator.NEG:
-        type_char = node.arg.type.type_char
         code.add(('neg',))
     elif node.op == expr.Operator.PLUS:
         # no code needed for the unary plus
@@ -489,7 +487,9 @@ def gen_unary_op(node, code, codegen):
             code.add((f'conv{arg_type_char}{result_type_char}',))
         code.add(('not',))
 
+
 # Code generators for statements
+
 
 @QvmCodeGen.generator_for(Label)
 @QvmCodeGen.generator_for(LineNo)
@@ -514,9 +514,9 @@ def gen_assignment(node, code, codegen):
     assert not node.lvalue.dotted_vars
 
     if codegen.compiler.is_var_global(node.lvalue.base_var):
-        scope = 'g' # global
+        scope = 'g'  # global
     else:
-        scope = 'l' # local
+        scope = 'l'  # local
 
     code.add((f'store{scope}', node.lvalue.base_var))
 
@@ -591,13 +591,13 @@ def gen_if_block(node, code, codegen):
         else_label = codegen.get_label('else')
         codegen.gen_code_for_node(cond, code)
         code.add(('jz', else_label))
-        for stmt in body:
-            codegen.gen_code_for_node(stmt, code)
+        for inner_stmt in body:
+            codegen.gen_code_for_node(inner_stmt, code)
         code.add(('jmp', endif_label))
         code.add(('_label', else_label))
 
-    for stmt in node.else_body:
-        codegen.gen_code_for_node(stmt, code)
+    for inner_stmt in node.else_body:
+        codegen.gen_code_for_node(inner_stmt, code)
     code.add(('_label', endif_label))
 
 
@@ -608,13 +608,13 @@ def gen_if_stmt(node, code, codegen):
 
     codegen.gen_code_for_node(node.cond, code)
     code.add(('jz', else_label))
-    for stmt in node.then_stmts:
-        codegen.gen_code_for_node(stmt, code)
+    for inner_stmt in node.then_stmts:
+        codegen.gen_code_for_node(inner_stmt, code)
     code.add(('jmp', endif_label))
     code.add(('_label', else_label))
     if node.else_clause:
-        for stmt in node.else_clause.stmts:
-            codegen.gen_code_for_node(stmt, code)
+        for inner_stmt in node.else_clause.stmts:
+            codegen.gen_code_for_node(inner_stmt, code)
     code.add(('_label', endif_label))
 
 
@@ -660,12 +660,12 @@ def gen_print_stmt(node, code, codegen):
 
 
 @QvmCodeGen.generator_for(stmt.DataStmt)
-def gen_cls(node, code, codegen):
+def gen_data(node, code, codegen):
     code.add_data(node.items, codegen.last_label)
 
 
 @QvmCodeGen.generator_for(stmt.ExitSubStmt)
-def gen_sub_block(node, code, codegen):
+def gen_exit_sub(node, code, codegen):
     code.add(('ret',))
 
 

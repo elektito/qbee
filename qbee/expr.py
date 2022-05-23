@@ -122,7 +122,7 @@ class Operator(Enum):
     CMP_LE = 12
     CMP_GE = 13
     NEG = 14
-    PLUS = 15 # unary +
+    PLUS = 15  # unary +
     NOT = 16
     AND = 17
     OR = 18
@@ -250,7 +250,7 @@ class NumericLiteral(Expr):
 
     DEFAULT_TYPE = Type.SINGLE
 
-    def __init__(self, value, type:Type=None):
+    def __init__(self, value, type: Type = None):
         if type is None:
             type = self.DEFAULT_TYPE
         self._type = type
@@ -375,8 +375,8 @@ class BinaryOp(Expr):
 
         if self.left.type.is_numeric and self.right.type.is_numeric:
             return self._eval_numeric()
-        elif self.left.type == Type.STRING and \
-             self.right.type == Type.STRING:
+        elif (self.left.type == Type.STRING and
+              self.right.type == Type.STRING):
             return self._eval_string()
         else:
             raise InternalError(

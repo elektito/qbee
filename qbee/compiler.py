@@ -20,7 +20,7 @@ class Routine:
         self.name = name
         self.type = type
         self.params = params
-        self.local_vars: dict[str, VarDecl] = {}
+        self.local_vars: dict[str, VarDeclClause] = {}
         self.labels = set()
         self.variables = set()
 
