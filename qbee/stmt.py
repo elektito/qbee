@@ -3,7 +3,7 @@ from .node import Node
 from .expr import Expr, Type
 from .program import LineNo
 from .utils import parse_data, split_camel
-from .exceptions import SyntaxError
+from .exceptions import SyntaxError, InternalError
 
 
 class Stmt(Node):

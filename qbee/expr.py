@@ -1,6 +1,6 @@
 from enum import Enum
-from abc import ABC, abstractmethod
-from .exceptions import InternalError, CompileError
+from abc import abstractmethod
+from .exceptions import ErrorCode as EC, InternalError, CompileError
 from .node import Node
 from .utils import split_camel
 

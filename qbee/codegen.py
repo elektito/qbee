@@ -1,5 +1,3 @@
-from .stmt import Stmt
-from .program import Label
 from .exceptions import InternalError, CodeGenError
 
 

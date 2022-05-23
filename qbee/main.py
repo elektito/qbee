@@ -2,7 +2,7 @@ import argparse
 import sys
 from .compiler import Compiler
 from .exceptions import SyntaxError, CompileError
-from .utils import eprint, display_with_context
+from .utils import display_with_context
 
 
 def main():

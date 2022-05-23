@@ -4,9 +4,9 @@ from functools import wraps
 from functools import reduce
 from pyparsing import (
     ParserElement, CaselessKeyword, Literal, Regex, LineEnd, StringEnd,
-    Word, Forward, FollowedBy, PrecededBy, White, Group, Empty, Located,
-    SkipTo, Combine, Opt, ParseException, ParseSyntaxException, alphas,
-    alphanums, delimited_list, lineno,
+    Word, Forward, FollowedBy, White, Group, Located, SkipTo, Combine,
+    Opt, ParseException, ParseSyntaxException, alphas, alphanums,
+    delimited_list,
 )
 from .exceptions import SyntaxError
 from .expr import (
@@ -19,7 +19,7 @@ from .stmt import (
     ElseIfStmt, EndIfStmt, InputStmt, PrintStmt, SubStmt,
     VarDeclClause, EndSubStmt, ExitSubStmt
 )
-from .program import Program, Label, LineNo, Line
+from .program import Label, LineNo, Line
 
 
 # Enable memoization
