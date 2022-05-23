@@ -512,6 +512,8 @@ class IfBlock(Block, start=IfBeginStmt, end=EndIfStmt):
         then_desc = f'then_blocks={len(self.if_blocks)}'
         if self.else_body:
             else_desc = f'with {len(self.else_body)} stmt(s) in else'
+        else:
+            else_desc = 'with no else'
         return f'<IfBlock {then_desc} {else_desc}>'
 
     @classmethod

@@ -525,6 +525,15 @@ class Lvalue(Expr):
         self.array_indices = array_indices
         self.dotted_vars = dotted_vars
 
+    def __repr__(self):
+        ret = '<Lvalue ' + self.base_var
+        if self.array_indices:
+            ret += f'arridx={self.array_indices}'
+        if self.dotted_vars:
+            ret += 'dots={".".join(self.dotted_vars)}'
+        ret += '>'
+        return ret
+
     @property
     def is_const(self):
         if self.array_indices or self.dotted_vars:
