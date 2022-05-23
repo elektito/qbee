@@ -18,7 +18,6 @@ class Routine:
         self.params = params
         self.local_vars: dict[str, VarDeclClause] = {}
         self.labels = set()
-        self.variables = set()
 
     def __repr__(self):
         return f'<Routine {self.type} {self.name}>'
@@ -187,8 +186,10 @@ into account the DEF* statements and the DIM statements in the routine.
         self.all_labels.add(node.canonical_name)
 
     def _compile_lvalue_pass1_pre(self, node):
-        if node.base_var not in self.cur_routine.variables:
-            self.cur_routine.variables.add(node.base_var)
+        if node.base_var not in self.cur_routine.local_vars:
+            # Implicitly defined variable
+            decl = VarDeclClause(node.base_var, None)
+            self.cur_routine.local_vars[node.base_var] = decl
 
             # These are here to make sure we won't forget to check
             # indices and dotted variables when they're implemented.
