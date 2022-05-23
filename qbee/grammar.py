@@ -478,7 +478,7 @@ def parse_expr_list(toks):
 @parse_action(lvalue)
 def parse_lvalue(toks):
     base_var, array_indices, dotted_vars = toks
-    return Lvalue(base_var, array_indices, dotted_vars)
+    return Lvalue(base_var, array_indices, list(dotted_vars))
 
 
 @parse_action(assignment_stmt)
