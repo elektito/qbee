@@ -237,15 +237,14 @@ class QvmCode(BaseCode):
             # store/read.
             #
             # For example this pair:
-            #    storel# x
-            #    readl#  x
+            #    storel x
+            #    readl  x
             # or this pair:
-            #    readg%  x
-            #    storeg% x
+            #    readg  x
+            #    storeg x
             ops = {cur.op, prev1.op}
             if (ops == {Op.READ, Op.STORE} and
                cur.scope == prev1.scope and
-               cur.type == prev1.type and
                cur.args == prev1.args
             ):
                 # remove both
