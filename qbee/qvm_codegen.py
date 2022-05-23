@@ -174,6 +174,7 @@ class QvmCode(BaseCode):
     def __init__(self):
         self._instrs = []
         self._data = defaultdict(list)
+        self._user_types = []
 
     def __repr__(self):
         return f'<QvmCode {self._instrs}>'
@@ -186,6 +187,9 @@ class QvmCode(BaseCode):
     def add_data(self, data, label):
         for part in data:
             self._data[label].append(part)
+
+    def add_user_type(self, user_type):
+        self._user_types.append(user_type)
 
     def optimize(self):
         i = 0
@@ -321,6 +325,16 @@ class QvmCode(BaseCode):
     def __str__(self):
         s = ';;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
 
+        if self._user_types:
+            s += '.types\n'
+            for user_type in self._user_types:
+                s += f'\n{user_type.name}:\n'
+                for field_name, field_type in user_type.fields:
+                    if field_type == expr.Type.USER_DEFINED:
+                        field_type = field_type.user_type_name
+                    s += f'    {field_type} {field_name}\n'
+            s += '\n'
+
         if self._data:
             s += '.data\n\n'
             for label, data in self._data.items():
@@ -353,6 +367,10 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
         label = f'_{name}_{self.label_counter}'
         self.label_counter += 1
         return label
+
+    def init_code(self, code):
+        for user_type in self.compiler.user_types.values():
+            code.add_user_type(user_type)
 
 
 # Code generators for expressions
@@ -674,3 +692,9 @@ def gen_sub_block(node, code, codegen):
     for inner_stmt in node.block:
         codegen.gen_code_for_node(inner_stmt, code)
     code.add(('ret',))
+
+
+@QvmCodeGen.generator_for(stmt.TypeBlock)
+def gen_type_block(node, code, codegen):
+    # no code for type block
+    pass

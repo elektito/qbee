@@ -17,7 +17,7 @@ from .stmt import (
     AssignmentStmt, BeepStmt, CallStmt, ClsStmt, ColorStmt, DataStmt,
     DimStmt, GotoStmt, IfStmt, ElseClause, IfBeginStmt, ElseStmt,
     ElseIfStmt, EndIfStmt, InputStmt, PrintStmt, SubStmt,
-    VarDeclClause, EndSubStmt, ExitSubStmt
+    VarDeclClause, EndSubStmt, ExitSubStmt, TypeStmt, EndTypeStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -62,6 +62,7 @@ single_kw = CaselessKeyword('single')
 string_kw = CaselessKeyword('string')
 sub_kw = CaselessKeyword('sub')
 then_kw = CaselessKeyword('then')
+type_kw = CaselessKeyword('type')
 xor_kw = CaselessKeyword('xor')
 
 # create a single rule matching all keywords
@@ -304,6 +305,18 @@ print_stmt = (
     + expr[0, 1]
 ).set_name('print_stmt')
 
+type_field_decl = Located(
+    untyped_identifier +
+    as_kw +
+    type_name
+).set_name('type_field_decl')
+
+type_stmt = (
+    type_kw.suppress() -
+    untyped_identifier
+).set_name('type_stmt')
+end_type_stmt = (end_kw + type_kw).set_name('end_type_stmt')
+
 param_list = delimited_list(var_decl, delim=comma)
 sub_stmt = (
     sub_kw.suppress() -
@@ -320,6 +333,10 @@ exit_sub_stmt = exit_kw + sub_kw
 # program
 
 stmt = Located(
+    type_stmt |
+    type_field_decl |  # only valid in type blocks; checked by compiler
+    end_type_stmt |
+
     assignment_stmt |
     beep_stmt |
     call_stmt |
@@ -627,6 +644,7 @@ def parse_sub_stmt(toks):
 
 
 @parse_action(var_decl)
+@parse_action(type_field_decl)
 def parse_var_decl(toks):
     loc_start, toks, loc_end = toks
 
@@ -655,6 +673,16 @@ def parse_end_sub(toks):
 @parse_action(exit_sub_stmt)
 def parse_exit_sub(toks):
     return ExitSubStmt()
+
+
+@parse_action(type_stmt)
+def parse_type_stmt(toks):
+    return TypeStmt(toks[0])
+
+
+@parse_action(end_type_stmt)
+def parse_end_type(toks):
+    return EndTypeStmt()
 
 
 def main():

@@ -370,6 +370,19 @@ class DataStmt(NoChildStmt):
         return '<DataStmt>'
 
 
+class TypeStmt(NoChildStmt):
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return f'<TypeStmt {self.name}>'
+
+
+class EndTypeStmt(NoChildStmt):
+    def __repr__(self):
+        return '<EndTypeStmt>'
+
+
 class SubStmt(Stmt):
     def __init__(self, name, params):
         assert all(isinstance(p, VarDeclClause) for p in params)
@@ -600,3 +613,59 @@ class SubBlock(Block, start=SubStmt, end=EndSubStmt):
     @classmethod
     def create_block(cls, sub_stmt, end_sub_stmt, body):
         return cls(sub_stmt.name, sub_stmt.params, body)
+
+
+class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):
+    def __init__(self, name: str, fields: list):
+        assert isinstance(name, str)
+        assert isinstance(fields, list)
+        assert all(
+            (
+                isinstance(f, tuple) and
+                len(f) == 2 and
+                isinstance(f[0], str) and
+                isinstance(f[1], Type)
+            )
+            for f in fields
+        )
+        self.name = name
+        self.fields = fields
+
+    def __repr__(self):
+        return (
+            f'<TypeBlock {self.name} with {len(self.fields)} field(s)>'
+        )
+
+    @property
+    def children(self):
+        return []
+
+    def replace_child(self, old_child, new_child):
+        pass
+
+    @classmethod
+    def create_block(cls, start_stmt, end_stmt, body):
+        fields = []
+        field_names = []
+        for stmt in body:
+            if not isinstance(stmt, VarDeclClause) or \
+               not stmt.var_type_name:
+                raise SyntaxError(
+                    loc=stmt.loc_start,
+                    msg='Statement illegal in TYPE block')
+            try:
+                var_type = Type[stmt.var_type_name]
+            except KeyError:
+                var_type = Type.USER_DEFINED
+                var_type.user_type_name = stmt.var_type_name
+
+            if stmt.name in field_names:
+                raise SyntaxError(
+                    loc=stmt.loc_start,
+                    msg='Duplicate definition')
+
+            fields.append((stmt.name, var_type))
+            field_names.append(stmt.name)
+
+
+        return cls(start_stmt.name, fields)

@@ -98,9 +98,13 @@ class BaseCodeGen(metaclass=CodeGenMetaclass):
 
     def gen_code(self, program):
         code = self.code_class()
+        self.init_code(code)
         for node in program.children:
             self.gen_code_for_node(node, code)
         return code
+
+    def init_code(self, code):
+        pass
 
     def gen_code_for_node(self, node, code):
         """Calls the appropriate code generator functions for the given

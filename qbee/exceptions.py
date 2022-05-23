@@ -42,7 +42,9 @@ class ErrorCode(Enum):
     ELSE_WITHOUT_IF = 'ELSE without IF'
     SUBPROGRAM_NOT_FOUND = 'Sub-program not found'
     INVALID_IDENTIFIER = 'Invalid identifier'
+    ILLEGAL_IN_TYPE_BLOCK = 'Statement illegal in type block'
     ARGUMENT_COUNT_MISMATCH = 'Argument count mismatch'
+    ELEMENT_NOT_DEFINED = 'Element not defined'
 
 
 class CompileError(Exception):

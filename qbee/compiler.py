@@ -30,6 +30,8 @@ class Compiler:
         self.cur_routine = Routine('_main', 'toplevel', params=[])
         self.routines = {'_main': self.cur_routine}
 
+        self.user_types = {}
+
         self.all_labels = set()
         self._codegen = CodeGen(codegen_name, self)
 
@@ -272,6 +274,19 @@ into account the DEF* statements and the DIM statements in the routine.
                 EC.INVALID_EXIT,
                 'EXIT SUB can only be used inside a SUB',
                 node=node)
+
+    def _compile_type_block_pass1_pre(self, node):
+        if node.name in self.user_types:
+            raise CompileError(
+                EC.DUPLICATE_DEFINITION,
+                'Duplicate type name',
+                node=node)
+        if len(node.fields) == 0:
+            raise CompileError(
+                EC.ELEMENT_NOT_DEFINED,
+                'Type definition has no elements',
+                node=node)
+        self.user_types[node.name] = node
 
     def _compile_goto_pass2_pre(self, node):
         if isinstance(node.target, int):
