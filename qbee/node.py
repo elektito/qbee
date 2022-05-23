@@ -18,12 +18,13 @@ class Node(ABC):
                 'Expression node not bound to a compiler')
         return self._compiler
 
+    @classmethod
     @abstractmethod
-    def type_name(self):
+    def type_name(cls):
         # An implementation should return the type name of the
         # node. For example, an "exit sub" statement will return
         # "EXIT SUB".
-        pass
+        return 'Node'
 
     @property
     @abstractmethod

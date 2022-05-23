@@ -203,8 +203,9 @@ class Expr(Node):
     # for NumericLiteral will not have access to these.
     loc_start = loc_end = None
 
-    def type_name(self):
-        name = type(self).__name__
+    @classmethod
+    def type_name(cls):
+        name = cls.__name__
         parts = split_camel(name)
         name = ' '.join(parts)
         return name.upper()

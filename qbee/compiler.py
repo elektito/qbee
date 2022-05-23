@@ -34,6 +34,8 @@ class Compiler:
         self.all_labels = set()
         self._codegen = CodeGen(codegen_name, self)
 
+        self._check_compile_methods()
+
     def compile(self, input_string):
         tree = parse_string(input_string)
         tree.bind(self)
@@ -85,6 +87,43 @@ into account the DEF* statements and the DIM statements in the routine.
 
     def is_var_global(self, name):
         return False
+
+    def get_variable(self, node, variable_name: str):
+        assert False
+
+    def _check_compile_methods(self):
+        # Check if all the _compile_* functions match a node. This is
+        # a sanity check to make sure we haven't misspelled anything.
+
+        import inspect, re
+        from . import expr, stmt, program
+        from .node import Node
+
+        all_nodes = [
+            getattr(module, member)
+            for module in [expr, stmt, program]
+            for member in dir(module)
+            if inspect.isclass(getattr(module, member))
+            if issubclass(getattr(module, member), Node)
+        ]
+        all_nodes = [
+            node.type_name().lower().replace(' ', '_')
+            for node in all_nodes
+        ]
+
+        compile_method_re = re.compile(
+            r'_compile_(?P<node>.+)_pass\d+_(?:pre|post)')
+        for member in dir(self):
+            if not callable(getattr(self, member)):
+                continue
+            m = compile_method_re.match(member)
+            if m is None:
+                continue
+            node_name = m.group('node')
+            if node_name not in all_nodes:
+                raise NameError(
+                    f'Cannot find a node for compile function: '
+                    f'{member}')
 
     def _compile_tree(self, tree, _pass):
         # This function recursively processes the given node. Before
@@ -147,9 +186,14 @@ into account the DEF* statements and the DIM statements in the routine.
         self.cur_routine.labels.add(node.canonical_name)
         self.all_labels.add(node.canonical_name)
 
-    def _compile_identifier_pass1_pre(self, node):
-        if node.name not in self.cur_routine.variables:
-            self.cur_routine.variables.add(node.name)
+    def _compile_lvalue_pass1_pre(self, node):
+        if node.base_var not in self.cur_routine.variables:
+            self.cur_routine.variables.add(node.base_var)
+
+            # These are here to make sure we won't forget to check
+            # indices and dotted variables when they're implemented.
+            assert not node.array_indices
+            assert not node.dotted_vars
 
     def _compile_binary_op_pass1_pre(self, node):
         if node.type == Type.UNKNOWN:
