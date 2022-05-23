@@ -543,9 +543,7 @@ class Lvalue(Expr):
 
     @property
     def type(self):
-        var_type = self.compiler.get_variable_type(
-            self.base_var,
-            self.parent_routine)
+        var_type = self.parent_routine.get_variable_type(self.base_var)
 
         # No handling needed for when base variable is an array, since
         # the return value of get_variable_type should already have
@@ -556,9 +554,7 @@ class Lvalue(Expr):
             # single variable name, as long as x is not defined as a
             # user-defined type.
             var_name = self.base_var + '.'.join(self.dotted_vars)
-            return self.compiler.get_variable_type(
-                var_name,
-                self.parent_routine)
+            return self.parent_routine.get_variable_type(var_name)
 
         for var in self.dotted_vars:
             if var_type != Type.USER_DEFINED:

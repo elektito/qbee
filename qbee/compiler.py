@@ -9,10 +9,11 @@ from .parser import parse_string
 class Routine:
     "Represents a SUB or a FUNCTION"
 
-    def __init__(self, name, type, params):
+    def __init__(self, name, type, compiler, params):
         type = type.lower()
         assert type in ('sub', 'function', 'toplevel')
 
+        self.compiler = compiler
         self.name = name
         self.type = type
         self.params = params
@@ -22,12 +23,27 @@ class Routine:
     def __repr__(self):
         return f'<Routine {self.type} {self.name}>'
 
+    def get_variable_type(self, var_name):
+        if var_name in self.local_vars:
+            var_type = self.local_vars[var_name].type
+            return var_type
+
+        # global variables not implemented yet. when they are, query
+        # the compiler for it and remove this assert.
+        assert not self.compiler.is_var_global(var_name)
+
+        return self.get_identifier_type(var_name)
+
+    def get_identifier_type(self, identifier: str):
+        # DEF* statements not supported yet.
+        return Type.SINGLE
+
 
 class Compiler:
     def __init__(self, codegen_name, optimization_level=0):
         self.optimization_level = optimization_level
 
-        self.cur_routine = Routine('_main', 'toplevel', params=[])
+        self.cur_routine = Routine('_main', 'toplevel', self, params=[])
         self.routines = {'_main': self.cur_routine}
 
         self.user_types = {}
@@ -57,12 +73,6 @@ class Compiler:
     def is_const(self, name):
         "Return whether the given name is a const or not"
         return False
-
-    def get_identifier_type(self, identifier: str, routine: Routine):
-        # DEF* statements not supported yet. when support is added,
-        # the "routine" parameter needs to be used, because DEF*
-        # statements are local to the current routine.
-        return Type.SINGLE
 
     def get_variable_type(self, var: str, routine: Routine) -> Type:
         """
@@ -260,7 +270,7 @@ into account the DEF* statements and the DIM statements in the routine.
                 EC.DUPLICATE_DEFINITION,
                 f'Duplicate sub-routine definition: {node.name}',
                 node=node)
-        routine = Routine(node.name, 'sub', node.params)
+        routine = Routine(node.name, 'sub', self, node.params)
         self.routines[node.name] = routine
         self.cur_routine = routine
 

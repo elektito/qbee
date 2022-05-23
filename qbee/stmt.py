@@ -53,8 +53,7 @@ class VarDeclClause(NoChildStmt):
         # parameter default types are based on the DEF* statements in
         # the module level
         top_level_routine = self.compiler.routines['_main']
-        return self.compiler.get_identifier_type(
-            self.name, top_level_routine)
+        return top_level_routine.get_identifier_type(self.name)
 
     @classmethod
     def type_name(cls):
