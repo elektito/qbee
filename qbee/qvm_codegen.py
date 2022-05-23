@@ -257,7 +257,6 @@ class QvmCode(BaseCode):
 
             # Fold push/unary-op
             if (prev1.op == Op.PUSH and
-                cur.type == prev1.type and
                 cur.op in [Op.NOT, Op.NEG]
             ):
                 value = prev1.args[0]
@@ -270,7 +269,7 @@ class QvmCode(BaseCode):
                 value = unary_expr.eval()
 
                 self._instrs[i-1] = QvmInstr(
-                    f'push{cur.type.type_char}', value)
+                    f'push{prev1.type.type_char}', value)
                 del self._instrs[i]
 
                 i -= 1
@@ -278,8 +277,8 @@ class QvmCode(BaseCode):
                 continue
 
             # Fold push/push/binary-op
-            if (prev1.op == Op.PUSH and prev2.op == Op.PUSH and
-                cur.type == prev1.type == prev2.type and
+            if (prev1.op == prev2.op == Op.PUSH and
+                prev1.type == prev2.type and
                 cur.op in [Op.ADD, Op.SUB, Op.MUL, Op.DIV, Op.AND,
                            Op.OR, Op.XOR, Op.EQV, Op.IMP, Op.IDIV,
                            Op.MOD, Op.EXP]
@@ -306,7 +305,7 @@ class QvmCode(BaseCode):
                 value = binary_expr.eval()
 
                 self._instrs[i-2] = QvmInstr(
-                    f'push{cur.type.type_char}', value)
+                    f'push{prev1.type.type_char}', value)
 
                 # remove the next two instructions
                 del self._instrs[i]
@@ -382,12 +381,11 @@ def gen_lvalue(node, code, codegen):
     assert not node.array_indices
     assert not node.dotted_vars
 
-    type_char = node.type.type_char
     if codegen.compiler.is_var_global(node.base_var):
         scope = 'g' # global
     else:
         scope = 'l' # local
-    code.add((f'read{scope}{type_char}', node.base_var))
+    code.add((f'read{scope}', node.base_var))
 
 
 @QvmCodeGen.generator_for(expr.BinaryOp)
@@ -440,8 +438,7 @@ def gen_binary_op(node, code, codegen):
     if node.op.is_comparison:
         # both operands are of the same type, so it doesn't matter we
         # use which one here
-        op = f'cmp{left_type.type_char}'
-        code.add((op,))
+        code.add(('cmp',))
 
         op = {
             Operator.CMP_EQ: 'eq',
@@ -461,12 +458,6 @@ def gen_binary_op(node, code, codegen):
             Operator.MOD: 'mod',
             Operator.INTDIV: 'idiv',
             Operator.EXP: 'exp',
-            Operator.CMP_EQ: 'sub',
-            Operator.CMP_NE: 'sub',
-            Operator.CMP_LT: 'sub',
-            Operator.CMP_GT: 'sub',
-            Operator.CMP_LE: 'sub',
-            Operator.CMP_GE: 'sub',
             Operator.AND: 'and',
             Operator.OR: 'or',
             Operator.XOR: 'xor',
@@ -475,7 +466,6 @@ def gen_binary_op(node, code, codegen):
         }[node.op]
 
         if op is not None:
-            op += node.type.type_char
             code.add((op,))
 
 @QvmCodeGen.generator_for(expr.UnaryOp)
@@ -483,7 +473,7 @@ def gen_unary_op(node, code, codegen):
     codegen.gen_code_for_node(node.arg, code)
     if node.op == expr.Operator.NEG:
         type_char = node.arg.type.type_char
-        code.add((f'neg{type_char}',))
+        code.add(('neg',))
     elif node.op == expr.Operator.PLUS:
         # no code needed for the unary plus
         pass
@@ -497,7 +487,7 @@ def gen_unary_op(node, code, codegen):
         if node.arg.type != result_type:
             arg_type_char = node.arg.type.type_char
             code.add((f'conv{arg_type_char}{result_type_char}',))
-        code.add((f'not{result_type_char}',))
+        code.add(('not',))
 
 # Code generators for statements
 
@@ -528,7 +518,7 @@ def gen_assignment(node, code, codegen):
     else:
         scope = 'l' # local
 
-    code.add((f'store{scope}{dest_type_char}', node.lvalue.base_var))
+    code.add((f'store{scope}', node.lvalue.base_var))
 
 
 @QvmCodeGen.generator_for(stmt.BeepStmt)
@@ -651,7 +641,7 @@ def gen_input(node, code, codegen):
             scope = 'g'
         else:
             scope = 'l'
-        code.add((f'store{scope}{var.type.type_char}', var.base_var))
+        code.add((f'store{scope}', var.base_var))
 
 
 @QvmCodeGen.generator_for(stmt.PrintStmt)
