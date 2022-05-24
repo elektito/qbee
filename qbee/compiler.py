@@ -38,8 +38,15 @@ class Routine:
         return self.get_identifier_type(var_name)
 
     def get_identifier_type(self, identifier: str):
-        # DEF* statements not supported yet.
-        return Type.SINGLE
+        if Type.is_type_char(identifier[-1]):
+            return Type.from_type_char(identifier[-1])
+        else:
+            # remove this when we add support for global variables
+            assert not self.compiler.is_var_global(identifier)
+
+            # for now DEF* statements are not supported, so always the
+            # default type
+            return Type.SINGLE
 
 
 class Compiler:
@@ -76,28 +83,6 @@ class Compiler:
     def is_const(self, name):
         "Return whether the given name is a const or not"
         return False
-
-    def get_variable_type(self, var: str, routine: Routine) -> Type:
-        """
-Return the type of the given variable name, in the given routine, taking
-into account the DEF* statements and the DIM statements in the routine.
-        """
-
-        assert isinstance(var, str)
-        assert isinstance(routine, Routine)
-
-        if Type.is_type_char(var[-1]):
-            return Type.from_type_char(var[-1])
-        else:
-            # remove this when we add support for global variables
-            assert not self.is_var_global(var)
-
-            if var in routine.local_vars:
-                return routine.local_vars[var].type
-
-            # for now DEF* statements are not supported, so always the
-            # default type
-            return Type.SINGLE
 
     def is_var_global(self, name):
         return False
