@@ -24,7 +24,7 @@ def main():
         'stdout.')
 
     parser.add_argument(
-        '--optimize', '-O', type=int, default=0,
+        '--optimize', '-O', metavar='level', type=int, default=0,
         help='Optimization level. Defaults to %(default)s.')
 
     parser.add_argument(
