@@ -36,9 +36,11 @@ class CanonicalOp(Enum):
     OR = auto()
     PUSH = auto()
     READ = auto()
+    READIDX = auto()
     RET = auto()
     SUB = auto()
     STORE = auto()
+    STOREIDX = auto()
     XOR = auto()
 
     _LABEL = 10000
@@ -88,7 +90,8 @@ final form which might be in the form ('push1&',).
             op = op[:-1]
 
         self.scope = None
-        if op in ('storel', 'storeg', 'readl', 'readg'):
+        if op in ('storel', 'storeg', 'readl', 'readg',
+                  'storeidxl', 'storeidxg', 'readidxl', 'readidxg'):
             self.scope = op[-1]
             op = op[:-1]
 
@@ -333,10 +336,8 @@ class QvmCode(BaseCode):
             s += '.types\n'
             for user_type in self._user_types:
                 s += f'\n{user_type.name}:\n'
-                for field_name, field_type in user_type.fields:
-                    if field_type == expr.Type.USER_DEFINED:
-                        field_type = field_type.user_type_name
-                    s += f'    {field_type} {field_name}\n'
+                for field_name, field_type in user_type.fields.items():
+                    s += f'    {field_type.name} {field_name}\n'
             s += '\n'
 
         if self._data:
@@ -376,6 +377,48 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
         for user_type in self.compiler.user_types.values():
             code.add_user_type(user_type)
 
+# Shared code
+
+def get_lvalue_dotted_index(lvalue, codegen):
+    assert isinstance(lvalue, expr.Lvalue)
+
+    # arrays not supported at the moment
+    assert not lvalue.array_indices
+
+    idx = 0
+    if lvalue.dotted_vars:
+        base_type = lvalue.base_type
+        for var in lvalue.dotted_vars:
+            struct_name = base_type.user_type_name
+            struct = codegen.compiler.user_types[struct_name]
+            field_index = list(struct.fields).index(var)
+            idx += field_index
+            base_type = struct.fields[var]
+
+    return idx
+
+
+def gen_lvalue_write(node, code, codegen):
+    assert isinstance(node, expr.Lvalue)
+
+    # this function is called from any code generator that needs to
+    # write to an lvalue
+
+    # just so we won't forget updating here when arrays are supported.
+    assert not node.array_indices
+
+    idx = get_lvalue_dotted_index(node, codegen)
+
+    if codegen.compiler.is_var_global(node.base_var):
+        scope = 'g'  # global
+    else:
+        scope = 'l'  # local
+
+    if idx == 0:
+        code.add((f'store{scope}', node.base_var))
+    else:
+        code.add((f'storeidx{scope}', node.base_var, idx))
+
 
 # Code generators for expressions
 
@@ -395,16 +438,20 @@ def gen_lvalue(node, code, codegen):
     # writing is performed in other code generators like those for
     # assignment, input, etc.
 
-    # just so we won't forget updating here when arrays and dotted
-    # variables are supported.
+    # just so we won't forget updating here when arrays are supported.
     assert not node.array_indices
-    assert not node.dotted_vars
+
+    idx = get_lvalue_dotted_index(node, codegen)
 
     if codegen.compiler.is_var_global(node.base_var):
         scope = 'g'  # global
     else:
         scope = 'l'  # local
-    code.add((f'read{scope}', node.base_var))
+
+    if idx == 0:
+        code.add((f'read{scope}', node.base_var))
+    else:
+        code.add((f'readidx{scope}', node.base_var, idx))
 
 
 @QvmCodeGen.generator_for(expr.BinaryOp)
@@ -523,23 +570,12 @@ def gen_label(node, code, codegen):
 def gen_assignment(node, code, codegen):
     codegen.gen_code_for_node(node.rvalue, code)
 
-    dest_type_char = node.lvalue.type.type_char
-
     if node.rvalue.type != node.lvalue.type:
         src_type_char = node.rvalue.type.type_char
+        dest_type_char = node.lvalue.type.type_char
         code.add((f'conv{src_type_char}{dest_type_char}',))
 
-    # just so we won't forget updating here when arrays and dotted
-    # variables are supported.
-    assert not node.lvalue.array_indices
-    assert not node.lvalue.dotted_vars
-
-    if codegen.compiler.is_var_global(node.lvalue.base_var):
-        scope = 'g'  # global
-    else:
-        scope = 'l'  # local
-
-    code.add((f'store{scope}', node.lvalue.base_var))
+    gen_lvalue_write(node.lvalue, code, codegen)
 
 
 @QvmCodeGen.generator_for(stmt.BeepStmt)
@@ -649,20 +685,15 @@ def gen_input(node, code, codegen):
 
     code.add(('push%', len(node.var_list)))
     for var in node.var_list:
-        code.add(('push%', var.type.value))
+        code.add(('push%', var.type.type_id))
     code.add(('io', 'keyboard', 'input'))
 
     for var in node.var_list:
-        # just so we won't forget updating here when arrays and dotted
-        # variables are supported.
+        # just so we won't forget updating here when arrays are
+        # supported.
         assert not var.array_indices
-        assert not var.dotted_vars
 
-        if codegen.compiler.is_var_global(var):
-            scope = 'g'
-        else:
-            scope = 'l'
-        code.add((f'store{scope}', var.base_var))
+        gen_lvalue_write(var, code, codegen)
 
 
 @QvmCodeGen.generator_for(stmt.PrintStmt)

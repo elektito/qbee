@@ -57,6 +57,8 @@ def parse_data(s):
 
 
 def display_with_context(text, loc_start, loc_end=None, msg='Error'):
+    assert loc_start is not None
+
     n_context_lines = 3
 
     prev_lines = []

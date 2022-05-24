@@ -5,7 +5,7 @@ from .node import Node
 from .utils import split_camel
 
 
-class Type(Enum):
+class BuiltinType(Enum):
     INTEGER = 1
     LONG = 2
     SINGLE = 3
@@ -15,34 +15,176 @@ class Type(Enum):
     USER_DEFINED = 100
     UNKNOWN = 200
 
-    def __init__(self, *args):
-        super().__init__()
 
-        self.user_type_name = None
+class Type:
+    def __init__(self, builtin_type, user_type_name=None):
+        self._type = builtin_type
+        self.user_type_name = user_type_name
 
     def __eq__(self, other):
-        if other is None:
+        assert isinstance(other, Type)
+        if (self._type == BuiltinType.UNKNOWN or
+                other._type == BuiltinType.UNKNOWN):
+            # unknown types are not equal to anything; even to
+            # themselves.
             return False
-        if not isinstance(other, Type):
-            raise TypeError(
-                'Can only compare Type with another Type or with None')
 
-        if self.user_type_name != other.user_type_name:
+        if (self.is_user_defined and self.user_type_name is None) or \
+           (other.is_user_defined and other.user_type_name is None):
+            # Two user-defined types cannot be equal if the name of
+            # the user type is not set (not even equal to self)
             return False
-        return super().__eq__(other)
+
+        return (
+            self._type == other._type and
+            self.user_type_name == other.user_type_name
+        )
 
     def __hash__(self):
-        return super().__hash__()
+        return hash((self._type, self.user_type_name))
 
-    @staticmethod
-    def builtin_types():
-        return (
-            Type.INTEGER,
-            Type.LONG,
-            Type.SINGLE,
-            Type.DOUBLE,
-            Type.STRING,
+    def __repr__(self):
+        if self.is_builtin:
+            return f'Type.{self.name.upper()}'
+        else:
+            return f'Type.USER_DEFINED({self.name})'
+
+    @property
+    def name(self):
+        if self.is_builtin:
+            return self._type.name.lower()
+        else:
+            return self.user_type_name
+
+    @property
+    def is_user_defined(self):
+        return (self._type == BuiltinType.USER_DEFINED)
+
+    @property
+    def is_numeric(self):
+        return self._type in (
+            BuiltinType.INTEGER,
+            BuiltinType.LONG,
+            BuiltinType.SINGLE,
+            BuiltinType.DOUBLE,
         )
+
+    @property
+    def is_builtin(self):
+        return self._type in (
+            BuiltinType.INTEGER,
+            BuiltinType.LONG,
+            BuiltinType.SINGLE,
+            BuiltinType.DOUBLE,
+            BuiltinType.STRING,
+        )
+
+    @property
+    def py_type(self):
+        if self._type in (BuiltinType.USER_DEFINED,
+                          BuiltinType.UNKNOWN):
+            raise ValueError('Cannot get py_type of {self}')
+
+        return {
+            BuiltinType.INTEGER: int,
+            BuiltinType.LONG: int,
+            BuiltinType.SINGLE: float,
+            BuiltinType.DOUBLE: float,
+            BuiltinType.STRING: str,
+        }[self._type]
+
+    @property
+    def type_char(self):
+        if self._type == BuiltinType.USER_DEFINED or \
+           self._type == BuiltinType.UNKNOWN:
+            raise ValueError(f'Cannot get type_char of {self}')
+
+        return {
+            BuiltinType.INTEGER: '%',
+            BuiltinType.LONG: '&',
+            BuiltinType.SINGLE: '!',
+            BuiltinType.DOUBLE: '#',
+            BuiltinType.STRING: '$',
+        }[self._type]
+
+    @property
+    def type_id(self):
+        return self._type.value
+
+    def is_coercible_to(self, other):
+        if self == other:
+            return True
+        if self.is_numeric and other.is_numeric:
+            return True
+        return False
+
+    @property
+    def is_integral(self):
+        return self._type in (BuiltinType.INTEGER, BuiltinType.LONG)
+
+    @property
+    def is_float(self):
+        return self._type in (BuiltinType.SINGLE, BuiltinType.DOUBLE)
+
+    @classmethod
+    @property
+    def INTEGER(cls):
+        return cls(BuiltinType.INTEGER)
+
+    @classmethod
+    @property
+    def LONG(cls):
+        return cls(BuiltinType.LONG)
+
+    @classmethod
+    @property
+    def SINGLE(cls):
+        return cls(BuiltinType.SINGLE)
+
+    @classmethod
+    @property
+    def DOUBLE(cls):
+        return cls(BuiltinType.DOUBLE)
+
+    @classmethod
+    @property
+    def STRING(cls):
+        return cls(BuiltinType.STRING)
+
+    @classmethod
+    @property
+    def UNKNOWN(cls):
+        return cls(BuiltinType.UNKNOWN)
+
+    @classmethod
+    @property
+    def builtin_types(cls):
+        return (
+            cls.INTEGER,
+            cls.LONG,
+            cls.SINGLE,
+            cls.DOUBLE,
+            cls.STRING,
+        )
+
+    @classmethod
+    def user_defined(cls, type_name):
+        assert type_name not in self.builtin_types
+        return cls(BuiltinType.USER_DEFINED, type_name)
+
+    @classmethod
+    def from_name(cls, type_name):
+        builtins = {
+            'integer': Type.INTEGER,
+            'long': Type.LONG,
+            'single': Type.SINGLE,
+            'double': Type.DOUBLE,
+            'string': Type.STRING,
+        }
+        if type_name in builtins:
+            return builtins[type_name]
+        else:
+            return cls(BuiltinType.USER_DEFINED, type_name)
 
     @staticmethod
     def type_chars():
@@ -53,48 +195,6 @@ class Type(Enum):
     @staticmethod
     def is_type_char(char):
         return any(char == c for c in Type.type_chars())
-
-    @property
-    def is_numeric(self):
-        return self in (
-            Type.INTEGER,
-            Type.LONG,
-            Type.SINGLE,
-            Type.DOUBLE,
-        )
-
-    @property
-    def py_type(self):
-        if self == Type.USER_DEFINED or self == Type.UNKNOWN:
-            raise ValueError('Cannot get py_type of {self}')
-
-        return {
-            Type.INTEGER: int,
-            Type.LONG: int,
-            Type.SINGLE: float,
-            Type.DOUBLE: float,
-            Type.STRING: str,
-        }[self]
-
-    @property
-    def type_char(self):
-        if self == Type.USER_DEFINED or self == Type.UNKNOWN:
-            raise ValueError(f'Cannot get type_char of {self}')
-
-        return {
-            Type.INTEGER: '%',
-            Type.LONG: '&',
-            Type.SINGLE: '!',
-            Type.DOUBLE: '#',
-            Type.STRING: '$',
-        }[self]
-
-    def is_coercible_to(self, other):
-        if self == other:
-            return True
-        if self.is_numeric and other.is_numeric:
-            return True
-        return False
 
     @staticmethod
     def from_type_char(type_char):
@@ -355,7 +455,7 @@ class BinaryOp(Expr):
 
         if ltype == Type.UNKNOWN or rtype == Type.UNKNOWN:
             return Type.UNKNOWN
-        if ltype == Type.USER_DEFINED or rtype == Type.USER_DEFINED:
+        if ltype.is_user_defined or rtype.is_user_defined:
             return Type.UNKNOWN
 
         if ltype == Type.DOUBLE or rtype == Type.DOUBLE:
@@ -528,9 +628,9 @@ class Lvalue(Expr):
     def __repr__(self):
         ret = '<Lvalue ' + self.base_var
         if self.array_indices:
-            ret += f'arridx={self.array_indices}'
+            ret += f' arridx={self.array_indices}'
         if self.dotted_vars:
-            ret += 'dots={".".join(self.dotted_vars)}'
+            ret += ' dots={".".join(self.dotted_vars)}'
         ret += '>'
         return ret
 
@@ -543,29 +643,47 @@ class Lvalue(Expr):
 
     @property
     def type(self):
-        var_type = self.parent_routine.get_variable_type(self.base_var)
+        var_type = self.base_type
 
         # No handling needed for when base variable is an array, since
         # the return value of get_variable_type should already have
         # is_array set properly.
 
-        if self.dotted_vars and var_type != Type.USER_DEFINED:
-            # special case: QBASIC allows a name like x.y.z as a
-            # single variable name, as long as x is not defined as a
-            # user-defined type.
-            var_name = self.base_var + '.'.join(self.dotted_vars)
-            return self.parent_routine.get_variable_type(var_name)
+        # should we do this?
+        #
+        # if self.dotted_vars and not var_type.is_user_defined:
+        #     # special case: QBASIC allows a name like x.y.z as a
+        #     # single variable name, as long as x is not defined as a
+        #     # user-defined type.
+        #     var_name = self.base_var + '.'.join(self.dotted_vars)
+        #     return self.parent_routine.get_variable_type(var_name)
 
         for var in self.dotted_vars:
-            if var_type != Type.USER_DEFINED:
+            if not var_type.is_user_defined:
                 raise CompileError(
                     EC.INVALID_IDENTIFIER,
                     'Identifier cannot include period',
                     node=self)
-            var_type = self.compiler.get_user_type_field_type(
-                var_type.user_type_name, var)
+
+            struct = self.compiler.user_types.get(
+                var_type.user_type_name)
+            if struct is None:
+                raise CompileError(
+                    EC.INVALID_IDENTIFIER,
+                    'Identifier cannot include period',
+                    node=self)
+
+            var_type = struct.fields.get(var)
+            if var_type is None:
+                raise CompileError(
+                    EC.ELEMENT_NOT_DEFINED,
+                    node=self)
 
         return var_type
+
+    @property
+    def base_type(self):
+        return self.parent_routine.get_variable_type(self.base_var)
 
     @property
     def children(self):

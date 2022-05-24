@@ -42,13 +42,7 @@ class VarDeclClause(NoChildStmt):
     @property
     def type(self):
         if self.var_type_name:
-            return {
-                'integer': Type.INTEGER,
-                'long': Type.LONG,
-                'single': Type.SINGLE,
-                'double': Type.DOUBLE,
-                'string': Type.STRING
-            }.get(self.var_type_name, Type.USER_DEFINED)
+            return Type.from_name(self.var_type_name)
 
         # parameter default types are based on the DEF* statements in
         # the module level
@@ -628,7 +622,7 @@ class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):
             for f in fields
         )
         self.name = name
-        self.fields = fields
+        self.fields = dict(fields)
 
     def __repr__(self):
         return (
@@ -652,11 +646,7 @@ class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):
                 raise SyntaxError(
                     loc=stmt.loc_start,
                     msg='Statement illegal in TYPE block')
-            try:
-                var_type = Type[stmt.var_type_name]
-            except KeyError:
-                var_type = Type.USER_DEFINED
-                var_type.user_type_name = stmt.var_type_name
+            var_type = Type.from_name(stmt.var_type_name)
 
             if stmt.name in field_names:
                 raise SyntaxError(

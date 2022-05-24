@@ -16,14 +16,17 @@ class Routine:
         self.compiler = compiler
         self.name = name
         self.type = type
-        self.params = params
-        self.local_vars: dict[str, VarDeclClause] = {}
+        self.params: dict[str, Type] = {p.name: p.type for p in params}
+        self.local_vars: dict[str, Type] = {}
         self.labels = set()
 
     def __repr__(self):
         return f'<Routine {self.type} {self.name}>'
 
     def get_variable_type(self, var_name):
+        if var_name in self.params:
+            var_type = self.params[var_name]
+            return var_type
         if var_name in self.local_vars:
             var_type = self.local_vars[var_name].type
             return var_type
@@ -204,10 +207,9 @@ into account the DEF* statements and the DIM statements in the routine.
             decl.bind(self)
             self.cur_routine.local_vars[node.base_var] = decl
 
-        # These are here to make sure we won't forget to check
-        # indices and dotted variables when they're implemented.
+        # This is here to make sure we won't forget to check
+        # indices when it's implemented.
         assert not node.array_indices
-        assert not node.dotted_vars
 
     def _compile_binary_op_pass1_pre(self, node):
         if node.type == Type.UNKNOWN:
@@ -239,7 +241,7 @@ into account the DEF* statements and the DIM statements in the routine.
         for param, arg in zip(routine.params, node.args):
             if not arg.type.is_coercible_to(param.type):
                 expected_type_name = param.type.name
-                if param.type == Type.USER_DEFINED:
+                if param.type.is_user_defined:
                     expected_type_name = 'user-defined type '
                     expected_type_name += param.type.user_type_name
                 error_msg = (
@@ -333,7 +335,7 @@ into account the DEF* statements and the DIM statements in the routine.
     def _compile_print_pass1_pre(self, node):
         for item in node.items:
             if isinstance(item, Expr):
-                if item.type not in Type.builtin_types():
+                if not item.type.is_builtin:
                     raise CompileError(
                         EC.TYPE_MISMATCH,
                         f'Cannot print value: {item}',

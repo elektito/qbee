@@ -175,7 +175,7 @@ dotted_vars = Group(
     dot.suppress() +
     delimited_list(untyped_identifier, delim=dot)
 )
-lvalue <<= (
+lvalue <<= Located(
     identifier +
     Opt(array_indices, default=[]) +
     Opt(dotted_vars, default=[])
@@ -477,8 +477,12 @@ def parse_expr_list(toks):
 
 @parse_action(lvalue)
 def parse_lvalue(toks):
+    loc_start, toks, loc_end = toks
     base_var, array_indices, dotted_vars = toks
-    return Lvalue(base_var, array_indices, list(dotted_vars))
+    lvalue = Lvalue(base_var, array_indices, list(dotted_vars))
+    lvalue.loc_start = loc_start
+    lvalue.loc_end = loc_end
+    return lvalue
 
 
 @parse_action(assignment_stmt)
