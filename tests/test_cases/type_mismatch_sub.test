@@ -1,0 +1,26 @@
+# compileerror: TYPE_MISMATCH
+
+foo 10
+
+sub foo(x as string)
+end sub
+
+===
+
+foo "text"
+
+sub foo(x as long)
+end sub
+
+===
+
+foo "text"
+
+sub foo(x)
+end sub
+
+===
+
+sub foo(x as string)
+    x = 100
+end sub

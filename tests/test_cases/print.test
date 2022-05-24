@@ -1,0 +1,18 @@
+# success
+print
+===
+print 10
+===
+print 2 + 2
+===
+PRINT 49; 50, 98
+===
+print 10+20,,
+===
+print 20;;;,30
+===
+print "foobar"
+===
+x = 100
+y$ = "foo"
+print x; y$

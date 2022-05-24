@@ -55,6 +55,7 @@ class CompileError(Exception):
         elif not isinstance(msg, str):
             raise InternalError(
                 'Invalid exception message: must be a string')
+        self.code = err_code
         self.msg = msg
         self.node = node
         self.loc_start = loc_start

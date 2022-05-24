@@ -1,0 +1,32 @@
+# success
+cls
+===
+beep
+===
+color 10
+===
+color 1, 2
+===
+color 1, 2, 3
+===
+color 1,,2
+===
+color
+---
+syntaxerror
+===
+color ,,
+---
+syntaxerror
+===
+color ,
+---
+syntaxerror
+===
+color 1,
+---
+syntaxerror
+===
+color 1,,
+---
+syntaxerror

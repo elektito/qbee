@@ -1,0 +1,34 @@
+# success
+10 goto 10
+===
+10 cls
+20 goto 10
+===
+foo:
+    cls
+    goto foo
+===
+goto
+---
+syntaxerror
+===
+goto 1.2
+---
+syntaxerror
+===
+goto 1foo
+---
+syntaxerror
+===
+10 goto 5+5
+---
+syntaxerror
+===
+goto foobar
+---
+compileerror: LABEL_NOT_DEFINED
+===
+goto 10
+---
+compileerror: LABEL_NOT_DEFINED
+===

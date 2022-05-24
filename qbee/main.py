@@ -50,7 +50,8 @@ def main():
     try:
         code = compiler.compile(input_string)
     except (SyntaxError, CompileError) as e:
-        display_with_context(input_string, loc_start=e.loc_start, msg=str(e))
+        display_with_context(
+            input_string, loc_start=e.loc_start, msg=str(e))
         exit(1)
 
     if args.asm:

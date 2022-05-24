@@ -1,0 +1,16 @@
+# compileerror: TYPE_MISMATCH
+x$ = 1
+===
+x$ = 1.2
+===
+x$ = -90000000
+===
+x = "foo"
+===
+x% = "foo"
+===
+x& = "foo"
+===
+x! = "foo"
+===
+x# = "foo"
