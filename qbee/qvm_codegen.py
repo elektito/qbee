@@ -227,6 +227,10 @@ class QvmCode(BaseCode):
                 arg, = prev1.args
 
                 # Convert the argument to the dest type
+                if cur.type.is_integral and isinstance(arg, float):
+                    # perform rounding first if casting from float to
+                    # integer
+                    arg = round(arg)
                 arg = cur.type.py_type(arg)
 
                 self._instrs[i-1] = QvmInstr(
