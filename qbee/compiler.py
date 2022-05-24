@@ -238,12 +238,12 @@ into account the DEF* statements and the DIM statements in the routine.
                 EC.ARGUMENT_COUNT_MISMATCH,
                 node=node)
 
-        for param, arg in zip(routine.params, node.args):
-            if not arg.type.is_coercible_to(param.type):
-                expected_type_name = param.type.name
-                if param.type.is_user_defined:
+        for param_type, arg in zip(routine.params.values(), node.args):
+            if not arg.type.is_coercible_to(param_type):
+                expected_type_name = param_type.name
+                if param_type.is_user_defined:
                     expected_type_name = 'user-defined type '
-                    expected_type_name += param.type.user_type_name
+                    expected_type_name += param_type.user_type_name
                 error_msg = (
                     f'Argument type mismatch: '
                     f'expected {expected_type_name}, '
