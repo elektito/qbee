@@ -425,10 +425,17 @@ def parse_num_literal(s, loc, toks):
         raise SyntaxError(
             loc, 'Invalid type character for numeric literal')
     try:
-        return NumericLiteral.parse(toks[0], type_char)
+        num = NumericLiteral.parse(toks[0], type_char)
     except ValueError:
         # probably something like "2.1%"
         raise SyntaxError(loc, 'Illegal number')
+    if type_char == '%':
+        if num.value < -32768 or num.value > 32767:
+            raise SyntaxError(loc, 'Illegal number')
+    if type_char == '&':
+        if num.value < -2**31 or num.value > 2**31-1:
+            raise SyntaxError(loc, 'Illegal number')
+    return num
 
 
 @parse_action(addsub_expr)
