@@ -239,11 +239,11 @@ call_stmt = (
 cls_stmt = cls_kw
 
 color_stmt = (
-    (color_kw.suppress() + expr + comma + expr) |
     (color_kw.suppress() + expr + comma + expr + comma - expr) |
     (color_kw.suppress() + expr + comma + comma - expr) |
-    (color_kw.suppress() + comma + expr) |
+    (color_kw.suppress() + expr + comma + expr) |
     (color_kw.suppress() + comma + comma - expr) |
+    (color_kw.suppress() + comma + expr) |
     (color_kw.suppress() - expr)
 ).set_name('color_stmt')
 
@@ -516,12 +516,22 @@ def parse_cls(toks):
 @parse_action(color_stmt)
 def parse_color(toks):
     colors = []
+    last_tok = None
     for tok in toks:
         if tok == ',':
-            colors.append(None)
-        else:
+            if last_tok is None:
+                # first argument left out
+                colors.append(None)
+            elif tok == last_tok == ',':
+                # middle argument left out
+                colors.append(None)
+        elif tok != ',':
             colors.append(tok)
+        last_tok = tok
+
+    # add any left out arguments at the end
     colors += [None] * (3 - len(colors))
+
     return ColorStmt(*colors)
 
 
