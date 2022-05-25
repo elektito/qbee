@@ -246,6 +246,14 @@ class Compiler:
                     node=decl)
             self.cur_routine.local_vars[decl.name] = decl
 
+    def _compile_input_pass1_pre(self, node):
+        for lvalue in node.var_list:
+            if not lvalue.type.is_builtin:
+                raise CompileError(
+                    EC.TYPE_MISMATCH,
+                    'Input can only have builtin types',
+                    node=lvalue)
+
     def _compile_sub_block_pass1_pre(self, node):
         if self.cur_routine.name != '_main':
             raise CompileError(
