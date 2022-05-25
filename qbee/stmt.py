@@ -579,6 +579,9 @@ class SubBlock(Block, start=SubStmt, end=EndSubStmt):
         self.params = params
         self.block = block
 
+        # This will be set by the compiler later to a Routine object
+        self.routine = None
+
     def __repr__(self):
         return (
             f'<SubBlock "{self.name}" with {len(self.params)} arg(s) '
@@ -655,6 +658,5 @@ class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):
 
             fields.append((stmt.name, var_type))
             field_names.append(stmt.name)
-
 
         return cls(start_stmt.name, fields)

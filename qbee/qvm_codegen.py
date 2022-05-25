@@ -1,9 +1,34 @@
+import struct
 from enum import Enum, auto
 from collections import defaultdict
 from .codegen import BaseCodeGen, BaseCode
-from .program import Label, LineNo
+from .program import Label, LineNo, Program
 from .exceptions import InternalError
 from . import stmt, expr
+
+
+QVM_DEVICES = {
+    'screen': {
+        'id': 2,
+        'ops': {
+            'cls': 1,
+            'print': 2,
+            'color': 3,
+        },
+    },
+    'pcspkr': {
+        'id': 3,
+        'ops': {
+            'beep': 1,
+        },
+    },
+    'keyboard': {
+        'id': 4,
+        'ops': {
+            'input': 1,
+        },
+    },
+}
 
 
 class CanonicalOp(Enum):
@@ -18,6 +43,7 @@ class CanonicalOp(Enum):
     EQ = auto()
     EQV = auto()
     EXP = auto()
+    FRAME = auto()
     GE = auto()
     GT = auto()
     IDIV = auto()
@@ -57,6 +83,81 @@ class CanonicalOp(Enum):
 
 
 Op = CanonicalOp
+op_codes = {
+    'add': 2,
+    'and': 3,
+    'call': 4,
+    'conv%&': 5,
+    'conv%!': 6,
+    'conv%#': 7,
+    'conv&%': 8,
+    'conv&!': 9,
+    'conv&#': 10,
+    'conv!%': 11,
+    'conv!&': 12,
+    'conv!#': 13,
+    'conv#%': 14,
+    'conv#&': 15,
+    'conv#!': 16,
+    'div': 17,
+    'eq': 18,
+    'eqv': 19,
+    'exp': 20,
+    'frame': 71,
+    'ge': 21,
+    'idiv': 22,
+    'imp': 23,
+    'io': 24,
+    'jmp': 25,
+    'jz': 26,
+    'le': 27,
+    'lt': 28,
+    'mod': 29,
+    'mul': 30,
+    'ne': 31,
+    'neg': 32,
+    'nop': 33,
+    'not': 34,
+    'or': 35,
+    'push%': 36,
+    'push&': 37,
+    'push!': 38,
+    'push#': 39,
+    'push$': 72,
+    'pushm2%': 40,
+    'pushm2&': 41,
+    'pushm2!': 42,
+    'pushm2#': 43,
+    'pushm1%': 44,
+    'pushm1&': 45,
+    'pushm1!': 46,
+    'pushm1#': 47,
+    'push0%': 48,
+    'push0&': 49,
+    'push0!': 50,
+    'push0#': 51,
+    'push1%': 52,
+    'push1&': 53,
+    'push1!': 54,
+    'push1#': 55,
+    'push2%': 56,
+    'push2&': 57,
+    'push2!': 58,
+    'push2#': 59,
+    'readg': 60,
+    'readl': 61,
+    'readidxg': 62,
+    'readidxl': 63,
+    'ret': 64,
+    'sub': 65,
+    'storeg': 66,
+    'storel': 67,
+    'storeidxg': 68,
+    'storeidxl': 69,
+    'xor': 70,
+}
+
+assert len(set(op_codes.values())) == len(op_codes), 'Duplicate op code'
 
 
 class QvmInstr:
@@ -177,7 +278,10 @@ class QvmCode(BaseCode):
     def __init__(self):
         self._instrs = []
         self._data = defaultdict(list)
-        self._user_types = []
+        self._user_types = {}
+        self._routines = {}
+        self._main_routine = None
+        self._consts = []
 
     def __repr__(self):
         return f'<QvmCode {self._instrs}>'
@@ -191,8 +295,16 @@ class QvmCode(BaseCode):
         for part in data:
             self._data[label].append(part)
 
-    def add_user_type(self, user_type):
-        self._user_types.append(user_type)
+    def add_user_type(self, type_block):
+        self._user_types[type_block.name] = type_block
+
+    def add_routine(self, node):
+        assert isinstance(node, (stmt.SubBlock,))
+        self._routines[node.name] = node.routine
+
+    def add_const(self, value):
+        if value not in self._consts:
+            self._consts.append(value)
 
     def optimize(self):
         i = 0
@@ -334,11 +446,17 @@ class QvmCode(BaseCode):
 
         if self._user_types:
             s += '.types\n'
-            for user_type in self._user_types:
+            for user_type in self._user_types.values():
                 s += f'\n{user_type.name}:\n'
                 for field_name, field_type in user_type.fields.items():
                     s += f'    {field_type.name} {field_name}\n'
-            s += '\n'
+            s += '\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
+
+        if self._consts:
+            s += '.consts\n'
+            for i, const in enumerate(self._consts):
+                s += f'    {i} string "{const}"\n'
+            s += '\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
 
         if self._data:
             s += '.data\n\n'
@@ -346,6 +464,16 @@ class QvmCode(BaseCode):
                 s += f'{label}:\n'
                 for item in data:
                     s += f'    {item}\n'
+            s += '\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
+
+        if self._routines:
+            s += '.routines\n\n'
+            for routine in self._routines.values():
+                s += f'{routine.name}:\n'
+                for pname, ptype in routine.params.items():
+                    s += f'    {ptype.name} {pname}\n'
+                for vname, vtype in routine.local_vars.items():
+                    s += f'    {vtype.name} {vname}\n'
             s += '\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
 
         s += '.code\n\n'
@@ -358,8 +486,129 @@ class QvmCode(BaseCode):
                 s += f'    {op: <12}{", ".join(str(i) for i in args)}\n'
         return s
 
+    @property
+    def assembled(self):
+        def bconv(value, type_char):
+            value_type = expr.Type.from_type_char(type_char)
+            if type_char == '$':
+                assert value.startswith('"') and value.endswith('"')
+                value = get_const_idx(value[1:-1])
+            else:
+                value = value_type.py_type(value)
+            return {
+                '%': lambda v: struct.pack('>h', v),
+                '&': lambda v: struct.pack('>i', v),
+                '!': lambda v: struct.pack('>f', v),
+                '#': lambda v: struct.pack('>d', v),
+                '$': lambda v: struct.pack('>H', v)
+            }[type_char](value)
+
+        def get_const_idx(value):
+            return self._consts.index(value)
+
+        def get_var_idx(routine, var):
+            idx = 0
+            for pname, ptype in routine.params.items():
+                if var == pname:
+                    return idx
+                idx += expr.Type.get_type_size(ptype, self._user_types)
+            return idx
+
+        cur_offset = 0
+        cur_routine = self._main_routine
+        labels = {}
+        patch_positions = {}
+        code = bytearray()
+        for instr in self._instrs:
+            op, *args = instr.final
+            if op == '_label':
+                assert len(args) == 1
+                name = args[0]
+                labels[name] = cur_offset
+                if name.startswith('_sub_'):
+                    cur_routine = name[len('_sub_'):]
+                    cur_routine = self._routines[cur_routine]
+                continue
+
+            bargs = b''
+            if op == 'call':
+                assert len(args) == 1
+                label = args[0]
+                patch_positions[cur_offset + 1] = label
+                bargs = struct.pack('>I', 0)  # to be patched
+            elif op == 'frame':
+                assert len(args) == 2
+                params_size, vars_size = args
+                bargs += struct.pack('>HH', params_size, vars_size)
+            elif op == 'io':
+                assert len(args) == 2
+                device, device_op = args
+                device_id = QVM_DEVICES[device]['id']
+                device_op = QVM_DEVICES[device]['ops'][device_op]
+                bargs = struct.pack('>BB', device_id, device_op)
+            elif op == 'jmp':
+                assert len(args) == 1
+                label = args[0]
+                patch_positions[cur_offset + 1] = label
+                bargs = struct.pack('>I', 0)  # to be patched
+            elif op == 'jz':
+                assert len(args) == 1
+                label = args[0]
+                patch_positions[cur_offset + 1] = label
+                bargs = struct.pack('>I', 0)  # to be patched
+            elif op[:4] == 'push' and op[4:] in '%&!#$':
+                assert len(args) == 1
+                value = args[0]
+                type_char = op[4]
+                bargs = bconv(value, type_char)
+            elif op in ('readg', 'readl', 'storeg', 'storel'):
+                assert len(args) == 1
+                var = args[0]
+                var_idx = get_var_idx(cur_routine, var)
+                bargs = struct.pack('>H', var_idx)
+            elif op in ('readidxg',
+                        'readidxl',
+                        'storeidxg',
+                        'storeidxl'):
+                assert len(args) == 2
+                var, idx = args
+                var_idx = get_var_idx(cur_routine, var)
+                bargs = struct.pack('>HH', var_idx, idx)
+            else:
+                assert len(args) == 0
+                assert op.islower()
+            op_code = op_codes[op]
+            op_code = bytes([op_code])
+            code += op_code + bargs
+            cur_offset += 1 + len(bargs)
+
+        for pos, label in patch_positions.items():
+            addr = labels[label]
+            code[pos:pos+4] = struct.pack('>I', addr)
+
+        return bytes(code)
+
     def __bytes__(self):
-        return b'<machine code>'
+        const_section = b'\x01'
+        const_section += struct.pack('>H', len(self._consts))
+        for const in self._consts:
+            const_section += struct.pack('>H', len(const))
+            const_section += const.encode('cp437')
+
+        data_section = b'\x02'
+        data_section += struct.pack('>H', len(self._data))
+        for data_part in self._data.values():
+            data_section += struct.pack('>H', len(data_part))
+            for data_item in data_part:
+                data_section += struct.pack('>H', len(data_item))
+                data_section += data_item.encode('cp437')
+
+        code = self.assembled
+        code_size = len(code)
+        code_size = struct.pack('>I', code_size)
+        code_section = code_size + code
+
+        return const_section + data_section + code_section
 
 
 class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
@@ -377,7 +626,9 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
         for user_type in self.compiler.user_types.values():
             code.add_user_type(user_type)
 
+
 # Shared code
+
 
 def get_lvalue_dotted_index(lvalue, codegen):
     assert isinstance(lvalue, expr.Lvalue)
@@ -422,8 +673,15 @@ def gen_lvalue_write(node, code, codegen):
 
 # Code generators for expressions
 
+
+@QvmCodeGen.generator_for(Program)
+def gen_program(node, code, codegen):
+    code._main_routine = node.routine
+
+
 @QvmCodeGen.generator_for(expr.StringLiteral)
 def gen_str_literal(node, code, codegen):
+    code.add_const(node.value)
     code.add(('push$', f'"{node.value}"'))
 
 
@@ -594,7 +852,7 @@ def gen_call(node, code, codegen):
             code.add((f'conv{from_type_char}{to_type_char}',))
     code.add(
         ('push%', len(node.args)),
-        ('call', node.name),
+        ('call', '_sub_' + node.name),
     )
 
 
@@ -677,6 +935,8 @@ def gen_if_stmt(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.InputStmt)
 def gen_input(node, code, codegen):
+    code.add_const(node.prompt.value)
+
     same_line = -1 if node.same_line else 0
     prompt_question = -1 if node.prompt_question else 0
     code.add(('push%', same_line))
@@ -723,7 +983,14 @@ def gen_exit_sub(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.SubBlock)
 def gen_sub_block(node, code, codegen):
+    code.add_routine(node)
+
     code.add(('_label', '_sub_' + node.name))
+
+    code.add(('frame',
+              node.routine.params_size,
+              node.routine.local_vars_size))
+
     for inner_stmt in node.block:
         codegen.gen_code_for_node(inner_stmt, code)
     code.add(('ret',))

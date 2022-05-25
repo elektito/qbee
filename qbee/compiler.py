@@ -13,10 +13,15 @@ class Routine:
         type = type.lower()
         assert type in ('sub', 'function', 'toplevel')
 
+        assert all(
+            isinstance(pname, str) and isinstance(ptype, Type)
+            for pname, ptype in params
+        )
+
         self.compiler = compiler
         self.name = name
         self.type = type
-        self.params: dict[str, Type] = {p.name: p.type for p in params}
+        self.params: dict[str, Type] = dict(params)
         self.local_vars: dict[str, Type] = {}
         self.labels = set()
 
@@ -28,7 +33,7 @@ class Routine:
             var_type = self.params[var_name]
             return var_type
         if var_name in self.local_vars:
-            var_type = self.local_vars[var_name].type
+            var_type = self.local_vars[var_name]
             return var_type
 
         # global variables not implemented yet. when they are, query
@@ -47,6 +52,29 @@ class Routine:
             # for now DEF* statements are not supported, so always the
             # default type
             return Type.SINGLE
+
+    @property
+    def params_size(self):
+        # the number of cells in a call frame the parameters to this
+        # routine need
+        return sum(
+            self.compiler.get_type_size(ptype)
+            for ptype in self.params.values()
+        )
+
+    @property
+    def local_vars_size(self):
+        # the number of cells in a call frame the local variables of
+        # this routine need
+        return sum(
+            self.compiler.get_type_size(vtype)
+            for vtype in self.local_vars.values()
+        )
+
+    @property
+    def frame_size(self):
+        # the total number of cells a call frame for this routine needs
+        return self.params_size + self.local_vars_size
 
 
 class Compiler:
@@ -90,11 +118,15 @@ class Compiler:
     def get_variable(self, node, variable_name: str):
         assert False
 
+    def get_type_size(self, type):
+        return Type.get_type_size(type, self.user_types)
+
     def _check_compile_methods(self):
         # Check if all the _compile_* functions match a node. This is
         # a sanity check to make sure we haven't misspelled anything.
 
-        import inspect, re
+        import inspect
+        import re
         from . import expr, stmt, program
         from .node import Node
 
@@ -167,6 +199,9 @@ class Compiler:
         for child in node.children:
             self._set_parent_routine(child, routine)
 
+    def _compile_program_pass1_pre(self, node):
+        node.routine = self.routines['_main']
+
     def _compile_label_pass1_pre(self, node):
         if node.name in self.all_labels:
             raise CompileError(
@@ -190,7 +225,7 @@ class Compiler:
             # Implicitly defined variable
             decl = VarDeclClause(node.base_var, None)
             decl.bind(self)
-            self.cur_routine.local_vars[node.base_var] = decl
+            self.cur_routine.local_vars[node.base_var] = decl.type
 
         # This is here to make sure we won't forget to check
         # indices when it's implemented.
@@ -244,7 +279,7 @@ class Compiler:
                 raise CompileError(
                     EC.DUPLICATE_DEFINITION,
                     node=decl)
-            self.cur_routine.local_vars[decl.name] = decl
+            self.cur_routine.local_vars[decl.name] = decl.type
 
     def _compile_input_pass1_pre(self, node):
         for lvalue in node.var_list:
@@ -265,9 +300,11 @@ class Compiler:
                 EC.DUPLICATE_DEFINITION,
                 f'Duplicate sub-routine definition: {node.name}',
                 node=node)
-        routine = Routine(node.name, 'sub', self, node.params)
+        params = [(decl.name, decl.type) for decl in node.params]
+        routine = Routine(node.name, 'sub', self, params)
         self.routines[node.name] = routine
         self.cur_routine = routine
+        node.routine = routine
 
     def _compile_sub_block_pass1_post(self, node):
         self.cur_routine = self.routines['_main']

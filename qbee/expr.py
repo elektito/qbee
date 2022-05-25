@@ -169,7 +169,7 @@ class Type:
 
     @classmethod
     def user_defined(cls, type_name):
-        assert type_name not in self.builtin_types
+        assert type_name not in cls.builtin_types
         return cls(BuiltinType.USER_DEFINED, type_name)
 
     @classmethod
@@ -205,6 +205,24 @@ class Type:
             '#': Type.DOUBLE,
             '$': Type.STRING,
         }[type_char]
+
+    @staticmethod
+    def get_type_size(type, user_types):
+        from .stmt import TypeBlock
+        assert all(
+            isinstance(k, str) and isinstance(v, TypeBlock)
+            for k, v in user_types.items()
+        )
+
+        builtin_types = [t.name for t in Type.builtin_types]
+        if type.name in builtin_types:
+            return 1
+        else:
+            struct = user_types[type.name]
+            return sum(
+                Type.get_type_size(ftype, user_types)
+                for ftype in struct.fields.values()
+            )
 
 
 class Operator(Enum):
@@ -630,7 +648,7 @@ class Lvalue(Expr):
         if self.array_indices:
             ret += f' arridx={self.array_indices}'
         if self.dotted_vars:
-            ret += ' dots={".".join(self.dotted_vars)}'
+            ret += f' dots={".".join(self.dotted_vars)}'
         ret += '>'
         return ret
 
