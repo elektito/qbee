@@ -667,6 +667,11 @@ def gen_num_literal(node, code, codegen):
     code.add((f'push{node.type.type_char}', node.value))
 
 
+@QvmCodeGen.generator_for(expr.ParenthesizedExpr)
+def gen_paren(node, code, codegen):
+    codegen.gen_code_for_node(node.child, code)
+
+
 @QvmCodeGen.generator_for(expr.Lvalue)
 def gen_lvalue(node, code, codegen):
     # notice that this function is only called for reading lvalues;

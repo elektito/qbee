@@ -11,7 +11,7 @@ from pyparsing import (
 from .exceptions import SyntaxError
 from .expr import (
     Type, Operator, NumericLiteral, BinaryOp, UnaryOp, Lvalue,
-    StringLiteral,
+    StringLiteral, ParenthesizedExpr,
 )
 from .stmt import (
     AssignmentStmt, BeepStmt, CallStmt, ClsStmt, ColorStmt, DataStmt,
@@ -421,6 +421,12 @@ def parse_expr(toks):
     tok.loc_start = loc_start
     tok.loc_end = loc_end
     return tok
+
+
+@parse_action(paren_expr)
+def parse_paren_expr(toks):
+    assert len(toks) == 1
+    return ParenthesizedExpr(toks[0])
 
 
 @parse_action(stmt)

@@ -363,6 +363,38 @@ class Expr(Node):
         return self
 
 
+class ParenthesizedExpr(Expr):
+    is_literal = False
+
+    def __init__(self, child_expr):
+        self.child = child_expr
+
+    def __repr__(self):
+        return f'<Paren {self.child}>'
+
+    @property
+    def type(self):
+        return self.child.type
+
+    @property
+    def is_const(self):
+        return self.child.is_const
+
+    def eval(self):
+        return self.child.eval()
+
+    @property
+    def children(self):
+        return [self.child]
+
+    def replace_child(self, old_child, new_child):
+        if self.child == old_child:
+            self.child = new_child
+            return
+
+        raise InternalError('No such child to replace')
+
+
 class NumericLiteral(Expr):
     is_literal = True
     is_const = True
