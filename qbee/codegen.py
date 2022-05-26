@@ -100,8 +100,6 @@ class BaseCodeGen(metaclass=CodeGenMetaclass):
         code = self.code_class()
         self.init_code(code)
         self.gen_code_for_node(program, code)
-        for node in program.children:
-            self.gen_code_for_node(node, code)
         return code
 
     def init_code(self, code):

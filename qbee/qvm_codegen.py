@@ -4,6 +4,7 @@ from collections import defaultdict
 from .codegen import BaseCodeGen, BaseCode
 from .program import Label, LineNo, Program
 from .exceptions import InternalError
+from .compiler import Routine
 from .qvm_instrs import op_to_instr
 from . import stmt, expr
 
@@ -224,9 +225,9 @@ class QvmCode(BaseCode):
     def add_user_type(self, type_block):
         self._user_types[type_block.name] = type_block
 
-    def add_routine(self, node):
-        assert isinstance(node, (stmt.SubBlock,))
-        self._routines[node.name] = node.routine
+    def add_routine(self, routine):
+        assert isinstance(routine, Routine)
+        self._routines[routine.name] = routine
 
     def add_const(self, value):
         if value not in self._consts:
@@ -604,6 +605,24 @@ def gen_lvalue_write(node, code, codegen):
 @QvmCodeGen.generator_for(Program)
 def gen_program(node, code, codegen):
     code._main_routine = node.routine
+    code.add_routine(node.routine)
+
+    code.add(('_label', '_sub_' + node.routine.name))
+    code.add(('frame',
+              node.routine.params_size,
+              node.routine.local_vars_size))
+
+    sub_routines = []
+    for child in node.children:
+        if isinstance(child, (stmt.SubBlock,)):
+            sub_routines.append(child)
+            continue
+        codegen.gen_code_for_node(child, code)
+
+    code.add(('ret',))
+
+    for child in sub_routines:
+        codegen.gen_code_for_node(child, code)
 
 
 @QvmCodeGen.generator_for(expr.StringLiteral)
@@ -916,7 +935,7 @@ def gen_exit_sub(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.SubBlock)
 def gen_sub_block(node, code, codegen):
-    code.add_routine(node)
+    code.add_routine(node.routine)
 
     code.add(('_label', '_sub_' + node.name))
 
