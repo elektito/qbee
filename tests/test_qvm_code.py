@@ -58,16 +58,6 @@ def test_fold_push_and_conv_one():
     assert code._instrs == [('push1!',)]
 
 
-def test_eliminate_store_read():
-    code = QvmCode()
-    code.add(
-        ('storel', 'x'),
-        ('readl', 'x'),
-    )
-    code.optimize()
-    assert code._instrs == []
-
-
 def test_eliminate_read_store():
     code = QvmCode()
     code.add(
@@ -102,15 +92,3 @@ def test_eliminate_read_store_incompatible_arg():
         ('readl', 'x'),
         ('storel', 'y'),
     ]
-
-
-def test_fold_push_and_conv_after_store_read():
-    code = QvmCode()
-    code.add(
-        ('push!', 10.0),
-        ('storel', 'x'),
-        ('readl', 'x'),
-        ('conv!&',),
-    )
-    code.optimize()
-    assert code._instrs == [('push&', 10)]

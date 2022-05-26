@@ -282,19 +282,20 @@ class QvmCode(BaseCode):
 
                 continue
 
-            # Eliminate pairs of compatible consecutive read/store or
-            # store/read.
+            # Eliminate pairs of compatible consecutive read/store
+            # instructions. Notice that we can't eliminate store/read
+            # pairs, since they also change the value of the variable.
             #
             # For example this pair:
-            #    storel x
-            #    readl  x
+            #    readl x
+            #    storel  x
             # or this pair:
             #    readg  x
             #    storeg x
-            ops = {cur.op, prev1.op}
-            if (ops == {Op.READ, Op.STORE} and
-               cur.scope == prev1.scope and
-               cur.args == prev1.args
+            if (cur.op == Op.STORE and
+                prev1.op == Op.READ and
+                cur.scope == prev1.scope and
+                cur.args == prev1.args
             ):
                 # remove both
                 del self._instrs[i]
