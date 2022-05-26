@@ -4,6 +4,7 @@ from collections import defaultdict
 from .codegen import BaseCodeGen, BaseCode
 from .program import Label, LineNo, Program
 from .exceptions import InternalError
+from .qvm_instrs import op_to_instr
 from . import stmt, expr
 
 
@@ -83,81 +84,6 @@ class CanonicalOp(Enum):
 
 
 Op = CanonicalOp
-op_codes = {
-    'add': 2,
-    'and': 3,
-    'call': 4,
-    'conv%&': 5,
-    'conv%!': 6,
-    'conv%#': 7,
-    'conv&%': 8,
-    'conv&!': 9,
-    'conv&#': 10,
-    'conv!%': 11,
-    'conv!&': 12,
-    'conv!#': 13,
-    'conv#%': 14,
-    'conv#&': 15,
-    'conv#!': 16,
-    'div': 17,
-    'eq': 18,
-    'eqv': 19,
-    'exp': 20,
-    'frame': 71,
-    'ge': 21,
-    'idiv': 22,
-    'imp': 23,
-    'io': 24,
-    'jmp': 25,
-    'jz': 26,
-    'le': 27,
-    'lt': 28,
-    'mod': 29,
-    'mul': 30,
-    'ne': 31,
-    'neg': 32,
-    'nop': 33,
-    'not': 34,
-    'or': 35,
-    'push%': 36,
-    'push&': 37,
-    'push!': 38,
-    'push#': 39,
-    'push$': 72,
-    'pushm2%': 40,
-    'pushm2&': 41,
-    'pushm2!': 42,
-    'pushm2#': 43,
-    'pushm1%': 44,
-    'pushm1&': 45,
-    'pushm1!': 46,
-    'pushm1#': 47,
-    'push0%': 48,
-    'push0&': 49,
-    'push0!': 50,
-    'push0#': 51,
-    'push1%': 52,
-    'push1&': 53,
-    'push1!': 54,
-    'push1#': 55,
-    'push2%': 56,
-    'push2&': 57,
-    'push2!': 58,
-    'push2#': 59,
-    'readg': 60,
-    'readl': 61,
-    'readidxg': 62,
-    'readidxl': 63,
-    'ret': 64,
-    'sub': 65,
-    'storeg': 66,
-    'storel': 67,
-    'storeidxg': 68,
-    'storeidxl': 69,
-    'xor': 70,
-}
-
-assert len(set(op_codes.values())) == len(op_codes), 'Duplicate op code'
 
 
 class QvmInstr:
@@ -577,7 +503,7 @@ class QvmCode(BaseCode):
             else:
                 assert len(args) == 0
                 assert op.islower()
-            op_code = op_codes[op]
+            op_code = op_to_instr[op].op_code
             op_code = bytes([op_code])
             code += op_code + bargs
             cur_offset += 1 + len(bargs)

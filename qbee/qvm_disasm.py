@@ -1,6 +1,6 @@
 import argparse
 import struct
-from .qvm_codegen import op_codes
+from .qvm_instrs import op_code_to_instr
 from .expr import Type
 from .utils import eprint
 
@@ -64,8 +64,6 @@ def disassemble(bcode: bytes):
 
 
 def decode_code(bcode, consts):
-    instr_map = {v:k for k, v in op_codes.items()}
-
     code = ''
     idx = 0
     while idx < len(bcode):
@@ -75,7 +73,8 @@ def decode_code(bcode, consts):
         op_code = bcode[idx]
         idx += 1
         try:
-            op = instr_map[op_code]
+            instr = op_code_to_instr[op_code]
+            op = instr.op
         except KeyError:
             perror(f'Unknown op code: {op_code}')
         if op in ('call', 'jmp', 'jz'):
