@@ -253,7 +253,7 @@ color_stmt = (
 var_decl = Located(
     (
         untyped_identifier +
-        as_kw +
+        as_kw -
         type_name
     ) |
     identifier
@@ -310,7 +310,7 @@ print_stmt = (
 
 type_field_decl = Located(
     untyped_identifier +
-    as_kw +
+    as_kw -
     type_name
 ).set_name('type_field_decl')
 
