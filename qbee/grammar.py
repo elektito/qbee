@@ -754,6 +754,9 @@ def main():
     parser.add_argument(
         '--not-all', '-n', action='store_true',
         help='If set, the parse_all flag is set to false.')
+    parser.add_argument(
+        '--tree', '-t', action='store_true',
+        help='If set, draws the AST as a tree.')
 
     args = parser.parse_args()
 
@@ -780,13 +783,27 @@ def main():
     except (ParseException, ParseSyntaxException) as e:
         print(e.explain())
         exit(1)
-    if hasattr(result, '__len__') and \
-       len(result) and \
-       isinstance(result[0], Line):
-        for node in result[0].nodes:
-            print(node)
+
+    if args.tree:
+        draw_tree(result[0])
     else:
-        print(result)
+        if hasattr(result, '__len__') and \
+           len(result) and \
+           isinstance(result[0], Line):
+            for node in result[0].nodes:
+                print(node)
+        else:
+            print(result)
+
+
+def draw_tree(node, depth=0):
+    node_desc = type(node).__name__
+    if depth == 0:
+        print(node_desc)
+    else:
+        print('|' * (depth - 1) + '+' + node_desc)
+    for child in node.children:
+        draw_tree(child, depth + 1)
 
 
 if __name__ == '__main__':
