@@ -116,6 +116,10 @@ def decode_code(bcode, consts):
                 idx += 2
                 comments = f'"{consts[value]}"'
             args = [value]
+        elif op in ('pushrefg', 'pushrefl'):
+            var_idx, = struct.unpack('>H', bcode[idx:idx+2])
+            idx += 2
+            args = [var_idx]
         elif op in ('readg', 'readl', 'storeg', 'storel'):
             var_idx, = struct.unpack('>H', bcode[idx:idx+2])
             idx += 2

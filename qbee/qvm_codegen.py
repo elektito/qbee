@@ -41,6 +41,7 @@ class CanonicalOp(Enum):
     CALL = auto()
     CMP = auto()
     CONV = auto()
+    DEREF = auto()
     DIV = auto()
     EQ = auto()
     EQV = auto()
@@ -63,8 +64,10 @@ class CanonicalOp(Enum):
     NOT = auto()
     OR = auto()
     PUSH = auto()
+    PUSHREF = auto()
     READ = auto()
     READIDX = auto()
+    REFIDX = auto()
     RET = auto()
     SUB = auto()
     STORE = auto()
@@ -119,7 +122,8 @@ final form which might be in the form ('push1&',).
 
         self.scope = None
         if op in ('storel', 'storeg', 'readl', 'readg',
-                  'storeidxl', 'storeidxg', 'readidxl', 'readidxg'):
+                  'storeidxl', 'storeidxg', 'readidxl', 'readidxg',
+                  'pushrefl', 'pushrefg'):
             self.scope = op[-1]
             op = op[:-1]
 
@@ -502,6 +506,11 @@ class QvmCode(BaseCode):
                 var, idx = args
                 var_idx = get_var_idx(cur_routine, var)
                 bargs = struct.pack('>HH', var_idx, idx)
+            elif op in ('pushrefl', 'pushrefg'):
+                assert len(args) == 1
+                var = args[0]
+                var_idx = get_var_idx(cur_routine, var)
+                bargs = struct.pack('>H', var_idx)
             else:
                 assert len(args) == 0
                 assert op.islower()
@@ -599,6 +608,28 @@ def gen_lvalue_write(node, code, codegen):
         code.add((f'storeidx{scope}', node.base_var, idx))
 
 
+def gen_lvalue_read_ref(node, code, codegen):
+    assert isinstance(node, expr.Lvalue)
+
+    # just so we won't forget updating here when arrays are supported.
+    assert not node.array_indices
+
+    idx = get_lvalue_dotted_index(node, codegen)
+
+    if codegen.compiler.is_var_global(node.base_var):
+        scope = 'g'  # global
+    else:
+        scope = 'l'  # local
+
+    code.add((f'pushref{scope}', node.base_var))
+    if idx > 0:
+        if idx < 32768:
+            code.add(('push%', idx))
+        else:
+            code.add(('push&', idx))
+        code.add(('refidx',))
+
+
 # Code generators for expressions
 
 
@@ -645,17 +676,27 @@ def gen_lvalue(node, code, codegen):
     # just so we won't forget updating here when arrays are supported.
     assert not node.array_indices
 
-    idx = get_lvalue_dotted_index(node, codegen)
-
     if codegen.compiler.is_var_global(node.base_var):
         scope = 'g'  # global
     else:
         scope = 'l'  # local
 
-    if idx == 0:
+    idx = get_lvalue_dotted_index(node, codegen)
+    base_is_ref = (node.base_var in node.parent_routine.params)
+
+    if base_is_ref:
         code.add((f'read{scope}', node.base_var))
+        if idx < 32768:
+            code.add(('push%', idx))
+        else:
+            code.add(('push&', idx))
+        code.add(('refidx',))
+        code.add(('deref',))
     else:
-        code.add((f'readidx{scope}', node.base_var, idx))
+        if idx == 0:
+            code.add((f'read{scope}', node.base_var))
+        else:
+            code.add((f'readidx{scope}', node.base_var, idx))
 
 
 @QvmCodeGen.generator_for(expr.BinaryOp)
@@ -791,7 +832,10 @@ def gen_beep(node, code, codegen):
 def gen_call(node, code, codegen):
     routine = codegen.compiler.routines[node.name]
     for arg, param_type in zip(node.args, routine.params.values()):
-        codegen.gen_code_for_node(arg, code)
+        if isinstance(arg, expr.Lvalue):
+            gen_lvalue_read_ref(arg, code, codegen)
+        else:
+            codegen.gen_code_for_node(arg, code)
         if arg.type != param_type:
             from_type_char = arg.type.type_char
             to_type_char = param_type.type_char
