@@ -221,7 +221,8 @@ class Compiler:
         self.all_labels.add(node.canonical_name)
 
     def _compile_lvalue_pass1_pre(self, node):
-        if node.base_var not in self.cur_routine.local_vars:
+        if node.base_var not in self.cur_routine.local_vars and \
+           node.base_var not in self.cur_routine.params:
             # Implicitly defined variable
             decl = VarDeclClause(node.base_var, None)
             decl.bind(self)
