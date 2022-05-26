@@ -119,7 +119,7 @@ def decode_code(bcode, consts):
         elif op in ('readg', 'readl', 'storeg', 'storel'):
             var_idx, = struct.unpack('>H', bcode[idx:idx+2])
             idx += 2
-            args = [str(var_idx)]
+            args = [var_idx]
         elif op in ('readidxg',
                     'readidxl',
                     'storeidxg',
@@ -127,7 +127,7 @@ def decode_code(bcode, consts):
             var_idx, offset = struct.unpack(
                 '>HH', bcode[idx:idx+4])
             idx += 4
-            args = [str(var_idx), str(offset)]
+            args = [var_idx, offset]
 
         args = ', '.join(str(i) for i in args)
         if args:
