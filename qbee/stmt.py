@@ -54,6 +54,17 @@ class VarDeclClause(NoChildStmt):
         return 'VAR CLAUSE'
 
 
+class AnyVarDeclClause(NoChildStmt):
+    "A 'var AS ANY' clause"
+
+    def __init__(self, name):
+        self.name = name
+
+    @classmethod
+    def type_name(cls):
+        return 'ANY VAR CLAUSE'
+
+
 class AssignmentStmt(Stmt):
     def __init__(self, lvalue, rvalue):
         self.lvalue = lvalue
@@ -132,6 +143,30 @@ class ColorStmt(Stmt):
             self.background == new_child
         elif self.border == old_child:
             self.border = new_child
+
+
+class DeclareStmt(Stmt):
+    def __init__(self, routine_type, name, params):
+        assert routine_type in ('sub,')
+        self.routine_type = routine_type
+        self.name = name
+        self.params = params
+
+    def __repr__(self):
+        return f'<DeclareStmt {self.routine_type} {self.name}>'
+
+    def replace_child(self, old_child, new_child):
+        for i in range(len(self.params)):
+            if self.params[i] == old_child:
+                self.params[i] = new_child
+                return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
+
+    @property
+    def children(self):
+        return self.params
 
 
 class DimStmt(Stmt):

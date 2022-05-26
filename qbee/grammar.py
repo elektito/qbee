@@ -15,9 +15,10 @@ from .expr import (
 )
 from .stmt import (
     AssignmentStmt, BeepStmt, CallStmt, ClsStmt, ColorStmt, DataStmt,
-    DimStmt, GotoStmt, IfStmt, ElseClause, IfBeginStmt, ElseStmt,
-    ElseIfStmt, EndIfStmt, InputStmt, PrintStmt, SubStmt,
-    VarDeclClause, EndSubStmt, ExitSubStmt, TypeStmt, EndTypeStmt,
+    DeclareStmt, DimStmt, GotoStmt, IfStmt, ElseClause, IfBeginStmt,
+    ElseStmt, ElseIfStmt, EndIfStmt, InputStmt, PrintStmt, SubStmt,
+    VarDeclClause, AnyVarDeclClause, EndSubStmt, ExitSubStmt, TypeStmt,
+    EndTypeStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -33,12 +34,14 @@ ParserElement.set_default_whitespace_chars(' \t')
 # Keywords
 
 and_kw = CaselessKeyword('and')
+any_kw = CaselessKeyword('any')
 as_kw = CaselessKeyword('as')
 beep_kw = CaselessKeyword('beep')
 call_kw = CaselessKeyword('call')
 cls_kw = CaselessKeyword('cls')
 color_kw = CaselessKeyword('color')
 data_kw = CaselessKeyword('data')
+declare_kw = CaselessKeyword('declare')
 dim_kw = CaselessKeyword('dim')
 double_kw = CaselessKeyword('double')
 else_kw = CaselessKeyword('else')
@@ -330,6 +333,25 @@ sub_stmt = (
 end_sub_stmt = end_kw + sub_kw
 exit_sub_stmt = exit_kw + sub_kw
 
+declare_var_decl = Located(
+    (
+        untyped_identifier +
+        as_kw +
+        any_kw
+    ) |
+    var_decl
+)
+declare_param_list = delimited_list(declare_var_decl, delim=comma)
+declare_stmt = (
+    declare_kw.suppress() -
+    sub_kw +
+    untyped_identifier +
+    (
+        lpar.suppress() + declare_param_list[0, 1] + rpar.suppress()
+    )[0, 1]
+).set_name('declare_stmt')
+
+
 # program
 
 stmt = Located(
@@ -343,6 +365,7 @@ stmt = Located(
     cls_stmt |
     color_stmt |
     data_stmt |
+    declare_stmt |
     dim_stmt |
 
     # the order of the following is important. in particular, if_stmt
@@ -535,6 +558,12 @@ def parse_color(toks):
     return ColorStmt(*colors)
 
 
+@parse_action(declare_stmt)
+def parse_declare(toks):
+    routine_type, name, *var_decls = list(toks)
+    return DeclareStmt(routine_type, name, var_decls)
+
+
 @parse_action(dim_stmt)
 def parse_dim(toks):
     var_decls = list(toks)
@@ -666,6 +695,7 @@ def parse_sub_stmt(toks):
 
 @parse_action(var_decl)
 @parse_action(type_field_decl)
+@parse_action(declare_var_decl)
 def parse_var_decl(toks):
     loc_start, toks, loc_end = toks
 
@@ -679,7 +709,11 @@ def parse_var_decl(toks):
                 loc=loc_start,
                 msg='Variable name cannot end with a type char')
 
-    clause = VarDeclClause(name, type_name)
+    if type_name == 'any':
+        clause = AnyVarDeclClause(name)
+    else:
+        clause = VarDeclClause(name, type_name)
+
     clause.loc_start = loc_start
     clause.loc_end = loc_end
 

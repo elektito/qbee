@@ -887,6 +887,12 @@ def gen_color(node, code, codegen):
     code.add(('io', 'screen', 'color'))
 
 
+@QvmCodeGen.generator_for(stmt.DeclareStmt)
+def gen_declare(node, code, codegen):
+    # no code for DECLARE statements
+    pass
+
+
 @QvmCodeGen.generator_for(stmt.DimStmt)
 def gen_dim(node, code, codegen):
     # no code for DIM statements
