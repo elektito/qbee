@@ -606,7 +606,7 @@ class QvmCode(BaseCode):
         code = self.assembled
         code_size = len(code)
         code_size = struct.pack('>I', code_size)
-        code_section = code_size + code
+        code_section = b'\x03' + code_size + code
 
         return const_section + data_section + code_section
 
