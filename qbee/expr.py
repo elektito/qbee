@@ -844,3 +844,35 @@ function. For example: CALL foo(x())"""
 
     def replace_child(self, old_child, new_child):
         pass
+
+
+class FuncCall(Expr):
+    is_literal = False
+    is_const = False
+
+    def __init__(self, name: str, type: Type, args: list[Expr]):
+        assert isinstance(name, str)
+        assert isinstance(type, Type)
+        assert isinstance(args, list)
+        assert all(isinstance(arg, Expr) for arg in args)
+
+        self.name = name
+        self._type = type
+        self.args = args
+
+    def __repr__(self):
+        return (
+            f'<FuncCall {self.name}{self._type.type_char} with '
+            f'{len(self.args)} arg(s)>'
+        )
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def children(self):
+        return []
+
+    def replace_child(self, old_child, new_child):
+        pass

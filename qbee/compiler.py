@@ -1,5 +1,5 @@
 from .stmt import Stmt, IfBlock, VarDeclClause, ArrayDimRange
-from .expr import Type, Expr, Lvalue, NumericLiteral
+from .expr import Type, Expr, Lvalue, NumericLiteral, FuncCall
 from .program import Label, LineNo
 from .codegen import CodeGen
 from .exceptions import ErrorCode as EC, InternalError, CompileError
@@ -9,24 +9,26 @@ from .parser import parse_string
 class Routine:
     "Represents a SUB or a FUNCTION"
 
-    def __init__(self, name, type, compiler, params):
-        type = type.lower()
-        assert type in ('sub', 'function', 'toplevel')
+    def __init__(self, name, kind, compiler, params, return_type=None):
+        kind = kind.lower()
+        assert kind in ('sub', 'function', 'toplevel')
 
         assert all(
             isinstance(pname, str) and isinstance(ptype, Type)
             for pname, ptype in params
         )
+        assert return_type is None or isinstance(return_type, Type)
 
         self.compiler = compiler
         self.name = name
-        self.type = type
+        self.kind = kind
+        self.return_type = return_type
         self.params: dict[str, Type] = dict(params)
         self.local_vars: dict[str, Type] = {}
         self.labels = set()
 
     def __repr__(self):
-        return f'<Routine {self.type} {self.name}>'
+        return f'<Routine {self.kind} {self.name}>'
 
     def get_variable_type(self, var_name):
         if var_name in self.params:
@@ -97,6 +99,7 @@ class Compiler:
 
         self._compile_tree(tree, _pass=1)
         self._compile_tree(tree, _pass=2)
+        self._compile_tree(tree, _pass=3)
 
         if self.optimization_level > 0:
             tree.fold()
@@ -120,6 +123,29 @@ class Compiler:
 
     def get_type_size(self, type):
         return Type.get_type_size(type, self.user_types)
+
+    def get_routine(self, name: str, kind=None):
+        assert kind is None or kind in ('sub', 'function')
+
+        if any(name.endswith(c) for c in Type.type_chars()):
+            name = name[:-1]
+            type_char = name[-1]
+        else:
+            type_char = None
+
+        routine = self.routines.get(name)
+        if routine is None:
+            return None
+
+        if kind is None or routine.kind == kind:
+            if type_char is None:
+                return routine
+
+            return_type_char = routine.return_type.type_char
+            if routine.return_type and return_type_char == type_char:
+                return routine
+
+        return None
 
     def _check_compile_methods(self):
         # Check if all the _compile_* functions match a node. This is
@@ -220,7 +246,22 @@ class Compiler:
         self.cur_routine.labels.add(node.canonical_name)
         self.all_labels.add(node.canonical_name)
 
-    def _compile_lvalue_pass1_pre(self, node):
+    def _compile_lvalue_pass2_pre(self, node):
+        func = self.get_routine(node.base_var, 'function')
+        if func is not None:
+            if node.dotted_vars:
+                raise CompileError(
+                    EC.INVALID_USE_OF_FUNCTION,
+                    node=node)
+            new_node = FuncCall(func.name,
+                                func.return_type,
+                                node.array_indices)
+            new_node.loc_start = node.loc_start
+            new_node.loc_end = node.loc_end
+            new_node.bind(self)
+            node.parent.replace_child(node, new_node)
+            return
+
         if node.base_var not in self.cur_routine.local_vars and \
            node.base_var not in self.cur_routine.params:
             # Implicitly defined variable
@@ -263,6 +304,9 @@ class Compiler:
                 'Not an array',
                 node=node)
 
+    def _compile_func_call_pass2_pre(self, node):
+        check_arg_count_and_types
+
     def _compile_binary_op_pass1_pre(self, node):
         if node.type == Type.UNKNOWN:
             raise CompileError(EC.TYPE_MISMATCH, node=node)
@@ -276,6 +320,16 @@ class Compiler:
     def _compile_assignment_pass1_pre(self, node):
         if not node.lvalue.type.is_coercible_to(node.rvalue.type):
             raise CompileError(EC.TYPE_MISMATCH, node=node)
+
+    def _compile_assignment_pass3_pre(self, node):
+        # We have to do this in pass 3, because on pass 2 where the
+        # Lvalue is replaced with a FuncCall, we're already traversing
+        # the tree and we'll still see the old Lvalue in the tree.
+        if not isinstance(node.lvalue, Lvalue):
+            raise CompileError(
+                EC.DUPLICATE_DEFINITION,
+                'A function with the same name exists',
+                node=node.lvalue)
 
     def _compile_call_pass1_pre(self, node):
         for arg in node.args:
@@ -291,7 +345,7 @@ class Compiler:
         routine = self.routines.get(node.name)
         if routine is None:
             raise CompileError(EC.SUBPROGRAM_NOT_FOUND, node=node)
-        if routine.type != 'sub':
+        if routine.kind != 'sub':
             raise CompileError(EC.SUBPROGRAM_NOT_FOUND,
                                msg='Routine is a FUNCTION not a SUB',
                                node=node)
@@ -323,9 +377,10 @@ class Compiler:
                                    msg=error_msg,
                                    node=arg)
 
-    def _compile_dim_pass1_pre(self, node):
+    def _compile_dim_pass2_pre(self, node):
         for decl in node.var_decls:
-            if decl.name in self.cur_routine.local_vars:
+            if decl.name in self.cur_routine.local_vars or \
+               decl.name in self.routines:
                 raise CompileError(
                     EC.DUPLICATE_DEFINITION,
                     node=decl)
@@ -356,15 +411,43 @@ class Compiler:
         self.cur_routine = routine
         node.routine = routine
 
+    def _compile_function_block_pass1_pre(self, node):
+        if self.cur_routine.name != '_main':
+            raise CompileError(
+                EC.ILLEGAL_IN_SUB,
+                'Function only allowed in the top-level',
+                node=node)
+        if node.name in self.routines:
+            raise CompileError(
+                EC.DUPLICATE_DEFINITION,
+                f'Duplicate routine definition: {node.name}',
+                node=node)
+        params = [(decl.name, decl.type) for decl in node.params]
+        routine = Routine(node.name, 'function', self, params,
+                          return_type=node.type)
+        self.routines[node.name] = routine
+        self.cur_routine = routine
+        node.routine = routine
+
     def _compile_sub_block_pass1_post(self, node):
+        self.cur_routine = self.routines['_main']
+
+    def _compile_function_block_pass1_post(self, node):
         self.cur_routine = self.routines['_main']
 
     def _compile_exit_sub_pass1_pre(self, node):
         if self.cur_routine.name == '_main' or \
-           self.cur_routine.type != 'sub':
+           self.cur_routine.kind != 'sub':
             raise CompileError(
                 EC.INVALID_EXIT,
                 'EXIT SUB can only be used inside a SUB',
+                node=node)
+
+    def _compile_exit_function_pass1_pre(self, node):
+        if self.cur_routine.kind != 'function':
+            raise CompileError(
+                EC.INVALID_EXIT,
+                'EXIT FUNCTION can only be used inside a FUNCTION',
                 node=node)
 
     def _compile_type_block_pass1_pre(self, node):

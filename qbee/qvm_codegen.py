@@ -657,6 +657,7 @@ def gen_lvalue_ref(node, code, codegen):
 
 
 def gen_code_for_conv(to_type, node, code, codegen):
+    assert isinstance(to_type, expr.Type)
     assert not node.type.is_array
     assert not node.type.is_user_defined
     assert not to_type.is_array
@@ -682,7 +683,7 @@ def gen_program(node, code, codegen):
 
     sub_routines = []
     for child in node.children:
-        if isinstance(child, (stmt.SubBlock,)):
+        if isinstance(child, (stmt.SubBlock, stmt.FunctionBlock)):
             sub_routines.append(child)
             continue
         codegen.gen_code_for_node(child, code)
@@ -707,6 +708,15 @@ def gen_num_literal(node, code, codegen):
 @QvmCodeGen.generator_for(expr.ParenthesizedExpr)
 def gen_paren(node, code, codegen):
     codegen.gen_code_for_node(node.child, code)
+
+
+@QvmCodeGen.generator_for(expr.FuncCall)
+def gen_func_call(node, code, codegen):
+    func = codegen.compiler.get_routine(node.name)
+    for arg, param_type in zip(node.args, func.params.values()):
+        codegen.gen_code_for_node(arg, code)
+        gen_code_for_conv(param_type, arg, code, codegen)
+    code.add(('call', '_func_' + node.name))
 
 
 @QvmCodeGen.generator_for(expr.Lvalue)
@@ -1015,11 +1025,31 @@ def gen_exit_sub(node, code, codegen):
     code.add(('ret',))
 
 
+@QvmCodeGen.generator_for(stmt.ExitFunctionStmt)
+def gen_exit_sub(node, code, codegen):
+    code.add(('ret',))
+
+
 @QvmCodeGen.generator_for(stmt.SubBlock)
 def gen_sub_block(node, code, codegen):
     code.add_routine(node.routine)
 
     code.add(('_label', '_sub_' + node.name))
+
+    code.add(('frame',
+              node.routine.params_size,
+              node.routine.local_vars_size))
+
+    for inner_stmt in node.block:
+        codegen.gen_code_for_node(inner_stmt, code)
+    code.add(('ret',))
+
+
+@QvmCodeGen.generator_for(stmt.FunctionBlock)
+def gen_func_block(node, code, codegen):
+    code.add_routine(node.routine)
+
+    code.add(('_label', '_func_' + node.name))
 
     code.add(('frame',
               node.routine.params_size,

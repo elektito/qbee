@@ -194,14 +194,14 @@ class ColorStmt(Stmt):
 
 
 class DeclareStmt(Stmt):
-    def __init__(self, routine_type, name, params):
-        assert routine_type in ('sub,')
-        self.routine_type = routine_type
+    def __init__(self, routine_kind, name, params):
+        assert routine_kind in ('sub', 'function')
+        self.routine_kind = routine_kind
         self.name = name
         self.params = params
 
     def __repr__(self):
-        return f'<DeclareStmt {self.routine_type} {self.name}>'
+        return f'<DeclareStmt {self.routine_kind} {self.name}>'
 
     def replace_child(self, old_child, new_child):
         for i in range(len(self.params)):
@@ -486,6 +486,41 @@ class ExitSubStmt(NoChildStmt):
         return '<ExitSubStmt>'
 
 
+class FunctionStmt(NoChildStmt):
+    def __init__(self, name, params):
+        assert all(isinstance(p, VarDeclClause) for p in params)
+
+        if any(name.endswith(c) for c in Type.type_chars()):
+            self.name = name[:-1]
+            self.type_char = name[-1]
+        else:
+            self.name = name
+            self.type_char = None
+
+        self.name = name
+        self.params = params
+
+    def __repr__(self):
+        return f'<SubStmt {self.name} with {len(self.params)} param(s)>'
+
+    @property
+    def type(self):
+        if self.type_char:
+            return Type.from_type_char(self.type_char)
+        else:
+            return self.compiler.get_identifier_type(self.name)
+
+
+class EndFunctionStmt(NoChildStmt):
+    def __repr__(self):
+        return '<EndFunctionStmt>'
+
+
+class ExitFunctionStmt(NoChildStmt):
+    def __repr__(self):
+        return '<ExitFunctionStmt>'
+
+
 # Blocks
 
 
@@ -692,6 +727,55 @@ class SubBlock(Block, start=SubStmt, end=EndSubStmt):
     @classmethod
     def create_block(cls, sub_stmt, end_sub_stmt, body):
         return cls(sub_stmt.name, sub_stmt.params, body)
+
+
+class FunctionBlock(Block, start=FunctionStmt, end=EndFunctionStmt):
+    def __init__(self, name, params, block):
+        self._name = name
+        self.params = params
+        self.block = block
+
+        # This will be set by the compiler later to a Routine object
+        self.routine = None
+
+    def __repr__(self):
+        return (
+            f'<FunctionBlock "{self.name}" with {len(self.params)} '
+            f'arg(s) and {len(self.block)} statement(s)>'
+        )
+
+    @property
+    def name(self):
+        if Type.is_type_char(self._name[-1]):
+            return self._name[:-1]
+        else:
+            return self._name
+
+    @property
+    def type(self):
+        return self.parent_routine.get_identifier_type(self._name)
+
+    def replace_child(self, old_child, new_child):
+        for i in range(len(self.params)):
+            if self.params[i] == old_child:
+                self.params[i] = new_child
+                return
+
+        for i in range(len(self.block)):
+            if self.block[i] == old_child:
+                self.block[i] = new_child
+                return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
+
+    @property
+    def children(self):
+        return self.params + self.block
+
+    @classmethod
+    def create_block(cls, func_stmt, end_func_stmt, body):
+        return cls(func_stmt.name, func_stmt.params, body)
 
 
 class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):

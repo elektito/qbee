@@ -18,7 +18,8 @@ from .stmt import (
     DeclareStmt, DimStmt, GotoStmt, IfStmt, ElseClause, IfBeginStmt,
     ElseStmt, ElseIfStmt, EndIfStmt, InputStmt, PrintStmt, SubStmt,
     VarDeclClause, AnyVarDeclClause, ArrayDimRange, EndSubStmt,
-    ExitSubStmt, TypeStmt, EndTypeStmt,
+    ExitSubStmt, TypeStmt, EndTypeStmt, FunctionStmt, EndFunctionStmt,
+    ExitFunctionStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -49,6 +50,7 @@ elseif_kw = CaselessKeyword('elseif')
 end_kw = CaselessKeyword('end')
 exit_kw = CaselessKeyword('exit')
 eqv_kw = CaselessKeyword('eqv')
+function_kw = CaselessKeyword('function')
 goto_kw = CaselessKeyword('goto')
 if_kw = CaselessKeyword('if')
 input_kw = CaselessKeyword('input')
@@ -371,6 +373,18 @@ sub_stmt = (
 end_sub_stmt = end_kw + sub_kw
 exit_sub_stmt = exit_kw + sub_kw
 
+function_stmt = (
+    function_kw.suppress() -
+    identifier +
+    (
+        lpar.suppress() +
+        param_list +
+        rpar.suppress()
+    )[0, 1]
+).set_name('function_stmt')
+end_function_stmt = end_kw + function_kw
+exit_function_stmt = exit_kw + function_kw
+
 declare_var_decl = Located(
     (
         untyped_identifier +
@@ -383,10 +397,14 @@ declare_var_decl = Located(
 declare_param_list = delimited_list(declare_var_decl, delim=comma)
 declare_stmt = (
     declare_kw.suppress() -
-    sub_kw +
-    untyped_identifier +
     (
-        lpar.suppress() + declare_param_list[0, 1] + rpar.suppress()
+        (sub_kw + untyped_identifier) |
+        (function_kw + identifier)
+    ) +
+    (
+        lpar.suppress() +
+        declare_param_list[0, 1] +
+        rpar.suppress()
     )[0, 1]
 ).set_name('declare_stmt')
 
@@ -418,6 +436,9 @@ stmt = Located(
     sub_stmt |
     end_sub_stmt |
     exit_sub_stmt |
+    function_stmt |
+    end_function_stmt |
+    exit_function_stmt |
     goto_stmt |
     input_stmt |
     print_stmt |
@@ -747,6 +768,32 @@ def parse_sub_stmt(toks):
     return SubStmt(name, params)
 
 
+@parse_action(end_sub_stmt)
+def parse_end_sub(toks):
+    return EndSubStmt()
+
+
+@parse_action(exit_sub_stmt)
+def parse_exit_sub(toks):
+    return ExitSubStmt()
+
+
+@parse_action(function_stmt)
+def parse_function_stmt(toks):
+    name, *params = toks
+    return FunctionStmt(name, params)
+
+
+@parse_action(end_function_stmt)
+def parse_end_sub(toks):
+    return EndFunctionStmt()
+
+
+@parse_action(exit_function_stmt)
+def parse_exit_function(toks):
+    return ExitFunctionStmt()
+
+
 @parse_action(array_dim_range)
 def parse_array_dim_range(toks):
     dim_range = toks[0]
@@ -797,16 +844,6 @@ def parse_var_decl(toks):
     clause.loc_end = loc_end
 
     return clause
-
-
-@parse_action(end_sub_stmt)
-def parse_end_sub(toks):
-    return EndSubStmt()
-
-
-@parse_action(exit_sub_stmt)
-def parse_exit_sub(toks):
-    return ExitSubStmt()
 
 
 @parse_action(type_stmt)
