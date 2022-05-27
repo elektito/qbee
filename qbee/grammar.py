@@ -779,7 +779,6 @@ def parse_var_decl(toks):
         dims = []
     elif len(toks) == 4:
         name, dims, _, type_name = toks
-        dims = dims or []
     else:
         assert False
 
@@ -788,6 +787,7 @@ def parse_var_decl(toks):
     else:
         clause = VarDeclClause(name, type_name, dims)
 
+    dims = dims or []
     if list(dims) == ['(', ')']:
         clause.is_nodim_array = True
         clause.dims = []
