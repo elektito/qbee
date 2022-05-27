@@ -28,10 +28,50 @@ class NoChildStmt(Stmt):
         pass
 
 
+class ArrayDimRange(Stmt):
+    def __init__(self, lbound, ubound):
+        self.lbound = lbound
+        self.ubound = ubound
+
+    def __repr__(self):
+        return f'<Range {self.lbound} to {self.ubound}>'
+
+    @property
+    def static_lbound(self):
+        assert self.lbound.is_const
+        return int(round(self.lbound.eval()))
+
+    @property
+    def static_ubound(self):
+        assert self.ubound.is_const
+        return int(round(self.ubound.eval()))
+
+    @property
+    def is_const(self):
+        return self.lbound.is_const and self.ubound.is_const
+
+    @property
+    def children(self):
+        return [self.lbound, self.ubound]
+
+    def replace_child(self, old_child, new_child):
+        if self.lbound == old_child:
+            self.lbound = new_child
+        if self.ubound == old_child:
+            self.ubound = new_child
+
+    @classmethod
+    def type_name(cls):
+        return 'ARRAY DIM RANGE'
+
+
 class VarDeclClause(NoChildStmt):
-    def __init__(self, name, var_type_name):
+    def __init__(self, name, var_type_name, dims=None,
+                 is_nodim_array=False):
         self.name = name
         self.var_type_name = var_type_name
+        self.dims = dims
+        self.is_nodim_array = is_nodim_array
 
     def __repr__(self):
         type_desc = ''
@@ -42,12 +82,19 @@ class VarDeclClause(NoChildStmt):
     @property
     def type(self):
         if self.var_type_name:
-            return Type.from_name(self.var_type_name)
+            _type = Type.from_name(self.var_type_name)
+        else:
+            # parameter default types are based on the DEF* statements
+            # in the module level
+            top_level_routine = self.compiler.routines['_main']
+            _type = top_level_routine.get_identifier_type(self.name)
 
-        # parameter default types are based on the DEF* statements in
-        # the module level
-        top_level_routine = self.compiler.routines['_main']
-        return top_level_routine.get_identifier_type(self.name)
+        if self.dims is not None:
+            _type.is_array = True
+            _type.array_dims = self.dims
+            _type.is_nodim_array = self.is_nodim_array
+
+        return _type
 
     @classmethod
     def type_name(cls):

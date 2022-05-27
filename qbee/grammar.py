@@ -11,14 +11,14 @@ from pyparsing import (
 from .exceptions import SyntaxError
 from .expr import (
     Type, Operator, NumericLiteral, BinaryOp, UnaryOp, Lvalue,
-    StringLiteral, ParenthesizedExpr,
+    StringLiteral, ParenthesizedExpr, ArrayPass,
 )
 from .stmt import (
     AssignmentStmt, BeepStmt, CallStmt, ClsStmt, ColorStmt, DataStmt,
     DeclareStmt, DimStmt, GotoStmt, IfStmt, ElseClause, IfBeginStmt,
     ElseStmt, ElseIfStmt, EndIfStmt, InputStmt, PrintStmt, SubStmt,
-    VarDeclClause, AnyVarDeclClause, EndSubStmt, ExitSubStmt, TypeStmt,
-    EndTypeStmt,
+    VarDeclClause, AnyVarDeclClause, ArrayDimRange, EndSubStmt,
+    ExitSubStmt, TypeStmt, EndTypeStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -65,6 +65,7 @@ single_kw = CaselessKeyword('single')
 string_kw = CaselessKeyword('string')
 sub_kw = CaselessKeyword('sub')
 then_kw = CaselessKeyword('then')
+to_kw = CaselessKeyword('to')
 type_kw = CaselessKeyword('type')
 xor_kw = CaselessKeyword('xor')
 
@@ -223,19 +224,29 @@ assignment_stmt = (
 
 beep_stmt = beep_kw
 
+array_pass = Located(
+    identifier +
+    lpar.suppress() +
+    rpar.suppress()
+).set_name('array_pass')
+arg = (
+    array_pass |
+    expr
+)
+arg_list = delimited_list(arg, delim=',', min=1)
 call_stmt = (
     (
         call_kw.suppress() -
         identifier -
         (
             lpar.suppress() -
-            expr_list -
+            arg_list -
             rpar.suppress()
         )[0, 1]
     ) |
     (
         identifier +
-        expr_list[0, 1]
+        arg_list[0, 1]
     )
 ).set_name('call_stmt')
 
@@ -250,13 +261,29 @@ color_stmt = (
     (color_kw.suppress() - expr)
 ).set_name('color_stmt')
 
+array_dim_range = Group(
+    expr +
+    Opt(
+        to_kw.suppress() -
+        expr
+    )
+)
+array_dims = Group(
+    lpar.suppress() +
+    delimited_list(array_dim_range, delim=',') +
+    rpar.suppress()
+).set_name('array_dims')
 var_decl = Located(
     (
         untyped_identifier +
+        Opt(array_dims, default=None) +
         as_kw -
         type_name
     ) |
-    identifier
+    (
+        identifier +
+        Opt(array_dims, default=None)
+    )
 ).set_name('var_decl')
 dim_stmt = (
     dim_kw.suppress() -
@@ -320,7 +347,18 @@ type_stmt = (
 ).set_name('type_stmt')
 end_type_stmt = (end_kw + type_kw).set_name('end_type_stmt')
 
-param_list = delimited_list(var_decl, delim=comma)
+param_decl = Located(
+    (
+        untyped_identifier +
+        Group(lpar - rpar) +
+        Opt(as_kw - type_name)
+    ) |
+    (
+        identifier + Group(lpar - rpar)
+    ) |
+    var_decl
+)
+param_list = delimited_list(param_decl, delim=comma)
 sub_stmt = (
     sub_kw.suppress() -
     untyped_identifier +
@@ -515,7 +553,7 @@ def parse_expr_list(toks):
 def parse_lvalue(toks):
     loc_start, toks, loc_end = toks
     base_var, array_indices, dotted_vars = toks
-    lvalue = Lvalue(base_var, array_indices, list(dotted_vars))
+    lvalue = Lvalue(base_var, list(array_indices), list(dotted_vars))
     lvalue.loc_start = loc_start
     lvalue.loc_end = loc_end
     return lvalue
@@ -530,6 +568,15 @@ def parse_assignment(toks):
 @parse_action(beep_stmt)
 def parse_beep(toks):
     return BeepStmt()
+
+
+@parse_action(array_pass)
+def array_pass(toks):
+    loc_start, toks, loc_end = toks
+    array_pass = ArrayPass(toks[0])
+    array_pass.loc_start = loc_start
+    array_pass.loc_end = loc_end
+    return array_pass
 
 
 @parse_action(call_stmt)
@@ -699,26 +746,50 @@ def parse_sub_stmt(toks):
     return SubStmt(name, params)
 
 
+@parse_action(array_dim_range)
+def parse_array_dim_range(toks):
+    dim_range = toks[0]
+    if len(dim_range) == 1:
+        lbound = NumericLiteral(0)
+        ubound = dim_range[0]
+    else:
+        lbound, ubound = dim_range
+    return ArrayDimRange(lbound, ubound)
+
+
 @parse_action(var_decl)
 @parse_action(type_field_decl)
 @parse_action(declare_var_decl)
+@parse_action(param_decl)
 def parse_var_decl(toks):
     loc_start, toks, loc_end = toks
 
     if len(toks) == 1:
-        name = toks[0]
+        # This should be the case where param_decl is the same as a
+        # normal var_decl (no empty "()")
+        assert isinstance(toks[0], VarDeclClause)
+        return toks[0]
+
+    if len(toks) == 2:
+        name, dims = toks
         type_name = None
-    else:
+    elif len(toks) == 3:
+        # type_field_decl, which does not support array_indices
         name, _, type_name = toks
-        if any(name.endswith(c) for c in Type.type_chars()):
-            raise SyntaxError(
-                loc=loc_start,
-                msg='Variable name cannot end with a type char')
+        dims = []
+    elif len(toks) == 4:
+        name, dims, _, type_name = toks
+    else:
+        assert False
 
     if type_name == 'any':
         clause = AnyVarDeclClause(name)
     else:
-        clause = VarDeclClause(name, type_name)
+        clause = VarDeclClause(name, type_name, dims)
+
+    if list(dims) == ['(', ')']:
+        clause.is_nodim_array = True
+        clause.array_dims = None
 
     clause.loc_start = loc_start
     clause.loc_end = loc_end

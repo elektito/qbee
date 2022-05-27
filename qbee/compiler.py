@@ -228,9 +228,14 @@ class Compiler:
             decl.bind(self)
             self.cur_routine.local_vars[node.base_var] = decl.type
 
-        # This is here to make sure we won't forget to check
-        # indices when it's implemented.
-        assert not node.array_indices
+    def _compile_array_pass_pass1_pre(self, node):
+        var_type = node.parent_routine.get_variable_type(
+            node.identifier)
+        if not var_type.is_array:
+            raise CompileError(
+                EC.TYPE_MISMATCH,
+                'Not an array',
+                node=node)
 
     def _compile_binary_op_pass1_pre(self, node):
         if node.type == Type.UNKNOWN:
@@ -246,6 +251,16 @@ class Compiler:
         if not node.lvalue.type.is_coercible_to(node.rvalue.type):
             raise CompileError(EC.TYPE_MISMATCH, node=node)
 
+    def _compile_call_pass1_pre(self, node):
+        for arg in node.args:
+            if isinstance(arg, Lvalue) and arg.type.is_array:
+                raise CompileError(
+                    EC.TYPE_MISMATCH,
+                    f'Parameter type mismatch. Did you mean '
+                    f'{arg.base_var}()?',
+                    node=arg,
+                )
+
     def _compile_call_pass2_pre(self, node):
         routine = self.routines.get(node.name)
         if routine is None:
@@ -260,7 +275,15 @@ class Compiler:
                 node=node)
 
         for param_type, arg in zip(routine.params.values(), node.args):
-            if not arg.type.is_coercible_to(param_type):
+            if isinstance(arg, Lvalue):
+                # argument type must match exactly for lvalues,
+                # because pass is by reference
+                if arg.type != param_type:
+                    raise CompileError(
+                        EC.TYPE_MISMATCH,
+                        'Parameter type mismatch',
+                        node=arg)
+            elif not arg.type.is_coercible_to(param_type):
                 expected_type_name = param_type.name
                 if param_type.is_user_defined:
                     expected_type_name = 'user-defined type '

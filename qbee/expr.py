@@ -20,6 +20,9 @@ class Type:
     def __init__(self, builtin_type, user_type_name=None):
         self._type = builtin_type
         self.user_type_name = user_type_name
+        self.is_array = False
+        self.array_dims = None
+        self.is_nodim_array = False  # e.g.: x() as integer
 
     def __eq__(self, other):
         assert isinstance(other, Type)
@@ -37,7 +40,8 @@ class Type:
 
         return (
             self._type == other._type and
-            self.user_type_name == other.user_type_name
+            self.user_type_name == other.user_type_name and
+            self.is_array == other.is_array
         )
 
     def __hash__(self):
@@ -45,9 +49,12 @@ class Type:
 
     def __repr__(self):
         if self.is_builtin:
-            return f'Type.{self.name.upper()}'
+            s = f'Type.{self.name.upper()}'
         else:
-            return f'Type.USER_DEFINED({self.name})'
+            s = f'Type.USER_DEFINED({self.name})'
+        if self.is_array:
+            s += '()'
+        return s
 
     @property
     def name(self):
@@ -59,6 +66,21 @@ class Type:
     @property
     def is_user_defined(self):
         return (self._type == BuiltinType.USER_DEFINED)
+
+    @property
+    def is_static_array(self):
+        return (
+            self.is_array and
+            not self.is_nodim_array and
+            all(
+                d.lbound.is_const and d.ubound.is_const
+                for d in self.array_dims
+            )
+        )
+
+    @property
+    def is_dynamic_array(self):
+        return self.is_array and not self.is_static_array
 
     @property
     def is_numeric(self):
@@ -106,6 +128,11 @@ class Type:
             BuiltinType.DOUBLE: '#',
             BuiltinType.STRING: '$',
         }[self._type]
+
+    @property
+    def array_base_type(self):
+        assert self.is_array
+        return Type(self._type, self.user_type_name)
 
     @property
     def type_id(self):
@@ -698,6 +725,8 @@ class Lvalue(Expr):
         # No handling needed for when base variable is an array, since
         # the return value of get_variable_type should already have
         # is_array set properly.
+        if var_type.is_array and self.array_indices:
+            var_type = var_type.array_base_type
 
         # should we do this?
         #
@@ -734,6 +763,13 @@ class Lvalue(Expr):
     @property
     def base_type(self):
         return self.parent_routine.get_variable_type(self.base_var)
+
+    @property
+    def base_is_ref(self):
+        return (
+            self.base_var in self.parent_routine.params or
+            self.type.is_dynamic_array
+        )
 
     @property
     def children(self):
@@ -783,3 +819,28 @@ class StringLiteral(Expr):
     @property
     def children(self):
         return []
+
+
+class ArrayPass(Expr):
+    """This class is only used for passing an array to a sub or
+function. For example: CALL foo(x())"""
+
+    is_literal = False
+    is_const = False
+
+    def __init__(self, identifier):
+        self.identifier = identifier
+
+    def __repr__(self):
+        return f'<ArrayPass {self.identifier}()>'
+
+    @property
+    def type(self):
+        return self.parent_routine.get_variable_type(self.identifier)
+
+    @property
+    def children(self):
+        return []
+
+    def replace_child(self, old_child, new_child):
+        pass

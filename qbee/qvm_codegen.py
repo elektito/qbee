@@ -38,6 +38,7 @@ class CanonicalOp(Enum):
 
     ADD = auto()
     AND = auto()
+    ARRIDX = auto()
     CALL = auto()
     CMP = auto()
     CONV = auto()
@@ -72,6 +73,7 @@ class CanonicalOp(Enum):
     SUB = auto()
     STORE = auto()
     STOREIDX = auto()
+    STOREREF = auto()
     XOR = auto()
 
     _LABEL = 10000
@@ -374,6 +376,18 @@ class QvmCode(BaseCode):
             i += 1
 
     def __str__(self):
+        def fmt_array_dims(type):
+            arr = ''
+            if type.is_array:
+                arr = '()'
+            if type.is_static_array:
+                bounds = ', '.join(
+                    f'{d.static_lbound} to {d.static_ubound}'
+                    for d in type.array_dims
+                )
+                arr = f'({bounds})'
+            return arr
+
         s = ';;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
 
         if self._user_types:
@@ -403,9 +417,11 @@ class QvmCode(BaseCode):
             for routine in self._routines.values():
                 s += f'{routine.name}:\n'
                 for pname, ptype in routine.params.items():
-                    s += f'    {ptype.name} {pname}\n'
+                    arr = fmt_array_dims(ptype)
+                    s += f'    {ptype.name}{arr} {pname}\n'
                 for vname, vtype in routine.local_vars.items():
-                    s += f'    {vtype.name} {vname}\n'
+                    arr = fmt_array_dims(vtype)
+                    s += f'    {vtype.name}{arr} {vname}\n'
             s += '\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
 
         s += '.code\n\n'
@@ -570,9 +586,6 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
 def get_lvalue_dotted_index(lvalue, codegen):
     assert isinstance(lvalue, expr.Lvalue)
 
-    # arrays not supported at the moment
-    assert not lvalue.array_indices
-
     idx = 0
     if lvalue.dotted_vars:
         base_type = lvalue.base_type
@@ -587,13 +600,16 @@ def get_lvalue_dotted_index(lvalue, codegen):
 
 
 def gen_lvalue_write(node, code, codegen):
+    # this function is called from any code generator that needs to
+    # write to an lvalue. the value to write should already be on top
+    # of the stack
+
     assert isinstance(node, expr.Lvalue)
 
-    # this function is called from any code generator that needs to
-    # write to an lvalue
-
-    # just so we won't forget updating here when arrays are supported.
-    assert not node.array_indices
+    if node.base_is_ref or node.base_type.is_array:
+        gen_lvalue_ref(node, code, codegen)
+        code.add(('storeref',))
+        return
 
     idx = get_lvalue_dotted_index(node, codegen)
 
@@ -608,26 +624,47 @@ def gen_lvalue_write(node, code, codegen):
         code.add((f'storeidx{scope}', node.base_var, idx))
 
 
-def gen_lvalue_read_ref(node, code, codegen):
+def gen_lvalue_ref(node, code, codegen):
     assert isinstance(node, expr.Lvalue)
 
-    # just so we won't forget updating here when arrays are supported.
-    assert not node.array_indices
-
-    idx = get_lvalue_dotted_index(node, codegen)
+    if node.array_indices:
+        for i, aidx in enumerate(node.array_indices):
+            codegen.gen_code_for_node(aidx, code)
+            gen_code_for_conv(expr.Type.LONG, aidx, code, codegen)
 
     if codegen.compiler.is_var_global(node.base_var):
         scope = 'g'  # global
     else:
         scope = 'l'  # local
 
-    code.add((f'pushref{scope}', node.base_var))
+    if node.base_is_ref:
+        # already a reference; just read it onto stack
+        code.add((f'read{scope}', node.base_var))
+    else:
+        # push a reference to base onto the stack
+        code.add((f'pushref{scope}', node.base_var))
+
+    if node.array_indices:
+        code.add(('arridx',))
+
+    idx = get_lvalue_dotted_index(node, codegen)
     if idx > 0:
         if idx < 32768:
             code.add(('push%', idx))
         else:
             code.add(('push&', idx))
         code.add(('refidx',))
+
+
+def gen_code_for_conv(to_type, node, code, codegen):
+    assert not node.type.is_array
+    assert not node.type.is_user_defined
+    assert not to_type.is_array
+    assert not to_type.is_user_defined
+    if node.type != to_type:
+        from_char = node.type.type_char
+        to_char = to_type.type_char
+        code.add((f'conv{from_char}{to_char}',))
 
 
 # Code generators for expressions
@@ -678,30 +715,32 @@ def gen_lvalue(node, code, codegen):
     # writing is performed in other code generators like those for
     # assignment, input, etc.
 
-    # just so we won't forget updating here when arrays are supported.
-    assert not node.array_indices
-
     if codegen.compiler.is_var_global(node.base_var):
         scope = 'g'  # global
     else:
         scope = 'l'  # local
 
-    idx = get_lvalue_dotted_index(node, codegen)
-    base_is_ref = (node.base_var in node.parent_routine.params)
-
-    if base_is_ref:
-        code.add((f'read{scope}', node.base_var))
-        if idx < 32768:
-            code.add(('push%', idx))
-        else:
-            code.add(('push&', idx))
-        code.add(('refidx',))
+    if node.base_is_ref or node.base_type.is_array:
+        gen_lvalue_ref(node, code, codegen)
         code.add(('deref',))
     else:
+        idx = get_lvalue_dotted_index(node, codegen)
         if idx == 0:
             code.add((f'read{scope}', node.base_var))
         else:
             code.add((f'readidx{scope}', node.base_var, idx))
+
+
+@QvmCodeGen.generator_for(expr.ArrayPass)
+def gen_array_pass(node, code, codegen):
+    var_type = node.parent_routine.get_variable_type(node.identifier)
+    assert var_type.is_array
+
+    if codegen.compiler.is_var_global(node.identifier):
+        scope = 'g'  # global
+    else:
+        scope = 'l'  # local
+    code.add((f'pushref{scope}', node.identifier))
 
 
 @QvmCodeGen.generator_for(expr.BinaryOp)
@@ -740,16 +779,10 @@ def gen_binary_op(node, code, codegen):
             'Unaccounted for binary operator: {node.op}')
 
     codegen.gen_code_for_node(node.left, code)
-    if left_type != node.left.type:
-        from_char = node.left.type.type_char
-        to_char = left_type.type_char
-        code.add((f'conv{from_char}{to_char}',))
+    gen_code_for_conv(left_type, node.left, code, codegen)
 
     codegen.gen_code_for_node(node.right, code)
-    if right_type != node.right.type:
-        from_char = node.right.type.type_char
-        to_char = right_type.type_char
-        code.add((f'conv{from_char}{to_char}',))
+    gen_code_for_conv(right_type, node.right, code, codegen)
 
     if node.op.is_comparison:
         # both operands are of the same type, so it doesn't matter we
@@ -838,13 +871,13 @@ def gen_call(node, code, codegen):
     routine = codegen.compiler.routines[node.name]
     for arg, param_type in zip(node.args, routine.params.values()):
         if isinstance(arg, expr.Lvalue):
-            gen_lvalue_read_ref(arg, code, codegen)
+            gen_lvalue_ref(arg, code, codegen)
         else:
             codegen.gen_code_for_node(arg, code)
-        if arg.type != param_type:
-            from_type_char = arg.type.type_char
-            to_type_char = param_type.type_char
-            code.add((f'conv{from_type_char}{to_type_char}',))
+            if arg.type != param_type:
+                from_type_char = arg.type.type_char
+                to_type_char = param_type.type_char
+                code.add((f'conv{from_type_char}{to_type_char}',))
     code.add(
         ('push%', len(node.args)),
         ('call', '_sub_' + node.name),
