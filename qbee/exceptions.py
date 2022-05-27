@@ -45,6 +45,7 @@ class ErrorCode(Enum):
     ILLEGAL_IN_TYPE_BLOCK = 'Statement illegal in type block'
     ARGUMENT_COUNT_MISMATCH = 'Argument count mismatch'
     ELEMENT_NOT_DEFINED = 'Element not defined'
+    WRONG_NUMBER_OF_DIMENSIONS = 'Wrong number of dimensions'
 
 
 class CompileError(Exception):

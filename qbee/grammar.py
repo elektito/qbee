@@ -772,13 +772,14 @@ def parse_var_decl(toks):
 
     if len(toks) == 2:
         name, dims = toks
-        type_name = None
+        type_name = []
     elif len(toks) == 3:
         # type_field_decl, which does not support array_indices
         name, _, type_name = toks
         dims = []
     elif len(toks) == 4:
         name, dims, _, type_name = toks
+        dims = dims or []
     else:
         assert False
 
@@ -789,7 +790,7 @@ def parse_var_decl(toks):
 
     if list(dims) == ['(', ')']:
         clause.is_nodim_array = True
-        clause.array_dims = None
+        clause.dims = []
 
     clause.loc_start = loc_start
     clause.loc_end = loc_end

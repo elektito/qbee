@@ -238,6 +238,22 @@ class Compiler:
             decl.bind(self)
             self.cur_routine.local_vars[node.base_var] = decl.type
 
+        if node.array_indices:
+            if not node.base_type.is_array:
+                raise CompileError(
+                    EC.TYPE_MISMATCH,
+                    'Cannot index non-array (note that this is '
+                    'valid in original QB and causes an implicit '
+                    'array with the same name be created)',
+                    node=node)
+
+            expected_dims = len(node.base_type.array_dims)
+            if len(node.array_indices) != expected_dims and \
+               not node.base_type.is_nodim_array:
+                raise CompileError(
+                    EC.WRONG_NUMBER_OF_DIMENSIONS,
+                    node=node)
+
     def _compile_array_pass_pass1_pre(self, node):
         var_type = node.parent_routine.get_variable_type(
             node.identifier)

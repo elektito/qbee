@@ -71,7 +71,7 @@ class VarDeclClause(NoChildStmt):
                  is_nodim_array=False):
         self.name = name
         self.var_type_name = var_type_name
-        self.dims = dims
+        self.array_dims = dims or []
         self.is_nodim_array = is_nodim_array
 
     def __repr__(self):
@@ -90,9 +90,9 @@ class VarDeclClause(NoChildStmt):
             top_level_routine = self.compiler.routines['_main']
             _type = top_level_routine.get_identifier_type(self.name)
 
-        if self.dims is not None:
+        if self.array_dims or self.is_nodim_array:
             _type.is_array = True
-            _type.array_dims = self.dims
+            _type.array_dims = self.array_dims
             _type.is_nodim_array = self.is_nodim_array
 
         return _type
