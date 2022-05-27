@@ -59,9 +59,12 @@ class Type:
     @property
     def name(self):
         if self.is_builtin:
-            return self._type.name.lower()
+            ret = self._type.name.lower()
         else:
-            return self.user_type_name
+            ret = self.user_type_name
+        if self.is_array:
+            ret += '()'
+        return ret
 
     @property
     def is_user_defined(self):

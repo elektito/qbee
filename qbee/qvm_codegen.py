@@ -376,17 +376,18 @@ class QvmCode(BaseCode):
             i += 1
 
     def __str__(self):
-        def fmt_array_dims(type):
-            arr = ''
-            if type.is_array:
-                arr = '()'
+        def fmt_type(type):
+            if not type.is_array:
+                return type.name
+            base = type.array_base_type.name
+            bounds = '()'
             if type.is_static_array:
                 bounds = ', '.join(
                     f'{d.static_lbound} to {d.static_ubound}'
                     for d in type.array_dims
                 )
-                arr = f'({bounds})'
-            return arr
+                bounds = f'({bounds})'
+            return f'{base}{bounds}'
 
         s = ';;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
 
@@ -417,11 +418,9 @@ class QvmCode(BaseCode):
             for routine in self._routines.values():
                 s += f'{routine.name}:\n'
                 for pname, ptype in routine.params.items():
-                    arr = fmt_array_dims(ptype)
-                    s += f'    {ptype.name}{arr} {pname}\n'
+                    s += f'    {fmt_type(ptype)} {pname}\n'
                 for vname, vtype in routine.local_vars.items():
-                    arr = fmt_array_dims(vtype)
-                    s += f'    {vtype.name}{arr} {vname}\n'
+                    s += f'    {fmt_type(vtype)} {vname}\n'
             s += '\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
 
         s += '.code\n\n'
