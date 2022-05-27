@@ -240,6 +240,9 @@ class Type:
 
     @staticmethod
     def get_type_size(type, user_types):
+        if type.is_array:
+            return 1
+
         from .stmt import TypeBlock
         assert all(
             isinstance(k, str) and isinstance(v, TypeBlock)
