@@ -136,6 +136,12 @@ type_name = (
 
 # Expressions
 
+array_pass = Located(
+    identifier +
+    lpar.suppress() +
+    rpar.suppress()
+).set_name('array_pass')
+
 lvalue = Forward().set_name('lvalue')
 expr = Forward().set_name('expr')
 
@@ -170,7 +176,10 @@ or_expr = and_expr - (or_kw - and_expr)[...]
 xor_expr = or_expr - (xor_kw - or_expr)[...]
 eqv_expr = xor_expr - (xor_kw - xor_expr)[...]
 imp_expr = eqv_expr - (eqv_kw - eqv_expr)[...]
-expr <<= Located(imp_expr)
+expr <<= Located(
+    array_pass |
+    imp_expr
+)
 
 array_indices = Group(
     lpar.suppress() +
@@ -226,29 +235,19 @@ assignment_stmt = (
 
 beep_stmt = beep_kw
 
-array_pass = Located(
-    identifier +
-    lpar.suppress() +
-    rpar.suppress()
-).set_name('array_pass')
-arg = (
-    array_pass |
-    expr
-)
-arg_list = delimited_list(arg, delim=',', min=1)
 call_stmt = (
     (
         call_kw.suppress() -
         identifier -
         (
             lpar.suppress() -
-            arg_list -
+            expr_list -
             rpar.suppress()
         )[0, 1]
     ) |
     (
         identifier +
-        arg_list[0, 1]
+        expr_list[0, 1]
     )
 ).set_name('call_stmt')
 

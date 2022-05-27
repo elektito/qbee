@@ -715,7 +715,8 @@ def gen_func_call(node, code, codegen):
     func = codegen.compiler.get_routine(node.name)
     for arg, param_type in zip(node.args, func.params.values()):
         codegen.gen_code_for_node(arg, code)
-        gen_code_for_conv(param_type, arg, code, codegen)
+        if not isinstance(arg, expr.ArrayPass):
+            gen_code_for_conv(param_type, arg, code, codegen)
     code.add(('call', '_func_' + node.name))
 
 

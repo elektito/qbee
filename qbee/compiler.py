@@ -1,4 +1,4 @@
-from .stmt import Stmt, IfBlock, VarDeclClause, ArrayDimRange
+from .stmt import Stmt, IfBlock, VarDeclClause, ArrayDimRange, CallStmt
 from .expr import Type, Expr, Lvalue, NumericLiteral, FuncCall
 from .program import Label, LineNo
 from .codegen import CodeGen
@@ -258,8 +258,9 @@ class Compiler:
                                 node.array_indices)
             new_node.loc_start = node.loc_start
             new_node.loc_end = node.loc_end
-            new_node.bind(self)
+            new_node.parent = node.parent
             node.parent.replace_child(node, new_node)
+            new_node.parent.bind(self)
             return
 
         if node.base_var in self.routines:
@@ -301,7 +302,14 @@ class Compiler:
                     EC.WRONG_NUMBER_OF_DIMENSIONS,
                     node=node)
 
-    def _compile_array_pass_pass1_pre(self, node):
+    def _compile_array_pass_pass3_pre(self, node):
+        if not isinstance(node.parent, (FuncCall, CallStmt)):
+            raise CompileError(
+                EC.TYPE_MISMATCH,
+                'Array-pass expression is only valid when calling '
+                'functions or sub-routines',
+                node=node,
+            )
         var_type = node.parent_routine.get_variable_type(
             node.identifier)
         if not var_type.is_array:
