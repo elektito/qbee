@@ -225,6 +225,42 @@ class Compiler:
         for child in node.children:
             self._set_parent_routine(child, routine)
 
+    def _perform_argument_matching(self, node, kind):
+        routine = self.routines.get(node.name)
+        if routine is None:
+            raise CompileError(EC.SUBPROGRAM_NOT_FOUND, node=node)
+        if routine.kind != kind:
+            if kind == 'sub':
+                msg = 'Routine is a FUNCTION not a SUB'
+            else:
+                msg = 'Routine is a SUB not a FUNCTION'
+            raise CompileError(EC.SUBPROGRAM_NOT_FOUND,
+                               msg=msg,
+                               node=node)
+        if len(node.args) != len(routine.params):
+            raise CompileError(
+                EC.ARGUMENT_COUNT_MISMATCH,
+                node=node)
+
+        for param_type, arg in zip(routine.params.values(), node.args):
+            if isinstance(arg, Lvalue):
+                # argument type must match exactly for lvalues,
+                # because pass is by reference
+                if arg.type != param_type:
+                    raise CompileError(
+                        EC.TYPE_MISMATCH,
+                        'Parameter type mismatch',
+                        node=arg)
+            elif not arg.type.is_coercible_to(param_type):
+                error_msg = (
+                    f'Argument type mismatch: '
+                    f'expected {param_type.name}, '
+                    f'got {arg.type.name}'
+                )
+                raise CompileError(EC.TYPE_MISMATCH,
+                                   msg=error_msg,
+                                   node=arg)
+
     def _compile_program_pass1_pre(self, node):
         node.routine = self.routines['_main']
 
@@ -318,8 +354,16 @@ class Compiler:
                 'Not an array',
                 node=node)
 
-    def _compile_func_call_pass2_pre(self, node):
-        check_arg_count_and_types
+    def _compile_func_call_pass3_pre(self, node):
+        for arg in node.args:
+            if isinstance(arg, Lvalue) and arg.type.is_array:
+                raise CompileError(
+                    EC.TYPE_MISMATCH,
+                    f'Parameter type mismatch. Did you mean '
+                    f'{arg.base_var}()?',
+                    node=arg,
+                )
+        self._perform_argument_matching(node, 'function')
 
     def _compile_binary_op_pass1_pre(self, node):
         if node.type == Type.UNKNOWN:
@@ -356,40 +400,7 @@ class Compiler:
                 )
 
     def _compile_call_pass2_pre(self, node):
-        routine = self.routines.get(node.name)
-        if routine is None:
-            raise CompileError(EC.SUBPROGRAM_NOT_FOUND, node=node)
-        if routine.kind != 'sub':
-            raise CompileError(EC.SUBPROGRAM_NOT_FOUND,
-                               msg='Routine is a FUNCTION not a SUB',
-                               node=node)
-        if len(node.args) != len(routine.params):
-            raise CompileError(
-                EC.ARGUMENT_COUNT_MISMATCH,
-                node=node)
-
-        for param_type, arg in zip(routine.params.values(), node.args):
-            if isinstance(arg, Lvalue):
-                # argument type must match exactly for lvalues,
-                # because pass is by reference
-                if arg.type != param_type:
-                    raise CompileError(
-                        EC.TYPE_MISMATCH,
-                        'Parameter type mismatch',
-                        node=arg)
-            elif not arg.type.is_coercible_to(param_type):
-                expected_type_name = param_type.name
-                if param_type.is_user_defined:
-                    expected_type_name = 'user-defined type '
-                    expected_type_name += param_type.user_type_name
-                error_msg = (
-                    f'Argument type mismatch: '
-                    f'expected {expected_type_name}, '
-                    f'got {arg.type.name}'
-                )
-                raise CompileError(EC.TYPE_MISMATCH,
-                                   msg=error_msg,
-                                   node=arg)
+        self._perform_argument_matching(node, 'sub')
 
     def _compile_dim_pass2_pre(self, node):
         for decl in node.var_decls:
