@@ -476,6 +476,9 @@ class QvmCode(BaseCode):
                 if name.startswith('_sub_'):
                     cur_routine = name[len('_sub_'):]
                     cur_routine = self._routines[cur_routine]
+                elif name.startswith('_func_'):
+                    cur_routine = name[len('_func_'):]
+                    cur_routine = self._routines[cur_routine]
                 continue
 
             bargs = b''
