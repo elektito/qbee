@@ -87,6 +87,8 @@ class Type:
 
     @property
     def is_numeric(self):
+        if self.is_array:
+            return False
         return self._type in (
             BuiltinType.INTEGER,
             BuiltinType.LONG,
