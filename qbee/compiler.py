@@ -1,4 +1,7 @@
-from .stmt import Stmt, IfBlock, VarDeclClause, ArrayDimRange, CallStmt
+from .stmt import (
+    Stmt, IfBlock, VarDeclClause, ArrayDimRange, CallStmt,
+    ReturnValueSetStmt,
+)
 from .expr import Type, Expr, Lvalue, NumericLiteral, FuncCall
 from .program import Label, LineNo
 from .codegen import CodeGen
@@ -386,13 +389,31 @@ class Compiler:
             raise CompileError(EC.TYPE_MISMATCH, node=node)
 
     def _compile_assignment_pass1_pre(self, node):
+        if node.lvalue.base_var == self.cur_routine.name:
+            # setting function return value
+            node.lvalue.name = '_retval'
         if not node.lvalue.type.is_coercible_to(node.rvalue.type):
             raise CompileError(EC.TYPE_MISMATCH, node=node)
 
+        if node.lvalue.base_var == self.cur_routine.name and \
+           not node.lvalue.dotted_vars or \
+           not node.lvalue.array_indices:
+            # assigning to function name (return value)
+            new_node = ReturnValueSetStmt(
+                node.lvalue.name, node.rvalue)
+            new_node.parent = node.parent
+            new_node.loc_start = node.lvalue.loc_start
+            new_node.loc_end = node.lvalue.loc_end
+            node.parent.replace_child(node, new_node)
+            node.parent.bind(self)
+            return
+
     def _compile_assignment_pass3_pre(self, node):
-        # We have to do this in pass 3, because on pass 2 where the
-        # Lvalue is replaced with a FuncCall, we're already traversing
-        # the tree and we'll still see the old Lvalue in the tree.
+        # Checking if there's an assignment to a FuncCall (converted
+        # from an Lvalue node). We have to do this in pass 3, because
+        # on pass 2 where the Lvalue is replaced with a FuncCall,
+        # we're already traversing the tree and we'll still see the
+        # old Lvalue in the tree.
         if not isinstance(node.lvalue, Lvalue):
             raise CompileError(
                 EC.DUPLICATE_DEFINITION,
@@ -463,6 +484,8 @@ class Compiler:
         self.routines[node.name] = routine
         self.cur_routine = routine
         node.routine = routine
+
+        routine.local_vars['_retval'] = node.type
 
     def _compile_sub_block_pass1_post(self, node):
         self.cur_routine = self.routines['_main']

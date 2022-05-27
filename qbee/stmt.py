@@ -545,6 +545,26 @@ class ExitFunctionStmt(NoChildStmt):
         return '<ExitFunctionStmt>'
 
 
+class ReturnValueSetStmt(NoChildStmt):
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+
+    def __repr__(self):
+        return f'<ReturnValueSetStmt {self.name}>'
+
+    @property
+    def children(self):
+        return [self.value]
+
+    def replace_child(self, old_child, new_child):
+        if self.value == old_child:
+            self.value = new_child
+            return
+        raise InternalError(
+            f'No such child to replace: {old_child}')
+
+
 # Blocks
 
 

@@ -70,6 +70,7 @@ class CanonicalOp(Enum):
     READIDX = auto()
     REFIDX = auto()
     RET = auto()
+    RETV = auto()
     SUB = auto()
     STORE = auto()
     STOREIDX = auto()
@@ -1069,7 +1070,15 @@ def gen_func_block(node, code, codegen):
 
     for inner_stmt in node.block:
         codegen.gen_code_for_node(inner_stmt, code)
-    code.add(('ret',))
+
+    code.add((f'readl', '_retval'))
+    code.add(('retv',))
+
+
+@QvmCodeGen.generator_for(stmt.ReturnValueSetStmt)
+def gen_ret_value(node, code, codegen):
+    codegen.gen_code_for_node(node.value, code)
+    code.add(('storel', '_retval'))
 
 
 @QvmCodeGen.generator_for(stmt.TypeBlock)
