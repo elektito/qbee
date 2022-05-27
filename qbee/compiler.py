@@ -403,5 +403,5 @@ class Compiler:
                 if not item.type.is_builtin:
                     raise CompileError(
                         EC.TYPE_MISMATCH,
-                        f'Cannot print value: {item}',
-                        node=node)
+                        f'Cannot print value',
+                        node=item)
