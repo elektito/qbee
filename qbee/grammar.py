@@ -374,10 +374,11 @@ exit_sub_stmt = exit_kw + sub_kw
 declare_var_decl = Located(
     (
         untyped_identifier +
+        Opt(Group(lpar + rpar)) +
         as_kw +
         any_kw
     ) |
-    var_decl
+    param_decl
 )
 declare_param_list = delimited_list(declare_var_decl, delim=comma)
 declare_stmt = (
