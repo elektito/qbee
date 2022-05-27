@@ -236,7 +236,6 @@ class Compiler:
                 for d in decl.dims:
                     d.bind(self)
             decl.bind(self)
-            print(decl.type, decl.dims)
             self.cur_routine.local_vars[node.base_var] = decl.type
 
     def _compile_array_pass_pass1_pre(self, node):
