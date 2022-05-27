@@ -262,6 +262,12 @@ class Compiler:
             node.parent.replace_child(node, new_node)
             return
 
+        if node.base_var in self.routines:
+            raise CompileError(
+                EC.DUPLICATE_DEFINITION,
+                'A sub-routine with the same name exists',
+                node=node)
+
         if node.base_var not in self.cur_routine.local_vars and \
            node.base_var not in self.cur_routine.params:
             # Implicitly defined variable
