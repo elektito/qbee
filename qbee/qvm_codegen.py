@@ -725,6 +725,12 @@ def gen_lvalue(node, code, codegen):
     # writing is performed in other code generators like those for
     # assignment, input, etc.
 
+    if node.is_const:
+        # this is a constant declared in a const statement
+        value = node.eval()
+        code.add((f'push{node.type.type_char}', node.eval()))
+        return
+
     if codegen.compiler.is_var_global(node.base_var):
         scope = 'g'  # global
     else:
@@ -923,6 +929,12 @@ def gen_color(node, code, codegen):
         code.add(('push%', -1))
 
     code.add(('io', 'screen', 'color'))
+
+
+@QvmCodeGen.generator_for(stmt.ConstStmt)
+def gen_num_literal(node, code, codegen):
+    # No code for const statements needed
+    pass
 
 
 @QvmCodeGen.generator_for(stmt.DeclareStmt)

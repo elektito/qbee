@@ -796,7 +796,7 @@ class Lvalue(Expr):
             raise InternalError(
                 'Attempting to evaluate non-const expression')
 
-        return self.compiler.get_const_value(self.base_var)
+        return self.compiler.consts[self.base_var].eval()
 
 
 class Variable(Expr):

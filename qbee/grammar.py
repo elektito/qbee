@@ -14,12 +14,12 @@ from .expr import (
     StringLiteral, ParenthesizedExpr, ArrayPass,
 )
 from .stmt import (
-    AssignmentStmt, BeepStmt, CallStmt, ClsStmt, ColorStmt, DataStmt,
-    DeclareStmt, DimStmt, GotoStmt, IfStmt, ElseClause, IfBeginStmt,
-    ElseStmt, ElseIfStmt, EndIfStmt, InputStmt, PrintStmt, SubStmt,
-    VarDeclClause, AnyVarDeclClause, ArrayDimRange, EndSubStmt,
-    ExitSubStmt, TypeStmt, EndTypeStmt, FunctionStmt, EndFunctionStmt,
-    ExitFunctionStmt,
+    AssignmentStmt, BeepStmt, CallStmt, ClsStmt, ColorStmt, ConstStmt,
+    DataStmt, DeclareStmt, DimStmt, GotoStmt, IfStmt, ElseClause,
+    IfBeginStmt, ElseStmt, ElseIfStmt, EndIfStmt, InputStmt, PrintStmt,
+    SubStmt, VarDeclClause, AnyVarDeclClause, ArrayDimRange,
+    EndSubStmt, ExitSubStmt, TypeStmt, EndTypeStmt, FunctionStmt,
+    EndFunctionStmt, ExitFunctionStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -41,6 +41,7 @@ beep_kw = CaselessKeyword('beep')
 call_kw = CaselessKeyword('call')
 cls_kw = CaselessKeyword('cls')
 color_kw = CaselessKeyword('color')
+const_kw = CaselessKeyword('const')
 data_kw = CaselessKeyword('data')
 declare_kw = CaselessKeyword('declare')
 dim_kw = CaselessKeyword('dim')
@@ -262,6 +263,13 @@ color_stmt = (
     (color_kw.suppress() - expr)
 ).set_name('color_stmt')
 
+const_stmt = (
+    const_kw.suppress() -
+    identifier -
+    eq.suppress() -
+    expr
+).set_name('const_stmt')
+
 array_dim_range = Group(
     expr +
     Opt(
@@ -420,6 +428,7 @@ stmt = Located(
     call_stmt |
     cls_stmt |
     color_stmt |
+    const_stmt |
     data_stmt |
     declare_stmt |
     dim_stmt |
@@ -630,6 +639,12 @@ def parse_color(toks):
     colors += [None] * (3 - len(colors))
 
     return ColorStmt(*colors)
+
+
+@parse_action(const_stmt)
+def parse_const_stmt(toks):
+    name, value = toks
+    return ConstStmt(name, value)
 
 
 @parse_action(declare_stmt)

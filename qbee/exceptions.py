@@ -47,6 +47,7 @@ class ErrorCode(Enum):
     ELEMENT_NOT_DEFINED = 'Element not defined'
     WRONG_NUMBER_OF_DIMENSIONS = 'Wrong number of dimensions'
     INVALID_USE_OF_FUNCTION = 'Invalid use of function'
+    INVALID_CONSTANT = 'Invalid constant'
 
 
 class CompileError(Exception):

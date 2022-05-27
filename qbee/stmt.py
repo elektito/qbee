@@ -191,6 +191,30 @@ class ColorStmt(Stmt):
             self.background == new_child
         elif self.border == old_child:
             self.border = new_child
+        else:
+            raise InternalError(
+                f'No such child to replace: {old_child}')
+
+
+class ConstStmt(Stmt):
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+
+    def __repr__(self):
+        return f'<ConstStmt {self.name} = {self.value}>'
+
+    @property
+    def children(self):
+        return [self.value]
+
+    def replace_child(self, old_child, new_child):
+        if self.value == old_child:
+            self.value = new_child
+            return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
 
 
 class DeclareStmt(Stmt):

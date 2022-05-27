@@ -83,10 +83,12 @@ class Compiler:
     def __init__(self, codegen_name, optimization_level=0):
         self.optimization_level = optimization_level
 
-        self.cur_routine = Routine('_main', 'toplevel', self, params=[])
-        self.routines = {'_main': self.cur_routine}
+        self.cur_routine = Routine(
+            '_main', 'toplevel', self, params=[])
 
+        self.routines = {'_main': self.cur_routine}
         self.user_types = {}
+        self.consts = {}
 
         self.all_labels = set()
         self._codegen = CodeGen(codegen_name, self)
@@ -113,7 +115,7 @@ class Compiler:
 
     def is_const(self, name):
         "Return whether the given name is a const or not"
-        return False
+        return name in self.consts
 
     def is_var_global(self, name):
         return False
@@ -282,6 +284,13 @@ class Compiler:
         self.cur_routine.labels.add(node.canonical_name)
         self.all_labels.add(node.canonical_name)
 
+    def _compile_const_pass1_pre(self, node):
+        if not node.value.is_const:
+            raise CompileError(
+                EC.INVALID_CONSTANT,
+                node=node.value)
+        self.consts[node.name] = node.value
+
     def _compile_lvalue_pass2_pre(self, node):
         func = self.get_routine(node.base_var, 'function')
         if func is not None:
@@ -306,7 +315,8 @@ class Compiler:
                 node=node)
 
         if node.base_var not in self.cur_routine.local_vars and \
-           node.base_var not in self.cur_routine.params:
+           node.base_var not in self.cur_routine.params and \
+           not node.base_var in self.consts:
             # Implicitly defined variable
             decl = VarDeclClause(node.base_var, None)
             if node.array_indices:
