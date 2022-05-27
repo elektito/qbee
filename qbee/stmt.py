@@ -30,6 +30,7 @@ class NoChildStmt(Stmt):
 
 class ArrayDimRange(Stmt):
     def __init__(self, lbound, ubound):
+        assert isinstance(lbound, Expr)
         self.lbound = lbound
         self.ubound = ubound
 

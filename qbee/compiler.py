@@ -1,5 +1,5 @@
-from .stmt import Stmt, IfBlock, VarDeclClause
-from .expr import Type, Expr, Lvalue
+from .stmt import Stmt, IfBlock, VarDeclClause, ArrayDimRange
+from .expr import Type, Expr, Lvalue, NumericLiteral
 from .program import Label, LineNo
 from .codegen import CodeGen
 from .exceptions import ErrorCode as EC, InternalError, CompileError
@@ -225,7 +225,18 @@ class Compiler:
            node.base_var not in self.cur_routine.params:
             # Implicitly defined variable
             decl = VarDeclClause(node.base_var, None)
+            if node.array_indices:
+                # It's an array; implicit arrays have a range of 0 to
+                # 10 for all their dimensions.
+                decl.dims = [
+                    ArrayDimRange(NumericLiteral(0),
+                                  NumericLiteral(10))
+                    for _ in node.array_indices
+                ]
+                for d in decl.dims:
+                    d.bind(self)
             decl.bind(self)
+            print(decl.type, decl.dims)
             self.cur_routine.local_vars[node.base_var] = decl.type
 
     def _compile_array_pass_pass1_pre(self, node):
