@@ -1056,6 +1056,11 @@ def gen_sub_block(node, code, codegen):
               node.routine.params_size,
               node.routine.local_vars_size))
 
+    # initialize local variables
+    for vname, vtype in node.routine.local_vars.items():
+        code.add((f'push{vtype.type_char}', vtype.default_value))
+        code.add(('storel', vname))
+
     for inner_stmt in node.block:
         codegen.gen_code_for_node(inner_stmt, code)
     code.add(('ret',))
@@ -1070,6 +1075,11 @@ def gen_func_block(node, code, codegen):
     code.add(('frame',
               node.routine.params_size,
               node.routine.local_vars_size))
+
+    # initialize local variables
+    for vname, vtype in node.routine.local_vars.items():
+        code.add((f'push{vtype.type_char}', vtype.default_value))
+        code.add(('storel', vname))
 
     for inner_stmt in node.block:
         codegen.gen_code_for_node(inner_stmt, code)

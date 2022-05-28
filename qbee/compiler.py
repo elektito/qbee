@@ -1,6 +1,6 @@
 from .stmt import (
     Stmt, IfBlock, VarDeclClause, ArrayDimRange, CallStmt,
-    ReturnValueSetStmt,
+    ReturnValueSetStmt, FunctionBlock, SubBlock,
 )
 from .expr import Type, Expr, Lvalue, NumericLiteral, FuncCall
 from .program import Label, LineNo
@@ -201,6 +201,9 @@ class Compiler:
         if func is not None:
             func(tree)
 
+        if isinstance(tree, (SubBlock, FunctionBlock)):
+            self.cur_routine = tree.routine
+
         for node in tree.children:
             if _pass == 1:
                 self._set_parent_routine(node, self.cur_routine)
@@ -216,6 +219,9 @@ class Compiler:
         func = self._get_node_compile_func(tree, 'post', _pass)
         if func is not None:
             func(tree)
+
+        if isinstance(tree, (SubBlock, FunctionBlock)):
+            self.cur_routine = self.routines['_main']
 
     def _get_node_compile_func(self, node, pre_or_pos, _pass):
         assert pre_or_pos in ['pre', 'post']
@@ -486,12 +492,6 @@ class Compiler:
         node.routine = routine
 
         routine.local_vars['_retval'] = node.type
-
-    def _compile_sub_block_pass1_post(self, node):
-        self.cur_routine = self.routines['_main']
-
-    def _compile_function_block_pass1_post(self, node):
-        self.cur_routine = self.routines['_main']
 
     def _compile_exit_sub_pass1_pre(self, node):
         if self.cur_routine.name == '_main' or \

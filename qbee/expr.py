@@ -158,6 +158,15 @@ class Type:
     def is_float(self):
         return self._type in (BuiltinType.SINGLE, BuiltinType.DOUBLE)
 
+    @property
+    def default_value(self):
+        assert not self.is_array
+        assert not self.is_user_defined
+        if self._type == BuiltinType.STRING:
+            return ''
+        else:
+            return 0
+
     @classmethod
     @property
     def INTEGER(cls):
