@@ -406,7 +406,7 @@ class Compiler:
            not node.lvalue.array_indices:
             # assigning to function name (return value)
             new_node = ReturnValueSetStmt(
-                node.lvalue.name, node.rvalue)
+                node.lvalue.base_var, node.rvalue)
             new_node.parent = node.parent
             new_node.loc_start = node.lvalue.loc_start
             new_node.loc_end = node.lvalue.loc_end
