@@ -216,6 +216,7 @@ class QvmCode(BaseCode):
         self._routines = {}
         self._main_routine = None
         self._consts = []
+        self._globals = {}
 
     def __repr__(self):
         return f'<QvmCode {self._instrs}>'
@@ -239,6 +240,9 @@ class QvmCode(BaseCode):
     def add_const(self, value):
         if value not in self._consts:
             self._consts.append(value)
+
+    def add_global(self, var_name, var_type):
+        self._globals[var_name] = var_type
 
     def optimize(self):
         i = 0
@@ -412,6 +416,12 @@ class QvmCode(BaseCode):
                 s += f'{label}:\n'
                 for item in data:
                     s += f'    {item}\n'
+            s += '\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
+
+        if self._globals:
+            s += '.globals\n\n'
+            for vname, vtype in self._globals.items():
+                s += f'    {fmt_type(vtype)} {vname}\n'
             s += '\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
 
         if self._routines:
@@ -678,6 +688,8 @@ def gen_code_for_conv(to_type, node, code, codegen):
 def gen_program(node, code, codegen):
     code._main_routine = node.routine
     code.add_routine(node.routine)
+
+    code._globals = codegen.compiler.global_vars
 
     code.add(('_label', '_sub_' + node.routine.name))
     code.add(('frame',

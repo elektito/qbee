@@ -41,9 +41,8 @@ class Routine:
             var_type = self.local_vars[var_name]
             return var_type
 
-        # global variables not implemented yet. when they are, query
-        # the compiler for it and remove this assert.
-        assert not self.compiler.is_var_global(var_name)
+        if var_name in self.compiler.global_vars:
+            return self.compiler.global_vars[var_name]
 
         return self.get_identifier_type(var_name)
 
@@ -51,8 +50,8 @@ class Routine:
         if Type.is_type_char(identifier[-1]):
             return Type.from_type_char(identifier[-1])
         else:
-            # remove this when we add support for global variables
-            assert not self.compiler.is_var_global(identifier)
+            if identifier in self.compiler.global_vars:
+                return self.compiler.global_vars[identifier]
 
             # for now DEF* statements are not supported, so always the
             # default type
@@ -92,6 +91,7 @@ class Compiler:
         self.routines = {'_main': self.cur_routine}
         self.user_types = {}
         self.consts = {}
+        self.global_vars = {}
 
         self.all_labels = set()
         self._codegen = CodeGen(codegen_name, self)
@@ -121,10 +121,7 @@ class Compiler:
         return name in self.consts
 
     def is_var_global(self, name):
-        return False
-
-    def get_variable(self, node, variable_name: str):
-        assert False
+        return name in self.global_vars
 
     def get_type_size(self, type):
         return Type.get_type_size(type, self.user_types)
@@ -325,7 +322,8 @@ class Compiler:
 
         if node.base_var not in self.cur_routine.local_vars and \
            node.base_var not in self.cur_routine.params and \
-           not node.base_var in self.consts:
+           not node.base_var in self.consts and \
+           not node.base_var in self.global_vars:
             # Implicitly defined variable
             decl = VarDeclClause(node.base_var, None)
             if node.array_indices:
@@ -442,11 +440,16 @@ class Compiler:
     def _compile_dim_pass2_pre(self, node):
         for decl in node.var_decls:
             if decl.name in self.cur_routine.local_vars or \
+               decl.name in self.global_vars or \
                decl.name in self.routines:
                 raise CompileError(
                     EC.DUPLICATE_DEFINITION,
                     node=decl)
-            self.cur_routine.local_vars[decl.name] = decl.type
+
+            if node.shared:
+                self.global_vars[decl.name] = decl.type
+            else:
+                self.cur_routine.local_vars[decl.name] = decl.type
 
     def _compile_input_pass1_pre(self, node):
         for lvalue in node.var_list:

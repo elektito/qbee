@@ -64,6 +64,7 @@ not_kw = CaselessKeyword('not')
 or_kw = CaselessKeyword('or')
 print_kw = CaselessKeyword('print')
 rem_kw = CaselessKeyword('rem')
+shared_kw = CaselessKeyword('shared')
 single_kw = CaselessKeyword('single')
 string_kw = CaselessKeyword('string')
 sub_kw = CaselessKeyword('sub')
@@ -296,6 +297,7 @@ var_decl = Located(
 ).set_name('var_decl')
 dim_stmt = (
     dim_kw.suppress() -
+    Opt(shared_kw, default=None) -
     delimited_list(var_decl, delim=comma)
 ).set_name('dim_stmt')
 
@@ -655,8 +657,10 @@ def parse_declare(toks):
 
 @parse_action(dim_stmt)
 def parse_dim(toks):
+    shared, *toks = toks
+    shared = shared is not None
     var_decls = list(toks)
-    return DimStmt(var_decls)
+    return DimStmt(var_decls, shared)
 
 
 @parse_action(goto_stmt)

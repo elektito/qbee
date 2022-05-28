@@ -242,15 +242,19 @@ class DeclareStmt(Stmt):
 
 
 class DimStmt(Stmt):
-    def __init__(self, var_decls):
+    def __init__(self, var_decls, shared=False):
         assert all(
             isinstance(decl, VarDeclClause)
             for decl in var_decls
         )
         self.var_decls = var_decls
+        self.shared = shared
 
     def __repr__(self):
-        return f'<DimStmt {self.var_decls}>'
+        shared = ''
+        if self.shared:
+            shared = 'shared '
+        return f'<DimStmt {shared}{self.var_decls}>'
 
     @property
     def children(self):
