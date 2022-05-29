@@ -113,14 +113,14 @@ final form which might be in the form ('push1&',).
         op = op.lower()
         assert isinstance(op, str)
 
-        self.type = None
-        if expr.Type.is_type_char(op[-1]):
-            self.type = expr.Type.from_type_char(op[-1])
+        self.type_char = ''
+        if expr.Type.is_type_char(op[-1]) or op[-1] == '@':
+            self.type_char = op[-1]
             op = op[:-1]
 
-        self.src_type = None
+        self.src_type_char = ''
         if expr.Type.is_type_char(op[-1]):
-            self.src_type = expr.Type.from_type_char(op[-1])
+            self.src_type_char = op[-1]
             op = op[:-1]
 
         self.scope = None
@@ -141,7 +141,7 @@ final form which might be in the form ('push1&',).
 
         self.op = Op[op.upper()]
 
-        if self.op == Op.PUSH and self.type == expr.Type.STRING:
+        if self.op == Op.PUSH and self.type_char == '$':
             if not self.args[0].startswith('"') or \
                not self.args[0].endswith('"'):
                 raise InternalError('push$ argument should be quoted')
@@ -174,19 +174,11 @@ final form which might be in the form ('push1&',).
         else:
             args = self.args
 
-        type_char = ''
-        if self.type:
-            type_char = self.type.type_char
-
-        src_type_char = ''
-        if self.src_type:
-            src_type_char = self.src_type.type_char
-
         scope = ''
         if self.scope:
             scope = self.scope
 
-        op = op + scope + src_type_char + type_char
+        op = op + scope + self.src_type_char + self.type_char
         return (op, *args)
 
     def __eq__(self, other):
@@ -275,19 +267,22 @@ class QvmCode(BaseCode):
             #    push&  1.0
             if (cur.op == Op.CONV and
                 prev1.op == Op.PUSH and
-                cur.src_type == prev1.type
+                cur.src_type_char == prev1.type_char
             ):
                 arg, = prev1.args
 
                 # Convert the argument to the dest type
-                if cur.type.is_integral and isinstance(arg, float):
+                cur_type = expr.Type.from_type_char(cur.type_char)
+                if cur_type.is_integral and \
+                   isinstance(arg, float):
                     # perform rounding first if casting from float to
                     # integer
                     arg = round(arg)
-                arg = cur.type.py_type(arg)
+                cur_type = expr.Type.from_type_char(cur.type_char)
+                arg = cur_type.py_type(arg)
 
                 self._instrs[i-1] = QvmInstr(
-                    f'push{cur.type.type_char}', arg)
+                    f'push{cur.type_char}', arg)
 
                 del self._instrs[i]
                 i -= 1
@@ -323,12 +318,13 @@ class QvmCode(BaseCode):
                     Op.NOT: expr.Operator.NOT,
                     Op.NEG: expr.Operator.NEG,
                 }[cur.op]
-                value = expr.NumericLiteral(value, prev1.type)
+                prev1_type = expr.Type.from_type_char(prev1.type_char)
+                value = expr.NumericLiteral(value, prev1_type)
                 unary_expr = expr.UnaryOp(value, op)
                 value = unary_expr.eval()
 
                 self._instrs[i-1] = QvmInstr(
-                    f'push{prev1.type.type_char}', value)
+                    f'push{prev1.type_char}', value)
                 del self._instrs[i]
 
                 i -= 1
@@ -337,7 +333,7 @@ class QvmCode(BaseCode):
 
             # Fold push/push/binary-op
             if (prev1.op == prev2.op == Op.PUSH and
-                prev1.type == prev2.type and
+                prev1.type_char == prev2.type_char and
                 cur.op in [Op.ADD, Op.SUB, Op.MUL, Op.DIV, Op.AND,
                            Op.OR, Op.XOR, Op.EQV, Op.IMP, Op.IDIV,
                            Op.MOD, Op.EXP]
@@ -358,13 +354,15 @@ class QvmCode(BaseCode):
                     Op.MOD: expr.Operator.MOD,
                     Op.EXP: expr.Operator.EXP,
                 }[cur.op]
-                left = expr.NumericLiteral(left, prev2.type)
-                right = expr.NumericLiteral(right, prev1.type)
+                prev1_type = Type.from_type_char(prev1.type_char)
+                prev2_type = Type.from_type_char(prev2.type_char)
+                left = expr.NumericLiteral(left, prev2_type)
+                right = expr.NumericLiteral(right, prev1_type)
                 binary_expr = expr.BinaryOp(left, right, op)
                 value = binary_expr.eval()
 
                 self._instrs[i-2] = QvmInstr(
-                    f'push{prev1.type.type_char}', value)
+                    f'push{prev1.type_char}', value)
 
                 # remove the next two instructions
                 del self._instrs[i]
@@ -522,15 +520,14 @@ class QvmCode(BaseCode):
                 value = args[0]
                 type_char = op[4]
                 bargs = bconv(value, type_char)
-            elif op in ('readg', 'readl', 'storeg', 'storel'):
+            elif op[:-1] in ('readg', 'readl') or \
+                 op in ('storeg', 'storel'):
                 assert len(args) == 1
                 var = args[0]
                 var_idx = get_var_idx(cur_routine, var)
                 bargs = struct.pack('>H', var_idx)
-            elif op in ('readidxg',
-                        'readidxl',
-                        'storeidxg',
-                        'storeidxl'):
+            elif op[:-1] in ('readidxg', 'readidxl') or \
+                 op in ('storeidxg', 'storeidxl'):
                 assert len(args) == 2
                 var, idx = args
                 var_idx = get_var_idx(cur_routine, var)
@@ -652,7 +649,7 @@ def gen_lvalue_ref(node, code, codegen):
 
     if node.base_is_ref:
         # already a reference; just read it onto stack
-        code.add((f'read{scope}', node.base_var))
+        code.add((f'read{scope}@', node.base_var))
     else:
         # push a reference to base onto the stack
         code.add((f'pushref{scope}', node.base_var))
@@ -744,7 +741,10 @@ def gen_lvalue(node, code, codegen):
     if node.is_const:
         # this is a constant declared in a const statement
         value = node.eval()
-        code.add((f'push{node.type.type_char}', node.eval()))
+        if node.type == expr.Type.STRING:
+            code.add((f'push$', '"{node.eval()}"'))
+        else:
+            code.add((f'push{node.type.type_char}', node.eval()))
         return
 
     if codegen.compiler.is_var_global(node.base_var):
@@ -758,9 +758,13 @@ def gen_lvalue(node, code, codegen):
     else:
         idx = get_lvalue_dotted_index(node, codegen)
         if idx == 0:
-            code.add((f'read{scope}', node.base_var))
+            type_char = node.type.type_char
+            code.add((f'read{scope}{type_char}', node.base_var))
         else:
-            code.add((f'readidx{scope}', node.base_var, idx))
+            type_char = node.base_type.type_char
+            code.add((f'readidx{scope}{type_char}',
+                      node.base_var,
+                      idx))
 
 
 @QvmCodeGen.generator_for(expr.ArrayPass)
@@ -1068,11 +1072,6 @@ def gen_sub_block(node, code, codegen):
               node.routine.params_size,
               node.routine.local_vars_size))
 
-    # initialize local variables
-    for vname, vtype in node.routine.local_vars.items():
-        code.add((f'push{vtype.type_char}', vtype.default_value))
-        code.add(('storel', vname))
-
     for inner_stmt in node.block:
         codegen.gen_code_for_node(inner_stmt, code)
     code.add(('ret',))
@@ -1088,15 +1087,11 @@ def gen_func_block(node, code, codegen):
               node.routine.params_size,
               node.routine.local_vars_size))
 
-    # initialize local variables
-    for vname, vtype in node.routine.local_vars.items():
-        code.add((f'push{vtype.type_char}', vtype.default_value))
-        code.add(('storel', vname))
-
     for inner_stmt in node.block:
         codegen.gen_code_for_node(inner_stmt, code)
 
-    code.add((f'readl', '_retval'))
+    type_char = node.routine.return_type.type_char
+    code.add((f'readl{type_char}', '_retval'))
     code.add(('retv',))
 
 
