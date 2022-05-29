@@ -981,6 +981,31 @@ def gen_dim(node, code, codegen):
     pass
 
 
+@QvmCodeGen.generator_for(stmt.LoopBlock)
+def gen_loop(node, code, codegen):
+    do_label = codegen.get_label('do')
+    loop_label = codegen.get_label('loop')
+
+    code.add(('_label', do_label))
+    if node.kind.startswith('do_'):
+        codegen.gen_code_for_node(node.cond, code)
+        if node.kind == 'do_until':
+            code.add(('not',))
+        code.add(('jz', loop_label))
+
+    for inner_stmt in node.body:
+        codegen.gen_code_for_node(inner_stmt, code)
+
+    if node.kind.startswith('loop_'):
+        codegen.gen_code_for_node(node.cond, code)
+        if node.kind == 'loop_while':
+            code.add(('not',))
+        code.add(('jz', do_label))
+    else:
+        code.add(('jmp', do_label))
+    code.add(('_label', loop_label))
+
+
 @QvmCodeGen.generator_for(stmt.GotoStmt)
 def gen_goto(node, code, codegen):
     code.add(('jmp', node.canonical_target))

@@ -270,6 +270,68 @@ class DimStmt(Stmt):
             f'No such child to replace: {old_child}')
 
 
+class DoStmt(Stmt):
+    def __init__(self, kind, cond):
+        assert kind in ('forever', 'while', 'until')
+        if kind == 'forever':
+            assert cond is None
+        if cond is None:
+            assert kind == 'forever'
+
+        self.kind = kind
+        self.cond = cond
+
+    def __repr__(self):
+        cond = f' {self.cond}' if self.cond else ''
+        return f'<DoStmt {self.kind}{cond}>'
+
+    @property
+    def children(self):
+        if self.cond:
+            return [self.cond]
+        else:
+            return []
+
+    def replace_child(self, old_child, new_child):
+        if self.cond and self.cond == old_child:
+            self.cond = new_child
+            return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
+
+
+class LoopStmt(Stmt):
+    def __init__(self, kind, cond):
+        assert kind in ('forever', 'while', 'until')
+        if kind == 'forever':
+            assert cond is None
+        if cond is None:
+            assert kind == 'forever'
+
+        self.kind = kind
+        self.cond = cond
+
+    def __repr__(self):
+        cond = f' {cond}' if self.cond else ''
+        return f'<LoopStmt {self.kind}{cond}>'
+
+    @property
+    def children(self):
+        if self.cond:
+            return [self.cond]
+        else:
+            return []
+
+    def replace_child(self, old_child, new_child):
+        if self.cond and self.cond == old_child:
+            self.cond = new_child
+            return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
+
+
 class GotoStmt(NoChildStmt):
     def __init__(self, target):
         self.target = target
@@ -895,3 +957,50 @@ class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):
             field_names.append(stmt.name)
 
         return cls(start_stmt.name, body)
+
+
+class LoopBlock(Block, start=DoStmt, end=LoopStmt):
+    def __init__(self, kind, cond, body):
+        self.kind = kind
+        self.cond = cond
+        self.body = body
+
+    def __repr__(self):
+        cond = f' {self.cond}' if self.cond else ''
+        return f'<LoopBlock {self.kind}{cond}>'
+
+    @property
+    def children(self):
+        if self.cond is not None:
+            return [self.cond] + self.body
+        else:
+            return []
+
+    def replace_child(self, old_child, new_child):
+        if self.cond and self.cond == old_child:
+            self.cond = new_child
+            return
+
+        for i in range(len(self.body)):
+            if self.body[i] == old_child:
+                self.body[i] = new_child
+                return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
+
+    @classmethod
+    def create_block(cls, do_stmt, loop_stmt, body):
+        if do_stmt.cond and loop_stmt.cond:
+            raise CompileError(EC.DO_LOOP_MISMATCH, node=loop_stmt)
+
+        if do_stmt.cond:
+            kind = f'do_{do_stmt.kind}'
+            cond = do_stmt.cond
+        elif loop_stmt.cond:
+            kind = f'loop_{loop_stmt.kind}'
+            cond = loop_stmt.cond
+        else:
+            kind = 'forever'
+            cond = None
+        return LoopBlock(kind, cond, body)

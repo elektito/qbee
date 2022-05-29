@@ -19,7 +19,7 @@ from .stmt import (
     IfBeginStmt, ElseStmt, ElseIfStmt, EndIfStmt, InputStmt, PrintStmt,
     SubStmt, VarDeclClause, AnyVarDeclClause, ArrayDimRange,
     EndSubStmt, ExitSubStmt, TypeStmt, EndTypeStmt, FunctionStmt,
-    EndFunctionStmt, ExitFunctionStmt,
+    EndFunctionStmt, ExitFunctionStmt, DoStmt, LoopStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -45,6 +45,7 @@ const_kw = CaselessKeyword('const')
 data_kw = CaselessKeyword('data')
 declare_kw = CaselessKeyword('declare')
 dim_kw = CaselessKeyword('dim')
+do_kw = CaselessKeyword('do')
 double_kw = CaselessKeyword('double')
 else_kw = CaselessKeyword('else')
 elseif_kw = CaselessKeyword('elseif')
@@ -59,6 +60,7 @@ imp_kw = CaselessKeyword('imp')
 integer_kw = CaselessKeyword('integer')
 let_kw = CaselessKeyword('let')
 long_kw = CaselessKeyword('long')
+loop_kw = CaselessKeyword('loop')
 mod_kw = CaselessKeyword('mod')
 not_kw = CaselessKeyword('not')
 or_kw = CaselessKeyword('or')
@@ -71,6 +73,8 @@ sub_kw = CaselessKeyword('sub')
 then_kw = CaselessKeyword('then')
 to_kw = CaselessKeyword('to')
 type_kw = CaselessKeyword('type')
+until_kw = CaselessKeyword('until')
+while_kw = CaselessKeyword('while')
 xor_kw = CaselessKeyword('xor')
 
 # create a single rule matching all keywords
@@ -301,6 +305,15 @@ dim_stmt = (
     delimited_list(var_decl, delim=comma)
 ).set_name('dim_stmt')
 
+do_stmt = (
+    do_kw.suppress() +
+    Opt((while_kw | until_kw) - expr)
+).set_name('do_stmt')
+loop_stmt = (
+    loop_kw.suppress() +
+    Opt((while_kw | until_kw) - expr)
+).set_name('loop_stmt')
+
 goto_stmt = goto_kw.suppress() - (untyped_identifier | line_no_value)
 
 else_clause = Located(
@@ -434,6 +447,9 @@ stmt = Located(
     data_stmt |
     declare_stmt |
     dim_stmt |
+
+    do_stmt |
+    loop_stmt |
 
     # the order of the following is important. in particular, if_stmt
     # must be before if_block_begin.
@@ -661,6 +677,24 @@ def parse_dim(toks):
     shared = shared is not None
     var_decls = list(toks)
     return DimStmt(var_decls, shared)
+
+
+@parse_action(do_stmt)
+def parse_do_stmt(toks):
+    if toks:
+        kind, cond = toks
+        return DoStmt(kind, cond)
+    else:
+        return DoStmt('forever', None)
+
+
+@parse_action(loop_stmt)
+def parse_loop_stmt(toks):
+    if toks:
+        kind, cond = toks
+        return LoopStmt(kind, cond)
+    else:
+        return LoopStmt('forever', None)
 
 
 @parse_action(goto_stmt)
