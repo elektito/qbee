@@ -50,6 +50,7 @@ class CanonicalOp(Enum):
     FRAME = auto()
     GE = auto()
     GT = auto()
+    HALT = auto()
     IDIV = auto()
     IMP = auto()
     IO = auto()
@@ -1004,6 +1005,11 @@ def gen_loop(node, code, codegen):
     else:
         code.add(('jmp', do_label))
     code.add(('_label', loop_label))
+
+
+@QvmCodeGen.generator_for(stmt.EndStmt)
+def gen_end(node, code, codegen):
+    code.add(('halt',))
 
 
 @QvmCodeGen.generator_for(stmt.GotoStmt)

@@ -332,6 +332,11 @@ class LoopStmt(Stmt):
             f'No such child to replace: {old_child}')
 
 
+class EndStmt(NoChildStmt):
+    def __repr__(self):
+        return 'EndStmt'
+
+
 class GotoStmt(NoChildStmt):
     def __init__(self, target):
         self.target = target

@@ -19,7 +19,7 @@ from .stmt import (
     IfBeginStmt, ElseStmt, ElseIfStmt, EndIfStmt, InputStmt, PrintStmt,
     SubStmt, VarDeclClause, AnyVarDeclClause, ArrayDimRange,
     EndSubStmt, ExitSubStmt, TypeStmt, EndTypeStmt, FunctionStmt,
-    EndFunctionStmt, ExitFunctionStmt, DoStmt, LoopStmt,
+    EndFunctionStmt, ExitFunctionStmt, DoStmt, LoopStmt, EndStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -314,6 +314,8 @@ loop_stmt = (
     Opt((while_kw | until_kw) - expr)
 ).set_name('loop_stmt')
 
+end_stmt = (end_kw).set_name('end_stmt')
+
 goto_stmt = goto_kw.suppress() - (untyped_identifier | line_no_value)
 
 else_clause = Located(
@@ -468,7 +470,11 @@ stmt = Located(
     goto_stmt |
     input_stmt |
     print_stmt |
-    rem_stmt
+    rem_stmt |
+
+    # this needs to be after all other statements starting with the
+    # end keyword
+    end_stmt
 ).set_name('stmt')
 
 line_prefix = label | line_no
@@ -695,6 +701,11 @@ def parse_loop_stmt(toks):
         return LoopStmt(kind, cond)
     else:
         return LoopStmt('forever', None)
+
+
+@parse_action(end_stmt)
+def parse_end_stmt(toks):
+    return EndStmt()
 
 
 @parse_action(goto_stmt)
