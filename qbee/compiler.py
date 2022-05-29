@@ -130,8 +130,8 @@ class Compiler:
         assert kind is None or kind in ('sub', 'function')
 
         if any(name.endswith(c) for c in Type.type_chars()):
-            name = name[:-1]
             type_char = name[-1]
+            name = name[:-1]
         else:
             type_char = None
 
@@ -314,7 +314,11 @@ class Compiler:
             new_node.parent.bind(self)
             return
 
-        if node.base_var in self.routines:
+        if Type.name_ends_with_type_char(node.base_var):
+            base_name = node.base_var[:-1]
+        else:
+            base_name = node.base_var
+        if base_name in self.routines:
             raise CompileError(
                 EC.DUPLICATE_DEFINITION,
                 'A sub-routine with the same name exists',
