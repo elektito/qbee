@@ -827,20 +827,15 @@ class FunctionBlock(Block, start=FunctionStmt, end=EndFunctionStmt):
 
 
 class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):
-    def __init__(self, name: str, fields: list):
+    def __init__(self, name: str, decls: list):
         assert isinstance(name, str)
-        assert isinstance(fields, list)
-        assert all(
-            (
-                isinstance(f, tuple) and
-                len(f) == 2 and
-                isinstance(f[0], str) and
-                isinstance(f[1], Type)
-            )
-            for f in fields
-        )
+        assert isinstance(decls, list)
+        assert all(isinstance(decl, VarDeclClause)
+                   for decl in decls)
+
         self.name = name
-        self.fields = dict(fields)
+        self.decls = decls
+        self.fields = {decl.name: decl.type for decl in decls}
 
     def __repr__(self):
         return (
@@ -849,14 +844,19 @@ class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):
 
     @property
     def children(self):
-        return []
+        return self.decls
 
     def replace_child(self, old_child, new_child):
-        pass
+        for i in range(len(self.decls)):
+            if self.decls[i] == old_child:
+                self.decls[i] = new_child
+                return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
 
     @classmethod
     def create_block(cls, start_stmt, end_stmt, body):
-        fields = []
         field_names = []
         for stmt in body:
             if not isinstance(stmt, VarDeclClause) or \
@@ -871,7 +871,6 @@ class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):
                     loc=stmt.loc_start,
                     msg='Duplicate definition')
 
-            fields.append((stmt.name, var_type))
             field_names.append(stmt.name)
 
-        return cls(start_stmt.name, fields)
+        return cls(start_stmt.name, body)

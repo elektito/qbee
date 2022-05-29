@@ -48,6 +48,7 @@ class ErrorCode(Enum):
     WRONG_NUMBER_OF_DIMENSIONS = 'Wrong number of dimensions'
     INVALID_USE_OF_FUNCTION = 'Invalid use of function'
     INVALID_CONSTANT = 'Invalid constant'
+    TYPE_NOT_DEFINED = 'Type not defined'
 
 
 class CompileError(Exception):

@@ -233,6 +233,17 @@ class Compiler:
         for child in node.children:
             self._set_parent_routine(child, routine)
 
+    def _validate_decl(self, decl: VarDeclClause):
+        if decl.type.is_builtin:
+            return
+        if decl.type.is_array:
+            decl.type.array_base_type
+        if not decl.type.is_user_defined:
+            return
+        if decl.type.user_type_name not in self.user_types:
+            raise CompileError(EC.TYPE_NOT_DEFINED,
+                               node=decl)
+
     def _perform_argument_matching(self, node, kind):
         routine = self.routines.get(node.name)
         if routine is None:
@@ -441,8 +452,10 @@ class Compiler:
     def _compile_call_pass2_pre(self, node):
         self._perform_argument_matching(node, 'sub')
 
-    def _compile_dim_pass2_pre(self, node):
+    def _compile_dim_pass1_pre(self, node):
         for decl in node.var_decls:
+            self._validate_decl(decl)
+
             if decl.name in self.cur_routine.local_vars or \
                decl.name in self.global_vars or \
                decl.name in self.routines:
@@ -474,6 +487,8 @@ class Compiler:
                 EC.DUPLICATE_DEFINITION,
                 f'Duplicate sub-routine definition: {node.name}',
                 node=node)
+        for decl in node.params:
+            self._validate_decl(decl)
         params = [(decl.name, decl.type) for decl in node.params]
         routine = Routine(node.name, 'sub', self, params)
         self.routines[node.name] = routine
@@ -491,6 +506,8 @@ class Compiler:
                 EC.DUPLICATE_DEFINITION,
                 f'Duplicate routine definition: {node.name}',
                 node=node)
+        for decl in node.params:
+            self._validate_decl(decl)
         params = [(decl.name, decl.type) for decl in node.params]
         routine = Routine(node.name, 'function', self, params,
                           return_type=node.type)
@@ -526,6 +543,8 @@ class Compiler:
                 EC.ELEMENT_NOT_DEFINED,
                 'Type definition has no elements',
                 node=node)
+        for decl in node.decls:
+            self._validate_decl(decl)
         self.user_types[node.name] = node
 
     def _compile_goto_pass2_pre(self, node):
