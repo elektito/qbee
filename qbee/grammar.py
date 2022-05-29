@@ -116,8 +116,11 @@ exponent_op = Literal('^')
 compare_op = Regex(r'(<=|>=|<>|><|=<|=>|<|>|=)')
 
 numeric_literal = (
-    Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?") -
-    type_char[0, 1]
+    (
+        Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?") |
+        Regex(r"&[Hh][0-9a-fA-F]+(%&)?") |
+        Regex(r"&[Oo][0-7]+(%&)?")
+    ) + Opt(type_char, default=None)
 )
 
 string_literal = Regex(r'"[^"]*"')
@@ -539,14 +542,13 @@ def parse_str_literal(s, loc, toks):
 
 @parse_action(numeric_literal)
 def parse_num_literal(s, loc, toks):
-    type_char = None
-    if len(toks) == 2:
-        type_char = toks[1]
+    literal, type_char = toks
     if type_char == '$':
         raise SyntaxError(
             loc, 'Invalid type character for numeric literal')
+
     try:
-        num = NumericLiteral.parse(toks[0], type_char)
+        num = NumericLiteral.parse(literal, type_char)
     except ValueError:
         # probably something like "2.1%"
         raise SyntaxError(loc, 'Illegal number')

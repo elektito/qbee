@@ -465,13 +465,27 @@ class NumericLiteral(Expr):
 
     @classmethod
     def parse(cls, token: str, type_char=None):
+        token = token.lower()
         if type_char:
             assert type_char in Type.type_chars
             literal_type = Type.from_type_char(type_char)
         else:
             literal_type = NumericLiteral.DEFAULT_TYPE
 
-        value = literal_type.py_type(token)
+        if token.startswith('&'):
+            if type_char and type_char not in '%&':
+                raise ValueError
+
+            base = 16 if token.startswith('&h') else 8
+            value = int(token[2:], base=base)
+
+            if not type_char:
+                if -32768 <= value <= 32767:
+                    literal_type = Type.INTEGER
+                else:
+                    literal_type = Type.LONG
+        else:
+            value = literal_type.py_type(token)
         return cls(value, literal_type)
 
     @property
