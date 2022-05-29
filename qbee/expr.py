@@ -889,7 +889,12 @@ class FuncCall(Expr):
 
     @property
     def children(self):
-        return []
+        return self.args
 
     def replace_child(self, old_child, new_child):
-        pass
+        for i in len(self.args):
+            if self.args[i] == old_child:
+                self.args[i] = new_child
+                return
+
+        raise InternalError('No such child to replace')

@@ -498,10 +498,16 @@ class SubStmt(Stmt):
 
     @property
     def children(self):
-        return []
+        return self.params
 
     def replace_child(self, old_child, new_child):
-        return
+        for param in self.params:
+            if param == old_child:
+                param = new_child
+                return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
 
 
 class EndSubStmt(NoChildStmt):
@@ -514,7 +520,7 @@ class ExitSubStmt(NoChildStmt):
         return '<ExitSubStmt>'
 
 
-class FunctionStmt(NoChildStmt):
+class FunctionStmt(Stmt):
     def __init__(self, name, params):
         assert all(isinstance(p, VarDeclClause) for p in params)
 
@@ -529,7 +535,10 @@ class FunctionStmt(NoChildStmt):
         self.params = params
 
     def __repr__(self):
-        return f'<SubStmt {self.name} with {len(self.params)} param(s)>'
+        return (
+            f'<FunctionStmt {self.name} with {len(self.params)} '
+            f'param(s)>'
+        )
 
     @property
     def type(self):
@@ -537,6 +546,19 @@ class FunctionStmt(NoChildStmt):
             return Type.from_type_char(self.type_char)
         else:
             return self.compiler.get_identifier_type(self.name)
+
+    @property
+    def children(self):
+        return self.params
+
+    def replace_child(self, old_child, new_child):
+        for param in self.params:
+            if param == old_child:
+                param = new_child
+                return
+
+        raise InternalError(
+            f'No such child to replace: {old_child}')
 
 
 class EndFunctionStmt(NoChildStmt):
