@@ -370,6 +370,15 @@ class Compiler:
                     EC.WRONG_NUMBER_OF_DIMENSIONS,
                     node=node)
 
+    def _compile_array_pass_pass1_pre(self, node):
+        var_type = node.parent_routine.get_variable_type(
+            node.identifier)
+        if not var_type.is_array:
+            raise CompileError(
+                EC.TYPE_MISMATCH,
+                'Not an array',
+                node=node)
+
     def _compile_array_pass_pass3_pre(self, node):
         if not isinstance(node.parent, (FuncCall, CallStmt)):
             raise CompileError(
@@ -378,13 +387,6 @@ class Compiler:
                 'functions or sub-routines',
                 node=node,
             )
-        var_type = node.parent_routine.get_variable_type(
-            node.identifier)
-        if not var_type.is_array:
-            raise CompileError(
-                EC.TYPE_MISMATCH,
-                'Not an array',
-                node=node)
 
     def _compile_func_call_pass3_pre(self, node):
         for arg in node.args:
