@@ -129,7 +129,7 @@ class Compiler:
     def get_routine(self, name: str, kind=None):
         assert kind is None or kind in ('sub', 'function')
 
-        if any(name.endswith(c) for c in Type.type_chars()):
+        if any(name.endswith(c) for c in Type.type_chars):
             type_char = name[-1]
             name = name[:-1]
         else:

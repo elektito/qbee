@@ -524,7 +524,7 @@ class FunctionStmt(Stmt):
     def __init__(self, name, params):
         assert all(isinstance(p, VarDeclClause) for p in params)
 
-        if any(name.endswith(c) for c in Type.type_chars()):
+        if any(name.endswith(c) for c in Type.type_chars):
             self.name = name[:-1]
             self.type_char = name[-1]
         else:

@@ -17,6 +17,8 @@ class BuiltinType(Enum):
 
 
 class Type:
+    type_chars = '%&!#$'
+
     def __init__(self, builtin_type, user_type_name=None):
         self._type = builtin_type
         self.user_type_name = user_type_name
@@ -228,17 +230,13 @@ class Type:
             return cls(BuiltinType.USER_DEFINED, type_name)
 
     @staticmethod
-    def type_chars():
-        return '%&!#$'
-
-    @staticmethod
     def name_ends_with_type_char(name: str):
         assert isinstance(name, str)
         return any(name.endswith(c) for c in '%&!#$')
 
     @staticmethod
     def is_type_char(char):
-        return any(char == c for c in Type.type_chars())
+        return any(char == c for c in Type.type_chars)
 
     @staticmethod
     def from_type_char(type_char):
@@ -468,7 +466,7 @@ class NumericLiteral(Expr):
     @classmethod
     def parse(cls, token: str, type_char=None):
         if type_char:
-            assert type_char in Type.type_chars()
+            assert type_char in Type.type_chars
             literal_type = Type.from_type_char(type_char)
         else:
             literal_type = NumericLiteral.DEFAULT_TYPE
