@@ -229,9 +229,12 @@ class Type:
 
     @staticmethod
     def type_chars():
-        # we have to make this a method, because if we make it a
-        # property, it would become a member of the enum
         return '%&!#$'
+
+    @staticmethod
+    def name_ends_with_type_char(name: str):
+        assert isinstance(name, str)
+        return any(name.endswith(c) for c in '%&!#$')
 
     @staticmethod
     def is_type_char(char):
@@ -739,9 +742,6 @@ class Lvalue(Expr):
     def type(self):
         var_type = self.base_type
 
-        # No handling needed for when base variable is an array, since
-        # the return value of get_variable_type should already have
-        # is_array set properly.
         if var_type.is_array and self.array_indices:
             var_type = var_type.array_base_type
 

@@ -550,12 +550,11 @@ class ExitFunctionStmt(NoChildStmt):
 
 
 class ReturnValueSetStmt(NoChildStmt):
-    def __init__(self, name, value):
-        self.name = name
+    def __init__(self, value):
         self.value = value
 
     def __repr__(self):
-        return f'<ReturnValueSetStmt {self.name}>'
+        return f'<ReturnValueSetStmt {self.value}>'
 
     @property
     def children(self):

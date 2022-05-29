@@ -410,18 +410,19 @@ class Compiler:
             raise CompileError(EC.TYPE_MISMATCH, node=node)
 
     def _compile_assignment_pass1_pre(self, node):
-        if node.lvalue.base_var == self.cur_routine.name:
-            # setting function return value
-            node.lvalue.name = '_retval'
         if not node.lvalue.type.is_coercible_to(node.rvalue.type):
             raise CompileError(EC.TYPE_MISMATCH, node=node)
 
-        if node.lvalue.base_var == self.cur_routine.name and \
-           not node.lvalue.dotted_vars or \
+        if Type.name_ends_with_type_char(node.lvalue.base_var):
+            base_name = node.lvalue.base_var[:-1]
+        else:
+            base_name = node.lvalue.base_var
+        if base_name == self.cur_routine.name and \
+           self.cur_routine.kind == 'function' and \
+           not node.lvalue.dotted_vars and \
            not node.lvalue.array_indices:
             # assigning to function name (return value)
-            new_node = ReturnValueSetStmt(
-                node.lvalue.base_var, node.rvalue)
+            new_node = ReturnValueSetStmt(node.rvalue)
             new_node.parent = node.parent
             new_node.loc_start = node.lvalue.loc_start
             new_node.loc_end = node.lvalue.loc_end
