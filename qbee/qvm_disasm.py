@@ -48,7 +48,10 @@ def disassemble(bcode: bytes):
                     idx += size
                     part.append(item.decode('cp437'))
                 data_parts.append(part)
-        elif section_type == 0x03:  # code section
+        elif section_type == 0x03:  # globals section
+            n_global_cells, = struct.unpack('<I', bcode[idx:idx+4])
+            idx += 4
+        elif section_type == 0x04:  # code section
             code_size, = struct.unpack('>I', bcode[idx:idx+4])
             idx += 4
             code= decode_code(bcode[idx:idx+code_size], consts)

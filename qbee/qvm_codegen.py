@@ -566,12 +566,24 @@ class QvmCode(BaseCode):
                 data_section += struct.pack('>H', len(data_item))
                 data_section += data_item.encode('cp437')
 
+        global_section = b'\x03'
+        n_global_cells = sum(
+            expr.Type.get_type_size(vtype, self._user_types)
+            for _, vtype in self._globals.items()
+        )
+        global_section += struct.pack('>I', n_global_cells)
+
         code = self.assembled
         code_size = len(code)
         code_size = struct.pack('>I', code_size)
-        code_section = b'\x03' + code_size + code
+        code_section = b'\x04' + code_size + code
 
-        return const_section + data_section + code_section
+        return (
+            const_section +
+            data_section +
+            global_section +
+            code_section
+        )
 
 
 class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
