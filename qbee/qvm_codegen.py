@@ -678,6 +678,18 @@ def gen_code_for_conv(to_type, node, code, codegen):
         code.add((f'conv{from_char}{to_char}',))
 
 
+def gen_code_for_args(args, param_types, code, codegen):
+    for arg, param_type in zip(args, param_types):
+        if isinstance(arg, expr.Lvalue):
+            gen_lvalue_ref(arg, code, codegen)
+        elif isinstance(arg, expr.ArrayPass):
+            codegen.gen_code_for_node(arg, code)
+        else:
+            codegen.gen_code_for_node(arg, code)
+            gen_code_for_conv(param_type, arg, code, codegen)
+    code.add(('push%', len(args)))
+
+
 # Code generators for expressions
 
 
@@ -724,11 +736,9 @@ def gen_paren(node, code, codegen):
 
 @QvmCodeGen.generator_for(expr.FuncCall)
 def gen_func_call(node, code, codegen):
-    func = codegen.compiler.get_routine(node.name)
-    for arg, param_type in zip(node.args, func.params.values()):
-        codegen.gen_code_for_node(arg, code)
-        if not isinstance(arg, expr.ArrayPass):
-            gen_code_for_conv(param_type, arg, code, codegen)
+    routine = codegen.compiler.get_routine(node.name)
+    gen_code_for_args(
+        node.args, routine.params.values(), code, codegen)
     code.add(('call', '_func_' + node.name))
 
 
@@ -905,19 +915,9 @@ def gen_beep(node, code, codegen):
 @QvmCodeGen.generator_for(stmt.CallStmt)
 def gen_call(node, code, codegen):
     routine = codegen.compiler.routines[node.name]
-    for arg, param_type in zip(node.args, routine.params.values()):
-        if isinstance(arg, expr.Lvalue):
-            gen_lvalue_ref(arg, code, codegen)
-        else:
-            codegen.gen_code_for_node(arg, code)
-            if arg.type != param_type:
-                from_type_char = arg.type.type_char
-                to_type_char = param_type.type_char
-                code.add((f'conv{from_type_char}{to_type_char}',))
-    code.add(
-        ('push%', len(node.args)),
-        ('call', '_sub_' + node.name),
-    )
+    gen_code_for_args(
+        node.args, routine.params.values(), code, codegen)
+    code.add(('call', '_sub_' + node.name))
 
 
 @QvmCodeGen.generator_for(stmt.ClsStmt)
