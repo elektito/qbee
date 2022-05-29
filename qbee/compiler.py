@@ -344,12 +344,12 @@ class Compiler:
             if node.array_indices:
                 # It's an array; implicit arrays have a range of 0 to
                 # 10 for all their dimensions.
-                decl.dims = [
+                decl.array_dims = [
                     ArrayDimRange(NumericLiteral(0),
                                   NumericLiteral(10))
                     for _ in node.array_indices
                 ]
-                for d in decl.dims:
+                for d in decl.array_dims:
                     d.bind(self)
             decl.bind(self)
             self.cur_routine.local_vars[node.base_var] = decl.type
