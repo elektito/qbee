@@ -16,6 +16,7 @@ QVM_DEVICES = {
             'cls': 1,
             'print': 2,
             'color': 3,
+            'view_print': 4,
         },
     },
     'pcspkr': {
@@ -1234,3 +1235,20 @@ def gen_ret_value(node, code, codegen):
 def gen_type_block(node, code, codegen):
     # no code for type block
     pass
+
+
+@QvmCodeGen.generator_for(stmt.ViewPrintStmt)
+def gen_view_print(node, code, codegen):
+    if node.top_expr:
+        codegen.gen_code_for_node(node.top_expr, code)
+        gen_code_for_conv(
+            expr.Type.INTEGER, node.top_expr, code, codegen)
+
+        codegen.gen_code_for_node(node.bottom_expr, code)
+        gen_code_for_conv(
+            expr.Type.INTEGER, node.bottom_expr, code, codegen)
+    else:
+        code.add(('pushm1%',))
+        code.add(('pushm1%',))
+
+    code.add(('io', 'screen', 'view_print'))

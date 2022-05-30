@@ -600,3 +600,18 @@ class Compiler:
                         EC.TYPE_MISMATCH,
                         f'Cannot print value',
                         node=item)
+
+    def _compile_view_print_pass1_pre(self, node):
+        if node.top_expr and not node.top_expr.type.is_numeric:
+            raise CompileError(
+                EC.TYPE_MISMATCH,
+                'Expected numeric expression',
+                node=node.top_expr
+            )
+
+        if node.bottom_expr and not node.bottom_expr.type.is_numeric:
+            raise CompileError(
+                EC.TYPE_MISMATCH,
+                'Expected numeric expression',
+                node=node.bottom_expr
+            )

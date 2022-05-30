@@ -638,6 +638,39 @@ class EndTypeStmt(NoChildStmt):
         return '<EndTypeStmt>'
 
 
+class ViewPrintStmt(Stmt):
+    def __init__(self, top_expr, bottom_expr):
+        assert (
+            (top_expr is not None and bottom_expr is not None) or
+            (top_expr is None and bottom_expr is None)
+        )
+        self.top_expr = top_expr
+        self.bottom_expr = bottom_expr
+
+    def __repr__(self):
+        lines = ''
+        if self.top_expr:
+            lines = f' {self.top_expr} to {self.bottom_expr}'
+        return f'<ViewPrintStmt{lines}>'
+
+    @property
+    def children(self):
+        if not self.top_expr:
+            return []
+        return [self.top_expr, self.bottom_expr]
+
+    def replace_child(self, old_child, new_child):
+        if self.top_expr == old_child:
+            self.top_expr = new_child
+            return
+
+        if self.bottom_expr == old_child:
+            self.bottom_expr = new_child
+            return
+
+        raise InternalError(f'No such child to replace: {old_child}')
+
+
 class SubStmt(Stmt):
     def __init__(self, name, params):
         assert all(isinstance(p, VarDeclClause) for p in params)

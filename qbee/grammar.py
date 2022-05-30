@@ -20,7 +20,7 @@ from .stmt import (
     SubStmt, VarDeclClause, AnyVarDeclClause, ArrayDimRange,
     EndSubStmt, ExitSubStmt, TypeStmt, EndTypeStmt, FunctionStmt,
     EndFunctionStmt, ExitFunctionStmt, DoStmt, LoopStmt, EndStmt,
-    ForStmt, NextStmt,
+    ForStmt, NextStmt, ViewPrintStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -78,6 +78,7 @@ then_kw = CaselessKeyword('then')
 to_kw = CaselessKeyword('to')
 type_kw = CaselessKeyword('type')
 until_kw = CaselessKeyword('until')
+view_kw = CaselessKeyword('view')
 while_kw = CaselessKeyword('while')
 xor_kw = CaselessKeyword('xor')
 
@@ -387,6 +388,15 @@ type_field_decl = Located(
     type_name
 ).set_name('type_field_decl')
 
+view_print_stmt = (
+    view_kw.suppress() +
+    print_kw.suppress() +
+    Opt(
+        Group(expr + to_kw.suppress() - expr),
+        default=None
+    )
+).set_name('view_print_stmt')
+
 type_stmt = (
     type_kw.suppress() -
     untyped_identifier
@@ -494,6 +504,7 @@ stmt = Located(
     input_stmt |
     print_stmt |
     rem_stmt |
+    view_print_stmt |
 
     # this needs to be after all other statements starting with the
     # end keyword
@@ -961,6 +972,15 @@ def parse_var_decl(toks):
 @parse_action(type_stmt)
 def parse_type_stmt(toks):
     return TypeStmt(toks[0])
+
+
+@parse_action(view_print_stmt)
+def parse_type_stmt(toks):
+    if toks[0] is None:
+        return ViewPrintStmt(None, None)
+
+    top_expr, bottom_expr = toks[0]
+    return ViewPrintStmt(top_expr, bottom_expr)
 
 
 @parse_action(end_type_stmt)
