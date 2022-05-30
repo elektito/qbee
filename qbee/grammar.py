@@ -278,13 +278,13 @@ const_stmt = (
     expr
 ).set_name('const_stmt')
 
-array_dim_range = Group(
+array_dim_range = Located(Group(
     expr +
     Opt(
         to_kw.suppress() -
         expr
     )
-)
+))
 array_dims = Group(
     lpar.suppress() +
     delimited_list(array_dim_range, delim=',') +
@@ -861,13 +861,16 @@ def parse_exit_function(toks):
 
 @parse_action(array_dim_range)
 def parse_array_dim_range(toks):
-    dim_range = toks[0]
+    loc_start, (dim_range,), loc_end = toks
     if len(dim_range) == 1:
         lbound = NumericLiteral(0)
         ubound = dim_range[0]
     else:
         lbound, ubound = dim_range
-    return ArrayDimRange(lbound, ubound)
+    result = ArrayDimRange(lbound, ubound)
+    result.loc_start = loc_start
+    result.loc_end = loc_end
+    return result
 
 
 @parse_action(var_decl)

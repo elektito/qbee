@@ -66,7 +66,7 @@ class ArrayDimRange(Stmt):
         return 'ARRAY DIM RANGE'
 
 
-class VarDeclClause(NoChildStmt):
+class VarDeclClause(Stmt):
     def __init__(self, name, var_type_name, dims=None,
                  is_nodim_array=False):
         self.name = name
@@ -79,6 +79,25 @@ class VarDeclClause(NoChildStmt):
         if self.var_type_name:
             type_desc = f' as {self.var_type_name}'
         return f'<VarDeclClause {self.name}{type_desc}>'
+
+    @property
+    def array_dims_are_const(self):
+        return all(
+            r.lbound.is_const and r.ubound.is_const
+            for r in self.array_dims
+        )
+
+    @property
+    def children(self):
+        return self.array_dims
+
+    def replace_child(self, old_child, new_child):
+        for i in range(len(self.array_dims)):
+            if self.array_dims[i] == old_child:
+                self.array_dims[i] = new_child
+                return
+
+        raise InternalError(f'No such child to replace: {old_child}')
 
     @property
     def type(self):

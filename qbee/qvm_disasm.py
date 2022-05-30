@@ -80,7 +80,11 @@ def decode_code(bcode, consts):
             op = instr.op
         except KeyError:
             perror(f'Unknown op code: {op_code}')
-        if op in ('call', 'jmp', 'jz'):
+        if op in ('allocarr', 'arridx'):
+            n_indices, = struct.unpack('>B', bcode[idx:idx+1])
+            idx += 1
+            args = [n_indices]
+        elif op in ('call', 'jmp', 'jz'):
             dest, = struct.unpack('>I', bcode[idx:idx+4])
             idx += 4
             args = [f'0x{dest:x}']

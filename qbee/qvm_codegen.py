@@ -37,6 +37,7 @@ class CanonicalOp(Enum):
     "VM ops without scope, type, etc."
 
     ADD = auto()
+    ALLOCARR = auto()
     AND = auto()
     ARRIDX = auto()
     CALL = auto()
@@ -491,7 +492,15 @@ class QvmCode(BaseCode):
                 continue
 
             bargs = b''
-            if op == 'call':
+            if op == 'allocarr':
+                assert len(args) == 1
+                n_indices = args[0]
+                bargs = struct.pack('>B', n_indices)
+            elif op == 'arridx':
+                assert len(args) == 1
+                n_indices = args[0]
+                bargs = struct.pack('>B', n_indices)
+            elif op == 'call':
                 assert len(args) == 1
                 label = args[0]
                 patch_positions[cur_offset + 1] = label
@@ -499,7 +508,7 @@ class QvmCode(BaseCode):
             elif op == 'frame':
                 assert len(args) == 2
                 params_size, vars_size = args
-                bargs += struct.pack('>HH', params_size, vars_size)
+                bargs = struct.pack('>HH', params_size, vars_size)
             elif op == 'io':
                 assert len(args) == 2
                 device, device_op = args
@@ -668,7 +677,7 @@ def gen_lvalue_ref(node, code, codegen):
         code.add((f'pushref{scope}', node.base_var))
 
     if node.array_indices:
-        code.add(('arridx',))
+        code.add(('arridx', len(node.array_indices)))
 
     idx = get_lvalue_dotted_index(node, codegen)
     if idx > 0:
@@ -978,8 +987,25 @@ def gen_declare(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.DimStmt)
 def gen_dim(node, code, codegen):
-    # no code for DIM statements
-    pass
+    for decl in node.children:
+        if decl.array_dims_are_const:
+            # nothing to do for static arrays
+            continue
+        for dim_range in decl.array_dims:
+            codegen.gen_code_for_node(dim_range.lbound, code)
+            gen_code_for_conv(
+                expr.Type.LONG, dim_range.lbound, code, codegen)
+
+            codegen.gen_code_for_node(dim_range.ubound, code)
+            gen_code_for_conv(
+                expr.Type.LONG, dim_range.ubound, code, codegen)
+        code.add(('allocarr', len(decl.array_dims)))
+
+        if codegen.compiler.is_var_global(decl.name):
+            scope = 'g'  # global
+        else:
+            scope = 'l'  # local
+        code.add((f'read{scope}@', decl.name))
 
 
 @QvmCodeGen.generator_for(stmt.LoopBlock)
