@@ -20,10 +20,10 @@ class Node(ABC):
 
     @classmethod
     @abstractmethod
-    def type_name(cls):
-        # An implementation should return the type name of the
-        # node. For example, an "exit sub" statement will return
-        # "EXIT SUB".
+    def node_name(cls):
+        # An implementation should return the name of the node
+        # type. For example, an "exit sub" statement will return "EXIT
+        # SUB".
         return 'Node'
 
     @property

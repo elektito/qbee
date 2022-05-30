@@ -37,8 +37,8 @@ def parse_string(input_string):
                         block_end)
                     raise SyntaxError(
                         loc=line_loc,
-                        msg=(f'{block_end.type_name()} without '
-                             f'{expected_start.type_name()}'))
+                        msg=(f'{block_end.node_name()} without '
+                             f'{expected_start.node_name()}'))
                 block_start, prev_body = entered_blocks.pop()
                 block = Block.create(block_start,
                                      block_end,
@@ -54,7 +54,7 @@ def parse_string(input_string):
         block, _ = entered_blocks[-1]
         raise SyntaxError(
             loc=block.loc_start,
-            msg=f'{block.type_name()} block not closed')
+            msg=f'{block.node_name()} block not closed')
 
     return Program(cur_block_body)
 

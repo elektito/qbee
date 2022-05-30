@@ -166,7 +166,7 @@ class Compiler:
             if issubclass(getattr(module, member), Node)
         ]
         all_nodes = [
-            node.type_name().lower().replace(' ', '_')
+            node.node_name().lower().replace(' ', '_')
             for node in all_nodes
         ]
 
@@ -223,7 +223,7 @@ class Compiler:
     def _get_node_compile_func(self, node, pre_or_pos, _pass):
         assert pre_or_pos in ['pre', 'post']
 
-        type_name = node.type_name().lower().replace(' ', '_')
+        type_name = node.node_name().lower().replace(' ', '_')
         func_name = f'_compile_{type_name}_pass{_pass}_{pre_or_pos}'
         func = getattr(self, func_name, None)
         return func

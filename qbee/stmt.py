@@ -10,14 +10,14 @@ from .exceptions import (
 
 class Stmt(Node):
     @classmethod
-    def type_name(cls):
+    def node_name(cls):
         if cls.__name__.endswith('Stmt'):
             name = cls.__name__[:-4]
             name_parts = split_camel(name)
             name = ' '.join(name_parts)
             return name.upper()
         raise NameError(
-            'Default Stmt.type_name() implementation only works if '
+            'Default Stmt.node_name() implementation only works if '
             'class name ends with "Stmt"')
 
 
@@ -64,7 +64,7 @@ class ArrayDimRange(Stmt):
             self.ubound = new_child
 
     @classmethod
-    def type_name(cls):
+    def node_name(cls):
         return 'ARRAY DIM RANGE'
 
 
@@ -119,7 +119,7 @@ class VarDeclClause(Stmt):
         return _type
 
     @classmethod
-    def type_name(cls):
+    def node_name(cls):
         return 'VAR CLAUSE'
 
 
@@ -130,7 +130,7 @@ class AnyVarDeclClause(NoChildStmt):
         self.name = name
 
     @classmethod
-    def type_name(cls):
+    def node_name(cls):
         return 'ANY VAR CLAUSE'
 
 
@@ -507,7 +507,7 @@ class ElseClause(Stmt):
         return f'<ElseClause stmts={len(self.stmts)}>'
 
     @classmethod
-    def type_name(cls):
+    def node_name(cls):
         return 'ELSE CLAUSE'
 
     @property
@@ -825,7 +825,7 @@ class Block(Stmt, metaclass=BlockMetaclass):
     known_blocks = {}
 
     @classmethod
-    def type_name(cls):
+    def node_name(cls):
         if cls.__name__.endswith('Block'):
             name = cls.__name__[:-5]
             name_parts = split_camel(name)
@@ -852,7 +852,7 @@ themselves in this class method.
         if not isinstance(end_stmt, expected_end_stmt):
             raise SyntaxError(
                 end_stmt.loc_start,
-                msg=f'Expected {expected_end_stmt.type_name()}',
+                msg=f'Expected {expected_end_stmt.node_name()}',
             )
 
         block = block_type.create_block(start_stmt, end_stmt, body)

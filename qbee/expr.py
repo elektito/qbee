@@ -367,7 +367,7 @@ class Expr(Node):
     loc_start = loc_end = None
 
     @classmethod
-    def type_name(cls):
+    def node_name(cls):
         name = cls.__name__
         parts = split_camel(name)
         name = ' '.join(parts)
