@@ -3,7 +3,9 @@ from .node import Node
 from .expr import Expr, Type
 from .program import LineNo
 from .utils import parse_data, split_camel
-from .exceptions import SyntaxError, InternalError
+from .exceptions import (
+    ErrorCode as EC, SyntaxError, InternalError, CompileError,
+)
 
 
 class Stmt(Node):
@@ -354,6 +356,69 @@ class LoopStmt(Stmt):
 class EndStmt(NoChildStmt):
     def __repr__(self):
         return 'EndStmt'
+
+
+class ForStmt(Stmt):
+    def __init__(self, var, from_expr, to_expr, step_expr):
+        self.var = var
+        self.from_expr = from_expr
+        self.to_expr = to_expr
+        self.step_expr = step_expr
+
+    def __repr__(self):
+        step = ' {self.step_expr}' if self.step_expr else ''
+        return (
+            f'<ForStmt {self.var} {self.from_expr} to {self.to_expr}'
+            f'{step}>'
+        )
+
+    @property
+    def children(self):
+        children = [self.var, self.from_expr, self.to_expr]
+        if self.step_expr:
+            children.append(self.step_expr)
+        return children
+
+    def replace_child(self, old_child, new_child):
+        if self.var == old_child:
+            self.var = new_child
+            return
+
+        if self.from_expr == old_child:
+            self.from_expr = new_child
+            return
+
+        if self.to_expr == old_child:
+            self.to_expr = new_child
+            return
+
+        if self.step_expr == old_child:
+            self.step_expr = new_child
+            return
+
+        raise InternalError(f'No such child to replace: {old_child}')
+
+
+class NextStmt(Stmt):
+    def __init__(self, var):
+        self.var = var
+
+    def __repr__(self):
+        var = ' {self.var}' if self.var else ''
+        return f'<NextStmt{var}>'
+
+    @property
+    def children(self):
+        if not self.var:
+            return []
+        return [self.var]
+
+    def replace_child(self, old_child, new_child):
+        if self.var == old_child:
+            self.var = new_child
+            return
+
+        raise InternalError(f'No such child to replace: {old_child}')
 
 
 class GotoStmt(NoChildStmt):
@@ -1016,7 +1081,11 @@ class LoopBlock(Block, start=DoStmt, end=LoopStmt):
     @classmethod
     def create_block(cls, do_stmt, loop_stmt, body):
         if do_stmt.cond and loop_stmt.cond:
-            raise CompileError(EC.DO_LOOP_MISMATCH, node=loop_stmt)
+            raise CompileError(
+                EC.BLOCK_MISMATCH,
+                'DO and LOOP cannot both have a condition',
+                node=loop_stmt
+            )
 
         if do_stmt.cond:
             kind = f'do_{do_stmt.kind}'
@@ -1028,3 +1097,69 @@ class LoopBlock(Block, start=DoStmt, end=LoopStmt):
             kind = 'forever'
             cond = None
         return LoopBlock(kind, cond, body)
+
+
+class ForBlock(Block, start=ForStmt, end=NextStmt):
+    def __init__(self, var, from_expr, to_expr, step_expr, body):
+        self.var = var
+        self.from_expr = from_expr
+        self.to_expr = to_expr
+        self.step_expr = step_expr
+        self.body = body
+
+    def __repr__(self):
+        step = ' {self.step_expr}' if self.step_expr else ''
+        return (
+            f'<ForBlock {self.var} {self.from_expr} to {self.to_expr}'
+            f'{step}>'
+        )
+
+    @property
+    def children(self):
+        children = [self.var, self.from_expr, self.to_expr]
+        if self.step_expr:
+            children.append(self.step_expr)
+        children += self.body
+        return children
+
+    def replace_child(self, old_child, new_child):
+        if self.var == old_child:
+            self.var = new_child
+            return
+
+        if self.from_expr == old_child:
+            self.from_expr = new_child
+            return
+
+        if self.to_expr == old_child:
+            self.to_expr = new_child
+            return
+
+        if self.step_expr == old_child:
+            self.step_expr = new_child
+            return
+
+        for i in range(len(self.body)):
+            if self.body[i] == old_child:
+                self.body[i] = new_child
+                return
+
+        raise InternalError(f'No such child to replace: {old_child}')
+
+    @classmethod
+    def create_block(cls, for_stmt, next_stmt, body):
+        if next_stmt.var and \
+           for_stmt.var.base_var != next_stmt.var.base_var:
+            raise CompileError(
+                EC.BLOCK_END_MISMATCH,
+                'FOR and NEXT variables do not match',
+                node=next_stmt.var,
+            )
+
+        return ForBlock(
+            for_stmt.var,
+            for_stmt.from_expr,
+            for_stmt.to_expr,
+            for_stmt.step_expr,
+            body,
+        )

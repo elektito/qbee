@@ -471,6 +471,16 @@ class Compiler:
             else:
                 self.cur_routine.local_vars[decl.name] = decl.type
 
+    def _compile_for_block_pass1_pre(self, node):
+        var_type = node.parent_routine.get_identifier_type(
+            node.var.base_var)
+        if not var_type.is_numeric:
+            raise CompileError(
+                EC.TYPE_MISMATCH,
+                'FOR variable must be numeric',
+                node=node.var,
+            )
+
     def _compile_input_pass1_pre(self, node):
         for lvalue in node.var_list:
             if not lvalue.type.is_builtin:

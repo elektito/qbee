@@ -45,6 +45,7 @@ class CanonicalOp(Enum):
     CONV = auto()
     DEREF = auto()
     DIV = auto()
+    DUPL = auto()
     EQ = auto()
     EQV = auto()
     EXP = auto()
@@ -66,6 +67,7 @@ class CanonicalOp(Enum):
     NOP = auto()
     NOT = auto()
     OR = auto()
+    POP = auto()
     PUSH = auto()
     PUSHREF = auto()
     READ = auto()
@@ -1031,6 +1033,64 @@ def gen_loop(node, code, codegen):
     else:
         code.add(('jmp', do_label))
     code.add(('_label', loop_label))
+
+
+@QvmCodeGen.generator_for(stmt.ForBlock)
+def gen_for_block(node, code, codegen):
+    step_var = None
+    if node.step_expr:
+        step_var = codegen.get_label('step_var')
+
+    init_label = codegen.get_label('for_init')
+    check_label = codegen.get_label('for_check')
+    body_label = codegen.get_label('for_body')
+    next_label = codegen.get_label('for_next')
+    end_label = codegen.get_label('for_end')
+
+    var_type = node.var.type
+    type_char = var_type.type_char
+    if codegen.compiler.is_var_global(node.var.base_var):
+        scope = 'g'  # global
+    else:
+        scope = 'l'  # local
+
+    code.add(('_label', init_label))
+    if step_var:
+        codegen.gen_code_for_node(node.step_expr, code)
+        gen_code_for_conv(var_type, node.step_expr, code, codegen)
+        code.add((f'storel', step_var))
+        node.parent_routine.local_vars[step_var] = var_type
+
+    codegen.gen_code_for_node(node.from_expr, code)
+    gen_code_for_conv(var_type, node.from_expr, code, codegen)
+    gen_lvalue_write(node.var, code, codegen)
+
+    codegen.gen_code_for_node(node.to_expr, code)
+    gen_code_for_conv(var_type, node.to_expr, code, codegen)
+
+    code.add(('_label', check_label))
+    code.add(('dupl',))
+    code.add((f'read{scope}{type_char}', node.var.base_var))
+    code.add(('cmp',))
+    code.add(('ne',))
+    code.add(('jz', end_label))
+
+    code.add(('_label', body_label))
+    for inner_stmt in node.body:
+        codegen.gen_code_for_node(inner_stmt, code)
+
+    code.add(('_label', next_label))
+    if step_var:
+        code.add((f'read{scope}{type_char}', step_var))
+    else:
+        code.add((f'push1{type_char}',))
+    code.add((f'read{scope}{type_char}', node.var.base_var))
+    code.add(('add',))
+    code.add((f'store{scope}', node.var.base_var))
+    code.add(('jmp', check_label))
+
+    code.add(('_label', end_label))
+    code.add(('pop',)) # throw away "from" result
 
 
 @QvmCodeGen.generator_for(stmt.EndStmt)

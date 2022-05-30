@@ -20,6 +20,7 @@ from .stmt import (
     SubStmt, VarDeclClause, AnyVarDeclClause, ArrayDimRange,
     EndSubStmt, ExitSubStmt, TypeStmt, EndTypeStmt, FunctionStmt,
     EndFunctionStmt, ExitFunctionStmt, DoStmt, LoopStmt, EndStmt,
+    ForStmt, NextStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -52,6 +53,7 @@ elseif_kw = CaselessKeyword('elseif')
 end_kw = CaselessKeyword('end')
 exit_kw = CaselessKeyword('exit')
 eqv_kw = CaselessKeyword('eqv')
+for_kw = CaselessKeyword('for')
 function_kw = CaselessKeyword('function')
 goto_kw = CaselessKeyword('goto')
 if_kw = CaselessKeyword('if')
@@ -62,12 +64,14 @@ let_kw = CaselessKeyword('let')
 long_kw = CaselessKeyword('long')
 loop_kw = CaselessKeyword('loop')
 mod_kw = CaselessKeyword('mod')
+next_kw = CaselessKeyword('next')
 not_kw = CaselessKeyword('not')
 or_kw = CaselessKeyword('or')
 print_kw = CaselessKeyword('print')
 rem_kw = CaselessKeyword('rem')
 shared_kw = CaselessKeyword('shared')
 single_kw = CaselessKeyword('single')
+step_kw = CaselessKeyword('step')
 string_kw = CaselessKeyword('string')
 sub_kw = CaselessKeyword('sub')
 then_kw = CaselessKeyword('then')
@@ -319,6 +323,19 @@ loop_stmt = (
 
 end_stmt = (end_kw).set_name('end_stmt')
 
+for_stmt = (
+    for_kw.suppress() -
+    Group(Located(identifier)) -
+    eq.suppress() -
+    expr -
+    to_kw.suppress() -
+    expr +
+    Opt(step_kw.suppress() - expr, default=None)
+).set_name('for_stmt')
+next_stmt = (
+    next_kw.suppress() + Opt(Located(identifier), default=None)
+).set_name('next_stmt')
+
 goto_stmt = goto_kw.suppress() - (untyped_identifier | line_no_value)
 
 else_clause = Located(
@@ -455,6 +472,9 @@ stmt = Located(
 
     do_stmt |
     loop_stmt |
+
+    for_stmt |
+    next_stmt |
 
     # the order of the following is important. in particular, if_stmt
     # must be before if_block_begin.
@@ -703,6 +723,30 @@ def parse_loop_stmt(toks):
         return LoopStmt(kind, cond)
     else:
         return LoopStmt('forever', None)
+
+
+@parse_action(for_stmt)
+def parse_for_stmt(toks):
+    var, from_expr, to_expr, step_expr = toks
+
+    var_loc_start, (var,), var_loc_end = var
+    var = Lvalue(var, [], [])
+    var.loc_start = var_loc_start
+    var.loc_end = var_loc_end
+    return ForStmt(var, from_expr, to_expr, step_expr)
+
+
+@parse_action(next_stmt)
+def parse_next_stmt(toks):
+    if toks[0] is None:
+        return NextStmt(None)
+
+    var_loc_start, (var,), var_loc_end = toks
+    var = Lvalue(var, [], [])
+    var.loc_start = var_loc_start
+    var.loc_end = var_loc_end
+
+    return NextStmt(var)
 
 
 @parse_action(end_stmt)
