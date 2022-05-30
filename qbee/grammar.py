@@ -906,7 +906,7 @@ def parse_var_decl(toks):
     dims = dims or []
     if list(dims) == ['(', ')']:
         clause.is_nodim_array = True
-        clause.dims = []
+        clause.array_dims = []
 
     clause.loc_start = loc_start
     clause.loc_end = loc_end
