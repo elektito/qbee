@@ -1039,8 +1039,12 @@ def gen_loop(node, code, codegen):
 @QvmCodeGen.generator_for(stmt.ForBlock)
 def gen_for_block(node, code, codegen):
     step_var = None
+    step_value = 1
     if node.step_expr:
-        step_var = codegen.get_label('step_var')
+        if node.step_expr.is_const:
+            step_value = node.step_expr.eval()
+        else:
+            step_var = codegen.get_label('step_var')
 
     init_label = codegen.get_label('for_init')
     check_label = codegen.get_label('for_check')
@@ -1054,6 +1058,8 @@ def gen_for_block(node, code, codegen):
         scope = 'g'  # global
     else:
         scope = 'l'  # local
+
+    step_value = var_type.py_type(step_value)
 
     code.add(('_label', init_label))
     if step_var:
@@ -1084,7 +1090,7 @@ def gen_for_block(node, code, codegen):
     if step_var:
         code.add((f'read{scope}{type_char}', step_var))
     else:
-        code.add((f'push1{type_char}',))
+        code.add((f'push{type_char}', step_value))
     code.add((f'read{scope}{type_char}', node.var.base_var))
     code.add(('add',))
     code.add((f'store{scope}', node.var.base_var))
