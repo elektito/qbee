@@ -359,8 +359,8 @@ class QvmCode(BaseCode):
                     Op.MOD: expr.Operator.MOD,
                     Op.EXP: expr.Operator.EXP,
                 }[cur.op]
-                prev1_type = Type.from_type_char(prev1.type_char)
-                prev2_type = Type.from_type_char(prev2.type_char)
+                prev1_type = expr.Type.from_type_char(prev1.type_char)
+                prev2_type = expr.Type.from_type_char(prev2.type_char)
                 left = expr.NumericLiteral(left, prev2_type)
                 right = expr.NumericLiteral(right, prev1_type)
                 binary_expr = expr.BinaryOp(left, right, op)
