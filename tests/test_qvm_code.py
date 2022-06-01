@@ -58,6 +58,16 @@ def test_fold_push_and_conv_one():
     assert code._instrs == [('push1!',)]
 
 
+def test_fold_push_and_conv_invalid():
+    code = QvmCode()
+    code.add(
+        ('push&', 100000),
+        ('conv&%',),
+    )
+    code.optimize()
+    assert code._instrs == [('push&', 100000), ('conv&%',)]
+
+
 def test_eliminate_read_store():
     code = QvmCode()
     code.add(

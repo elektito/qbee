@@ -283,14 +283,21 @@ class QvmCode(BaseCode):
                     # perform rounding first if casting from float to
                     # integer
                     arg = round(arg)
-                cur_type = expr.Type.from_type_char(cur.type_char)
-                arg = cur_type.py_type(arg)
 
-                self._instrs[i-1] = QvmInstr(
-                    f'push{cur.type_char}', arg)
+                # Fold only if the value can fit in target type
+                # (otherwise we'll leave it and there will be a
+                # conversion error in run time)
+                if cur_type.can_hold(arg):
+                    cur_type = expr.Type.from_type_char(cur.type_char)
+                    arg = cur_type.py_type(arg)
 
-                del self._instrs[i]
-                i -= 1
+                    self._instrs[i-1] = QvmInstr(
+                        f'push{cur.type_char}', arg)
+
+                    del self._instrs[i]
+                    i -= 1
+                else:
+                    i += 1
 
                 continue
 

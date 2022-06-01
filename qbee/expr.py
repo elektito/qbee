@@ -1,3 +1,4 @@
+import numbers
 from enum import Enum
 from abc import abstractmethod
 from .exceptions import ErrorCode as EC, InternalError, CompileError
@@ -57,6 +58,27 @@ class Type:
         if self.is_array:
             s += '()'
         return s
+
+    def can_hold(self, value):
+        if self.is_user_defined:
+            return False
+        if self.is_array:
+            return False
+        if self.is_numeric and isinstance(value, numbers.Number):
+            if self._type == BuiltinType.INTEGER:
+                return -32768 <= value <= 32767
+            elif self._type == BuiltinType.LONG:
+                return -2**31 <= value < 2**31
+            elif self._type == BuiltinType.SINGLE:
+                return (
+                    (-3.40282347e+38 <= value <= -1.17549435e-38) or
+                    (1.17549435e-38 <= value <= 3.40282347e+38)
+                )
+            else:
+                return True
+        if self._type == BuiltinType.STRING and isinstance(value, str):
+            return True
+        return False
 
     @property
     def name(self):
