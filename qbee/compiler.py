@@ -448,6 +448,13 @@ class Compiler:
         self._perform_argument_matching(node, 'sub')
 
     def _compile_dim_pass1_pre(self, node):
+        if node.shared and node.parent_routine.kind != 'toplevel':
+            raise CompileError(
+                EC.ILLEGAL_IN_SUB,
+                'SHARED is only allowed in top-level',
+                node=node,
+            )
+
         for decl in node.var_decls:
             self._validate_decl(decl)
 
