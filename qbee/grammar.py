@@ -122,7 +122,8 @@ compare_op = Regex(r'(<=|>=|<>|><|=<|=>|<|>|=)')
 
 numeric_literal = (
     (
-        Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?") |
+        Regex(
+            r'[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eEdD][+-]?\d+)?') |
         Regex(r"&[Hh][0-9a-fA-F]+(%&)?") |
         Regex(r"&[Oo][0-7]+(%&)?")
     ) + Opt(type_char, default=None)

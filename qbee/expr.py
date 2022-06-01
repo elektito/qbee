@@ -476,6 +476,14 @@ class NumericLiteral(Expr):
                 else:
                     literal_type = Type.LONG
         else:
+            if 'd' in token:
+                # a double scientific value (like 1.2d-4); change type
+                # to DOUBLE if no explicit type char is specified
+                if type_char is None:
+                    literal_type = Type.DOUBLE
+                token = token.replace('d', 'e')
+            elif 'e' in token:
+                literal_type = Type.SINGLE
             value = literal_type.py_type(token)
         return cls(value, literal_type)
 
