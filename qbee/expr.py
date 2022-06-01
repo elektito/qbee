@@ -409,6 +409,7 @@ class Expr(Node):
 
 
 class ParenthesizedExpr(Expr):
+    child_fields = ['child']
     is_literal = False
 
     def __init__(self, child_expr):
@@ -428,19 +429,9 @@ class ParenthesizedExpr(Expr):
     def eval(self):
         return self.child.eval()
 
-    @property
-    def children(self):
-        return [self.child]
-
-    def replace_child(self, old_child, new_child):
-        if self.child == old_child:
-            self.child = new_child
-            return
-
-        raise InternalError('No such child to replace')
-
 
 class NumericLiteral(Expr):
+    child_fields = []
     is_literal = True
     is_const = True
 
@@ -488,15 +479,9 @@ class NumericLiteral(Expr):
             value = literal_type.py_type(token)
         return cls(value, literal_type)
 
-    @property
-    def children(self):
-        return []
-
-    def replace_child(self, new_child):
-        pass
-
 
 class BinaryOp(Expr):
+    child_fields = ['left', 'right']
     is_literal = False
 
     def __init__(self, left, right, op: Operator):
@@ -511,18 +496,6 @@ class BinaryOp(Expr):
             f'left={self.left} '
             f'right={self.right}>'
         )
-
-    def replace_child(self, old_child, new_child):
-        if self.left == old_child:
-            self.left = new_child
-        elif self.right == old_child:
-            self.right = new_child
-        else:
-            raise InternalError('No such child to replace')
-
-    @property
-    def children(self):
-        return [self.left, self.right]
 
     @property
     def is_const(self):
@@ -640,6 +613,7 @@ class BinaryOp(Expr):
 
 
 class UnaryOp(Expr):
+    child_fields = ['arg']
     is_literal = False
 
     def __init__(self, arg, op: Operator):
@@ -649,16 +623,6 @@ class UnaryOp(Expr):
 
     def __repr__(self):
         return f'<UnaryOp op={self.op.name} arg={self.arg}>'
-
-    def replace_child(self, old_child, new_child):
-        if self.arg == old_child:
-            self.arg = new_child
-        else:
-            raise InternalError('No such child to replace')
-
-    @property
-    def children(self):
-        return [self.arg]
 
     @property
     def is_const(self):
@@ -704,6 +668,7 @@ class UnaryOp(Expr):
 
 
 class Lvalue(Expr):
+    child_fields = ['array_indices']
     is_literal = False
 
     def __init__(self, base_var, array_indices, dotted_vars):
@@ -800,18 +765,6 @@ class Lvalue(Expr):
             self.type.is_dynamic_array
         )
 
-    @property
-    def children(self):
-        return self.array_indices
-
-    def replace_child(self, old_child, new_child):
-        for i in range(len(self.array_indices)):
-            if self.array_indices[i] == old_child:
-                self.array_indices[i] = new_child
-                return
-
-        raise InternalError('No such child to replace')
-
     def eval(self):
         if not self.is_const:
             raise InternalError(
@@ -820,12 +773,8 @@ class Lvalue(Expr):
         return self.compiler.consts[self.base_var].eval()
 
 
-class Variable(Expr):
-    is_literal = False
-    is_const = False
-
-
 class StringLiteral(Expr):
+    child_fields = []
     is_literal = True
     is_const = True
 
@@ -842,18 +791,12 @@ class StringLiteral(Expr):
     def eval(self):
         return self.value
 
-    def replace_child(self, old_child, new_child):
-        pass
-
-    @property
-    def children(self):
-        return []
-
 
 class ArrayPass(Expr):
     """This class is only used for passing an array to a sub or
 function. For example: CALL foo(x())"""
 
+    child_fields = []
     is_literal = False
     is_const = False
 
@@ -867,15 +810,9 @@ function. For example: CALL foo(x())"""
     def type(self):
         return self.parent_routine.get_variable_type(self.identifier)
 
-    @property
-    def children(self):
-        return []
-
-    def replace_child(self, old_child, new_child):
-        pass
-
 
 class FuncCall(Expr):
+    child_fields = ['args']
     is_literal = False
     is_const = False
 
@@ -898,15 +835,3 @@ class FuncCall(Expr):
     @property
     def type(self):
         return self._type
-
-    @property
-    def children(self):
-        return self.args
-
-    def replace_child(self, old_child, new_child):
-        for i in len(self.args):
-            if self.args[i] == old_child:
-                self.args[i] = new_child
-                return
-
-        raise InternalError('No such child to replace')

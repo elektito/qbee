@@ -21,16 +21,9 @@ class Stmt(Node):
             'class name ends with "Stmt"')
 
 
-class NoChildStmt(Stmt):
-    @property
-    def children(self):
-        return []
-
-    def replace_child(self, old_child, new_child):
-        pass
-
-
 class ArrayDimRange(Stmt):
+    child_fields = ['lbound', 'ubound']
+
     def __init__(self, lbound, ubound):
         assert isinstance(lbound, Expr)
         self.lbound = lbound
@@ -53,22 +46,14 @@ class ArrayDimRange(Stmt):
     def is_const(self):
         return self.lbound.is_const and self.ubound.is_const
 
-    @property
-    def children(self):
-        return [self.lbound, self.ubound]
-
-    def replace_child(self, old_child, new_child):
-        if self.lbound == old_child:
-            self.lbound = new_child
-        if self.ubound == old_child:
-            self.ubound = new_child
-
     @classmethod
     def node_name(cls):
         return 'ARRAY DIM RANGE'
 
 
 class VarDeclClause(Stmt):
+    child_fields = ['array_dims']
+
     def __init__(self, name, var_type_name, dims=None,
                  is_nodim_array=False):
         self.name = name
@@ -123,8 +108,10 @@ class VarDeclClause(Stmt):
         return 'VAR CLAUSE'
 
 
-class AnyVarDeclClause(NoChildStmt):
+class AnyVarDeclClause(Stmt):
     "A 'var AS ANY' clause"
+
+    child_fields = []
 
     def __init__(self, name):
         self.name = name
@@ -135,6 +122,8 @@ class AnyVarDeclClause(NoChildStmt):
 
 
 class AssignmentStmt(Stmt):
+    child_fields = ['lvalue', 'rvalue']
+
     def __init__(self, lvalue, rvalue):
         self.lvalue = lvalue
         self.rvalue = rvalue
@@ -142,82 +131,44 @@ class AssignmentStmt(Stmt):
     def __repr__(self):
         return f'<AssignmentStmt {self.lvalue} = {self.rvalue}>'
 
-    @property
-    def children(self):
-        return [self.lvalue, self.rvalue]
 
-    def replace_child(self, old_child, new_child):
-        if self.rvalue == old_child:
-            self.rvalue = new_child
-        elif self.lvalue == old_child:
-            self.lvalue = new_child
-        else:
-            raise InternalError(
-                f'No such child to replace: {old_child}')
+class BeepStmt(Stmt):
+    child_fields = []
 
-
-class BeepStmt(NoChildStmt):
     def __repr__(self):
         return '<BeepStmt>'
 
 
 class CallStmt(Stmt):
+    child_fields = ['args']
+
     def __init__(self, name, args):
         self.name = name
         self.args = args
-
-    def replace_child(self, old_child, new_child):
-        for i in range(len(self.args)):
-            if self.args[i] == old_child:
-                self.args[i] = new_child
-                break
-        else:
-            raise InternalError(
-                f'No such child to replace: {old_child}')
-
-    @property
-    def children(self):
-        return self.args
 
     def __repr__(self):
         return f'<CallStmt {self.name} args={self.args}>'
 
 
-class ClsStmt(NoChildStmt):
+class ClsStmt(Stmt):
+    child_fields = []
+
     def __repr__(self):
         return '<ClsStmt>'
 
 
 class ColorStmt(Stmt):
+    child_fields = ['foreground', 'background', 'border']
+
     def __init__(self, foreground, background, border):
         self.foreground = foreground
         self.background = background
         self.border = border
 
-    @property
-    def children(self):
-        ret = []
-        if self.foreground is not None:
-            ret.append(self.foreground)
-        if self.background is not None:
-            ret.append(self.background)
-        if self.border is not None:
-            ret.append(self.border)
-        return ret
-
-    def replace_child(self, old_child, new_child):
-        if self.foreground == old_child:
-            self.foreground = new_child
-        elif self.background == old_child:
-            self.background == new_child
-        elif self.border == old_child:
-            self.border = new_child
-        else:
-            raise InternalError(
-                f'No such child to replace: {old_child}')
-
 
 class ConstStmt(Stmt):
+    child_fields = ['value']
+
     def __init__(self, name, value):
         self.name = name
         self.value = value
@@ -225,20 +176,10 @@ class ConstStmt(Stmt):
     def __repr__(self):
         return f'<ConstStmt {self.name} = {self.value}>'
 
-    @property
-    def children(self):
-        return [self.value]
-
-    def replace_child(self, old_child, new_child):
-        if self.value == old_child:
-            self.value = new_child
-            return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
 
 class DeclareStmt(Stmt):
+    child_fields = ['params']
+
     def __init__(self, routine_kind, name, params):
         assert routine_kind in ('sub', 'function')
         self.routine_kind = routine_kind
@@ -248,21 +189,10 @@ class DeclareStmt(Stmt):
     def __repr__(self):
         return f'<DeclareStmt {self.routine_kind} {self.name}>'
 
-    def replace_child(self, old_child, new_child):
-        for i in range(len(self.params)):
-            if self.params[i] == old_child:
-                self.params[i] = new_child
-                return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
-    @property
-    def children(self):
-        return self.params
-
 
 class DimStmt(Stmt):
+    child_fields = ['var_decls']
+
     def __init__(self, var_decls, shared=False):
         assert all(
             isinstance(decl, VarDeclClause)
@@ -277,21 +207,10 @@ class DimStmt(Stmt):
             shared = 'shared '
         return f'<DimStmt {shared}{self.var_decls}>'
 
-    @property
-    def children(self):
-        return self.var_decls
-
-    def replace_child(self, old_child, new_child):
-        for i in range(len(self.var_decls)):
-            if self.var_decls[i] == old_child:
-                self.var_decls[i] = new_child
-                return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
 
 class DoStmt(Stmt):
+    child_fields = ['cond']
+
     def __init__(self, kind, cond):
         assert kind in ('forever', 'while', 'until')
         if kind == 'forever':
@@ -306,23 +225,10 @@ class DoStmt(Stmt):
         cond = f' {self.cond}' if self.cond else ''
         return f'<DoStmt {self.kind}{cond}>'
 
-    @property
-    def children(self):
-        if self.cond:
-            return [self.cond]
-        else:
-            return []
-
-    def replace_child(self, old_child, new_child):
-        if self.cond and self.cond == old_child:
-            self.cond = new_child
-            return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
 
 class LoopStmt(Stmt):
+    child_fields = ['cond']
+
     def __init__(self, kind, cond):
         assert kind in ('forever', 'while', 'until')
         if kind == 'forever':
@@ -337,28 +243,17 @@ class LoopStmt(Stmt):
         cond = f' {cond}' if self.cond else ''
         return f'<LoopStmt {self.kind}{cond}>'
 
-    @property
-    def children(self):
-        if self.cond:
-            return [self.cond]
-        else:
-            return []
 
-    def replace_child(self, old_child, new_child):
-        if self.cond and self.cond == old_child:
-            self.cond = new_child
-            return
+class EndStmt(Stmt):
+    child_fields = []
 
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
-
-class EndStmt(NoChildStmt):
     def __repr__(self):
         return 'EndStmt'
 
 
 class ForStmt(Stmt):
+    child_fields = ['var', 'from_expr', 'to_expr', 'step_expr']
+
     def __init__(self, var, from_expr, to_expr, step_expr):
         self.var = var
         self.from_expr = from_expr
@@ -372,34 +267,10 @@ class ForStmt(Stmt):
             f'{step}>'
         )
 
-    @property
-    def children(self):
-        children = [self.var, self.from_expr, self.to_expr]
-        if self.step_expr:
-            children.append(self.step_expr)
-        return children
-
-    def replace_child(self, old_child, new_child):
-        if self.var == old_child:
-            self.var = new_child
-            return
-
-        if self.from_expr == old_child:
-            self.from_expr = new_child
-            return
-
-        if self.to_expr == old_child:
-            self.to_expr = new_child
-            return
-
-        if self.step_expr == old_child:
-            self.step_expr = new_child
-            return
-
-        raise InternalError(f'No such child to replace: {old_child}')
-
 
 class NextStmt(Stmt):
+    child_fields = ['var']
+
     def __init__(self, var):
         self.var = var
 
@@ -407,21 +278,10 @@ class NextStmt(Stmt):
         var = ' {self.var}' if self.var else ''
         return f'<NextStmt{var}>'
 
-    @property
-    def children(self):
-        if not self.var:
-            return []
-        return [self.var]
 
-    def replace_child(self, old_child, new_child):
-        if self.var == old_child:
-            self.var = new_child
-            return
+class GotoStmt(Stmt):
+    child_fields = []
 
-        raise InternalError(f'No such child to replace: {old_child}')
-
-
-class GotoStmt(NoChildStmt):
     def __init__(self, target):
         self.target = target
 
@@ -437,6 +297,8 @@ class GotoStmt(NoChildStmt):
 class IfStmt(Stmt):
     # Denotes an IF statement with at least one statement after THEN,
     # and possibly an ELSE clause.
+
+    child_fields = ['cond', 'then_stmts', 'else_clause']
 
     def __init__(self, cond, then_stmts, else_clause):
         self.cond = cond
@@ -454,35 +316,12 @@ class IfStmt(Stmt):
             else_desc = 'else=empty'
         return f'<IfStmt cond={self.cond} {then_desc} {else_desc}>'
 
-    @property
-    def children(self):
-        ret = [self.cond]
-        ret += self.then_stmts
-        if self.else_clause:
-            ret += [self.else_clause]
-        return ret
-
-    def replace_child(self, old_child, new_child):
-        if self.cond == old_child:
-            self.cond = new_child
-            return
-
-        if self.else_clause == old_child:
-            self.else_clause = new_child
-            return
-
-        for i in range(len(self.then_stmts)):
-            if self.then_stmts[i] == old_child:
-                self.then_stmts[i] = new_child
-                return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
 
 class IfBeginStmt(Stmt):
     # An IF statement without anything after THEN, denoting the start of
     # an IF block.
+
+    child_fields = ['cond']
 
     def __init__(self, cond):
         self.cond = cond
@@ -490,16 +329,9 @@ class IfBeginStmt(Stmt):
     def __repr__(self):
         return f'<IfBeginStmt cond={self.cond}>'
 
-    @property
-    def children(self):
-        return [self.cond]
-
-    def replace_child(self, old_child, new_child):
-        if old_child == self.cond:
-            self.cond = new_child
-
 
 class ElseClause(Stmt):
+    child_fields = ['stmts']
     def __init__(self, stmts):
         self.stmts = stmts
 
@@ -510,26 +342,17 @@ class ElseClause(Stmt):
     def node_name(cls):
         return 'ELSE CLAUSE'
 
-    @property
-    def children(self):
-        return self.stmts
 
-    def replace_child(self, old_child, new_child):
-        for i in range(len(self.stmts)):
-            if self.stmts[i] == old_child:
-                self.stmts[i] = new_child
-                return
+class ElseStmt(Stmt):
+    child_fields = []
 
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
-
-class ElseStmt(NoChildStmt):
     def __repr__(self):
         return '<ElseStmt>'
 
 
 class ElseIfStmt(Stmt):
+    child_fields = ['cond', 'then_stmts']
+
     def __init__(self, cond, then_stmts):
         self.cond = cond
         self.then_stmts = then_stmts
@@ -541,30 +364,17 @@ class ElseIfStmt(Stmt):
             then_desc = 'then=empty'
         return f'<ElseIfStmt cond={self.cond} {then_desc}>'
 
-    @property
-    def children(self):
-        return [self.cond] + self.then_stmts
 
-    def replace_child(self, old_child, new_child):
-        if self.cond == old_child:
-            self.cond = new_child
-            return
+class EndIfStmt(Stmt):
+    child_fields = []
 
-        for i in range(len(self.then_stmts)):
-            if self.then_stmts[i] == old_child:
-                self.then_stmts[i] = new_child
-                return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
-
-class EndIfStmt(NoChildStmt):
     def __repr__(self):
         return '<EndIfStmt>'
 
 
 class InputStmt(Stmt):
+    child_fields = ['prompt', 'var_list']
+
     def __init__(self, same_line: bool, prompt: str,
                  prompt_question: bool, var_list: list):
         self.same_line = same_line
@@ -596,6 +406,8 @@ class InputStmt(Stmt):
 
 
 class PrintStmt(Stmt):
+    child_fields = ['items']
+
     def __init__(self, items):
         self.items = items
 
@@ -616,7 +428,9 @@ class PrintStmt(Stmt):
             f'No such child to replace: {old_child}')
 
 
-class DataStmt(NoChildStmt):
+class DataStmt(Stmt):
+    child_fields = []
+
     def __init__(self, string):
         self.string = string
         self.items = parse_data(self.string)
@@ -625,7 +439,9 @@ class DataStmt(NoChildStmt):
         return '<DataStmt>'
 
 
-class TypeStmt(NoChildStmt):
+class TypeStmt(Stmt):
+    child_fields = []
+
     def __init__(self, name):
         self.name = name
 
@@ -633,12 +449,16 @@ class TypeStmt(NoChildStmt):
         return f'<TypeStmt {self.name}>'
 
 
-class EndTypeStmt(NoChildStmt):
+class EndTypeStmt(Stmt):
+    child_fields = []
+
     def __repr__(self):
         return '<EndTypeStmt>'
 
 
 class ViewPrintStmt(Stmt):
+    child_fields = ['top_expr', 'bottom_expr']
+
     def __init__(self, top_expr, bottom_expr):
         assert (
             (top_expr is not None and bottom_expr is not None) or
@@ -653,25 +473,9 @@ class ViewPrintStmt(Stmt):
             lines = f' {self.top_expr} to {self.bottom_expr}'
         return f'<ViewPrintStmt{lines}>'
 
-    @property
-    def children(self):
-        if not self.top_expr:
-            return []
-        return [self.top_expr, self.bottom_expr]
-
-    def replace_child(self, old_child, new_child):
-        if self.top_expr == old_child:
-            self.top_expr = new_child
-            return
-
-        if self.bottom_expr == old_child:
-            self.bottom_expr = new_child
-            return
-
-        raise InternalError(f'No such child to replace: {old_child}')
-
 
 class SubStmt(Stmt):
+    child_fields = ['params']
     def __init__(self, name, params):
         assert all(isinstance(p, VarDeclClause) for p in params)
         self.name = name
@@ -680,31 +484,24 @@ class SubStmt(Stmt):
     def __repr__(self):
         return f'<SubStmt {self.name} with {len(self.params)} param(s)>'
 
-    @property
-    def children(self):
-        return self.params
 
-    def replace_child(self, old_child, new_child):
-        for param in self.params:
-            if param == old_child:
-                param = new_child
-                return
+class EndSubStmt(Stmt):
+    child_fields = []
 
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
-
-class EndSubStmt(NoChildStmt):
     def __repr__(self):
         return '<EndSubStmt>'
 
 
-class ExitSubStmt(NoChildStmt):
+class ExitSubStmt(Stmt):
+    child_fields = []
+
     def __repr__(self):
         return '<ExitSubStmt>'
 
 
 class FunctionStmt(Stmt):
+    child_fields = ['params']
+
     def __init__(self, name, params):
         assert all(isinstance(p, VarDeclClause) for p in params)
 
@@ -731,47 +528,29 @@ class FunctionStmt(Stmt):
         else:
             return self.compiler.get_identifier_type(self.name)
 
-    @property
-    def children(self):
-        return self.params
 
-    def replace_child(self, old_child, new_child):
-        for param in self.params:
-            if param == old_child:
-                param = new_child
-                return
+class EndFunctionStmt(Stmt):
+    child_fields = []
 
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
-
-class EndFunctionStmt(NoChildStmt):
     def __repr__(self):
         return '<EndFunctionStmt>'
 
 
-class ExitFunctionStmt(NoChildStmt):
+class ExitFunctionStmt(Stmt):
+    child_fields = []
+
     def __repr__(self):
         return '<ExitFunctionStmt>'
 
 
-class ReturnValueSetStmt(NoChildStmt):
+class ReturnValueSetStmt(Stmt):
+    child_fields = ['value']
+
     def __init__(self, value):
         self.value = value
 
     def __repr__(self):
         return f'<ReturnValueSetStmt {self.value}>'
-
-    @property
-    def children(self):
-        return [self.value]
-
-    def replace_child(self, old_child, new_child):
-        if self.value == old_child:
-            self.value = new_child
-            return
-        raise InternalError(
-            f'No such child to replace: {old_child}')
 
 
 # Blocks
@@ -872,6 +651,8 @@ themselves in this class method.
 
 
 class IfBlock(Block, start=IfBeginStmt, end=EndIfStmt):
+    # child_fields implemented further down as a property
+
     def __init__(self, if_blocks, else_body):
         # if blocks is a list of tuples, each being a pair in the form
         # of (condition, body) denoting the top-level if block and any
@@ -917,34 +698,42 @@ class IfBlock(Block, start=IfBeginStmt, end=EndIfStmt):
 
         return cls(if_blocks, else_body)
 
-    def replace_child(self, old_child, new_child):
-        for i in range(len(self.if_blocks)):
-            cond, body = self.if_blocks[i]
-            if cond == old_child:
-                self.if_blocks[i] = (new_child, body)
-                return
-
-            for j in range(len(body)):
-                if body[j] == old_child:
-                    body[j] = new_child
-                    return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
     @property
-    def children(self):
-        ret = []
-        for cond, body in self.if_blocks:
-            ret += [cond]
-            ret += body
-        for stmt in self.else_body:
-            ret.append(stmt)
+    def child_fields(self):
+        # we have a dynamic number of child fields, so we give them
+        # fake names here and handle them in __getattr__ and
+        # __setattr__
+        fields = []
+        for i, (cond, body) in enumerate(self.if_blocks):
+            fields.append(f'_if_cond_{i}')
+            fields.append(f'_if_body_{i}')
+        fields.append('else_body')
+        return fields
 
-        return ret
+    def __getattr__(self, attr):
+        if attr.startswith('_if_cond_'):
+            i = int(attr[len('_if_cond_'):])
+            return self.if_blocks[i][0]
+        elif attr.startswith('_if_body_'):
+            i = int(attr[len('_if_body_'):])
+            return self.if_blocks[i][1]
+        else:
+            raise AttributeError
+
+    def __setattr__(self, attr, value):
+        if attr.startswith('_if_cond_'):
+            i = int(attr[len('_if_cond_'):])
+            self.if_blocks[i] = (value, self.if_blocks[i][1])
+        elif attr.startswith('_if_body_'):
+            i = int(attr[len('_if_body_'):])
+            self.if_blocks[i] = (self.if_blocks[i][0], value)
+        else:
+            super().__setattr__(attr, value)
 
 
 class SubBlock(Block, start=SubStmt, end=EndSubStmt):
+    child_fields = ['params', 'block']
+
     def __init__(self, name, params, block):
         self.name = name
         self.params = params
@@ -959,30 +748,14 @@ class SubBlock(Block, start=SubStmt, end=EndSubStmt):
             f'and {len(self.block)} statement(s)>'
         )
 
-    def replace_child(self, old_child, new_child):
-        for i in range(len(self.params)):
-            if self.params[i] == old_child:
-                self.params[i] = new_child
-                return
-
-        for i in range(len(self.block)):
-            if self.block[i] == old_child:
-                self.block[i] = new_child
-                return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
-    @property
-    def children(self):
-        return self.params + self.block
-
     @classmethod
     def create_block(cls, sub_stmt, end_sub_stmt, body):
         return cls(sub_stmt.name, sub_stmt.params, body)
 
 
 class FunctionBlock(Block, start=FunctionStmt, end=EndFunctionStmt):
+    child_fields = ['params', 'block']
+
     def __init__(self, name, params, block):
         self._name = name
         self.params = params
@@ -1008,30 +781,14 @@ class FunctionBlock(Block, start=FunctionStmt, end=EndFunctionStmt):
     def type(self):
         return self.parent_routine.get_identifier_type(self._name)
 
-    def replace_child(self, old_child, new_child):
-        for i in range(len(self.params)):
-            if self.params[i] == old_child:
-                self.params[i] = new_child
-                return
-
-        for i in range(len(self.block)):
-            if self.block[i] == old_child:
-                self.block[i] = new_child
-                return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
-    @property
-    def children(self):
-        return self.params + self.block
-
     @classmethod
     def create_block(cls, func_stmt, end_func_stmt, body):
         return cls(func_stmt.name, func_stmt.params, body)
 
 
 class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):
+    child_fields = ['decls']
+
     def __init__(self, name: str, decls: list):
         assert isinstance(name, str)
         assert isinstance(decls, list)
@@ -1046,19 +803,6 @@ class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):
         return (
             f'<TypeBlock {self.name} with {len(self.fields)} field(s)>'
         )
-
-    @property
-    def children(self):
-        return self.decls
-
-    def replace_child(self, old_child, new_child):
-        for i in range(len(self.decls)):
-            if self.decls[i] == old_child:
-                self.decls[i] = new_child
-                return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
 
     @classmethod
     def create_block(cls, start_stmt, end_stmt, body):
@@ -1082,6 +826,8 @@ class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):
 
 
 class LoopBlock(Block, start=DoStmt, end=LoopStmt):
+    child_fields = ['cond', 'body']
+
     def __init__(self, kind, cond, body):
         self.kind = kind
         self.cond = cond
@@ -1090,26 +836,6 @@ class LoopBlock(Block, start=DoStmt, end=LoopStmt):
     def __repr__(self):
         cond = f' {self.cond}' if self.cond else ''
         return f'<LoopBlock {self.kind}{cond}>'
-
-    @property
-    def children(self):
-        if self.cond is not None:
-            return [self.cond] + self.body
-        else:
-            return []
-
-    def replace_child(self, old_child, new_child):
-        if self.cond and self.cond == old_child:
-            self.cond = new_child
-            return
-
-        for i in range(len(self.body)):
-            if self.body[i] == old_child:
-                self.body[i] = new_child
-                return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
 
     @classmethod
     def create_block(cls, do_stmt, loop_stmt, body):
@@ -1133,6 +859,8 @@ class LoopBlock(Block, start=DoStmt, end=LoopStmt):
 
 
 class ForBlock(Block, start=ForStmt, end=NextStmt):
+    child_fields = ['var', 'from_expr', 'to_expr', 'step_expr', 'body']
+
     def __init__(self, var, from_expr, to_expr, step_expr, body):
         self.var = var
         self.from_expr = from_expr
@@ -1146,38 +874,6 @@ class ForBlock(Block, start=ForStmt, end=NextStmt):
             f'<ForBlock {self.var} {self.from_expr} to {self.to_expr}'
             f'{step}>'
         )
-
-    @property
-    def children(self):
-        children = [self.var, self.from_expr, self.to_expr]
-        if self.step_expr:
-            children.append(self.step_expr)
-        children += self.body
-        return children
-
-    def replace_child(self, old_child, new_child):
-        if self.var == old_child:
-            self.var = new_child
-            return
-
-        if self.from_expr == old_child:
-            self.from_expr = new_child
-            return
-
-        if self.to_expr == old_child:
-            self.to_expr = new_child
-            return
-
-        if self.step_expr == old_child:
-            self.step_expr = new_child
-            return
-
-        for i in range(len(self.body)):
-            if self.body[i] == old_child:
-                self.body[i] = new_child
-                return
-
-        raise InternalError(f'No such child to replace: {old_child}')
 
     @classmethod
     def create_block(cls, for_stmt, next_stmt, body):

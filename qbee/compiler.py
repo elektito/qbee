@@ -318,11 +318,7 @@ class Compiler:
             new_node = FuncCall(func.name,
                                 func.return_type,
                                 node.array_indices)
-            new_node.loc_start = node.loc_start
-            new_node.loc_end = node.loc_end
-            new_node.parent = node.parent
             node.parent.replace_child(node, new_node)
-            new_node.parent.bind(self)
             return
 
         if Type.name_ends_with_type_char(node.base_var):
@@ -423,11 +419,7 @@ class Compiler:
            not node.lvalue.array_indices:
             # assigning to function name (return value)
             new_node = ReturnValueSetStmt(node.rvalue)
-            new_node.parent = node.parent
-            new_node.loc_start = node.lvalue.loc_start
-            new_node.loc_end = node.lvalue.loc_end
             node.parent.replace_child(node, new_node)
-            node.parent.bind(self)
             return
 
     def _compile_assignment_pass3_pre(self, node):

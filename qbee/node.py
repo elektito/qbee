@@ -28,13 +28,29 @@ class Node(ABC):
 
     @property
     @abstractmethod
-    def children(self):
-        # An implementation of this method should return all direct
-        # child nodes of this expression. It's important that this is
-        # properly implemented in all sub-classes, because the bind
-        # method uses it to bind a compiler to the expression which
-        # could be needed by some methods or properties.
-        pass
+    def child_fields(self):
+        # An implementation should provide a list of fields in which
+        # either a child node or a list of child nodes are stored
+        # (this can be set as a class attribute)
+        return []
+
+    @property
+    def children(self) -> list['Node']:
+        children = []
+        for field in self.child_fields:
+            child = getattr(self, field)
+            if child is None:
+                continue
+            if isinstance(child, list):
+                assert all(
+                    n is None or isinstance(n, Node) for n in child)
+                children += child
+            elif isinstance(child, Node):
+                children.append(child)
+            else:
+                raise InternalError(
+                    f'Child {child} is not a Node or a list of Nodes')
+        return children
 
     def fold(self):
         for child in self.children:
@@ -43,10 +59,6 @@ class Node(ABC):
             if folded != child:
                 self.replace_child(child, folded)
         return self
-
-    @abstractmethod
-    def replace_child(self, old_child, new_child):
-        pass
 
     def parents(self):
         if not hasattr(self, 'parent'):
@@ -59,3 +71,33 @@ class Node(ABC):
             results.append(node.parent)
             node = node.parent
         return results
+
+    def replace_child(self, old_child, new_child):
+        if not isinstance(new_child, Node):
+            raise InternalError('Replacement child is not a Node')
+
+        found = False
+        for field in self.child_fields:
+            child = getattr(self, field)
+            if child is None:
+                continue
+
+            if child == old_child:
+                setattr(self, field, new_child)
+                found = True
+                break
+            elif isinstance(child, list):
+                for i in range(len(child)):
+                    if child[i] == old_child:
+                        child[i] = new_child
+                        found = True
+                        break
+
+        if not found:
+            raise InternalError(
+                f'No such child to replace: {old_child}')
+
+        new_child.loc_start = old_child.loc_start
+        new_child.loc_end = old_child.loc_end
+        new_child.parent = self
+        new_child.bind(self.compiler)
