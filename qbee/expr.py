@@ -752,15 +752,6 @@ class Lvalue(Expr):
         if var_type.is_array and self.array_indices:
             var_type = var_type.array_base_type
 
-        # should we do this?
-        #
-        # if self.dotted_vars and not var_type.is_user_defined:
-        #     # special case: QBASIC allows a name like x.y.z as a
-        #     # single variable name, as long as x is not defined as a
-        #     # user-defined type.
-        #     var_name = self.base_var + '.'.join(self.dotted_vars)
-        #     return self.parent_routine.get_variable_type(var_name)
-
         for var in self.dotted_vars:
             if not var_type.is_user_defined:
                 raise CompileError(
