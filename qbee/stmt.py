@@ -281,7 +281,7 @@ class NextStmt(Stmt):
         self.var = var
 
     def __repr__(self):
-        var = ' {self.var}' if self.var else ''
+        var = f' {self.var}' if self.var else ''
         return f'<NextStmt{var}>'
 
 
@@ -892,7 +892,7 @@ class ForBlock(Block, start=ForStmt, end=NextStmt):
         if next_stmt.var and \
            for_stmt.var.base_var != next_stmt.var.base_var:
             raise CompileError(
-                EC.BLOCK_END_MISMATCH,
+                EC.BLOCK_MISMATCH,
                 'FOR and NEXT variables do not match',
                 node=next_stmt.var,
             )

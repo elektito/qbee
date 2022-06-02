@@ -1069,7 +1069,7 @@ def gen_for_block(node, code, codegen):
 
     var_type = node.var.type
     type_char = var_type.type_char
-    base_var = node.get_base_variable()
+    base_var = node.var.get_base_variable()
     if base_var.is_global:
         scope = 'g'  # global
     else:
@@ -1091,7 +1091,7 @@ def gen_for_block(node, code, codegen):
     codegen.gen_code_for_node(node.to_expr, code)
     gen_code_for_conv(var_type, node.to_expr, code, codegen)
 
-    var = node.get_base_variable()
+    var = node.var.get_base_variable()
     code.add(('_label', check_label))
     code.add(('dupl',))
     code.add((f'read{scope}{type_char}', var.name))
