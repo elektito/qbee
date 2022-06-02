@@ -49,8 +49,8 @@ class ErrorCode(Enum):
     INVALID_USE_OF_FUNCTION = 'Invalid use of function'
     INVALID_CONSTANT = 'Invalid constant'
     TYPE_NOT_DEFINED = 'Type not defined'
-    BLOCK_END_MISMATCH = 'Block start and end are not compatible'
-
+    BLOCK_MISMATCH = 'Block start and end are not compatible'
+    ILLEGAL_OUTSIDE_SUB = 'Illegal outside SUB/FUNCTION'
 
 
 class CompileError(Exception):

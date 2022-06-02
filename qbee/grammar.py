@@ -71,6 +71,7 @@ print_kw = CaselessKeyword('print')
 rem_kw = CaselessKeyword('rem')
 shared_kw = CaselessKeyword('shared')
 single_kw = CaselessKeyword('single')
+static_kw = CaselessKeyword('static')
 step_kw = CaselessKeyword('step')
 string_kw = CaselessKeyword('string')
 sub_kw = CaselessKeyword('sub')
@@ -309,8 +310,12 @@ var_decl = Located(
     )
 ).set_name('var_decl')
 dim_stmt = (
-    dim_kw.suppress() -
-    Opt(shared_kw, default=None) -
+    Group(
+        (dim_kw + shared_kw) |
+        (dim_kw) |
+        (static_kw),
+        aslist=True
+    ) +
     delimited_list(var_decl, delim=comma)
 ).set_name('dim_stmt')
 
@@ -713,10 +718,17 @@ def parse_declare(toks):
 
 @parse_action(dim_stmt)
 def parse_dim(toks):
-    shared, *toks = toks
-    shared = shared is not None
+    kind, *toks = toks
+    if kind == ['dim', 'shared']:
+        kind = 'dim_shared'
+    elif kind == ['dim']:
+        kind = 'dim'
+    elif kind == ['static']:
+        kind = 'static'
+    else:
+        assert False
     var_decls = list(toks)
-    return DimStmt(var_decls, shared)
+    return DimStmt(var_decls, kind)
 
 
 @parse_action(do_stmt)
@@ -954,15 +966,19 @@ def parse_var_decl(toks):
     else:
         assert False
 
+    dims = dims or []
+    dims = list(dims)
+    if dims == ['(', ')']:
+        is_nodim_array = True
+        dims = []
+    else:
+        is_nodim_array = False
+
     if type_name == 'any':
         clause = AnyVarDeclClause(name)
     else:
-        clause = VarDeclClause(name, type_name, dims)
-
-    dims = dims or []
-    if list(dims) == ['(', ')']:
-        clause.is_nodim_array = True
-        clause.array_dims = []
+        clause = VarDeclClause(name, type_name, dims,
+                               is_nodim_array=is_nodim_array)
 
     clause.loc_start = loc_start
     clause.loc_end = loc_end

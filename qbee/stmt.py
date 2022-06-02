@@ -68,6 +68,10 @@ class VarDeclClause(Stmt):
         return f'<VarDeclClause {self.name}{type_desc}>'
 
     @property
+    def var(self):
+        return self.parent_routine.get_variable(self.name)
+
+    @property
     def array_dims_are_const(self):
         return all(
             r.lbound.is_const and r.ubound.is_const
@@ -193,19 +197,21 @@ class DeclareStmt(Stmt):
 class DimStmt(Stmt):
     child_fields = ['var_decls']
 
-    def __init__(self, var_decls, shared=False):
+    def __init__(self, var_decls, kind):
         assert all(
             isinstance(decl, VarDeclClause)
             for decl in var_decls
         )
         self.var_decls = var_decls
-        self.shared = shared
+        self.kind = kind
 
     def __repr__(self):
-        shared = ''
-        if self.shared:
-            shared = 'shared '
-        return f'<DimStmt {shared}{self.var_decls}>'
+        kind = ''
+        if self.kind == 'dim_shared':
+            kind = 'SHARED '
+        elif self.kind == 'static':
+            kind = 'STATIC '
+        return f'<DimStmt {kind} {self.var_decls}>'
 
 
 class DoStmt(Stmt):

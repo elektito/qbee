@@ -5,6 +5,14 @@ from .exceptions import InternalError
 class Node(ABC):
     "A node in qbee AST"
 
+    def __new__(cls, *args, **kwargs):
+        obj = super().__new__(cls)
+        obj.parent = None
+        obj.__init__(*args, **kwargs)
+        for child in obj.children:
+            child.parent = obj
+        return obj
+
     def bind(self, compiler):
         self._compiler = compiler
         for child in self.children:
@@ -17,6 +25,21 @@ class Node(ABC):
             raise InternalError(
                 'Expression node not bound to a compiler')
         return self._compiler
+
+    @property
+    def parent_routine(self):
+        node = self
+        while node:
+            try:
+                return self._parent_routine
+            except AttributeError:
+                node = node.parent
+
+        return None
+
+    @parent_routine.setter
+    def parent_routine(self, node):
+        self._parent_routine = node
 
     @classmethod
     @abstractmethod

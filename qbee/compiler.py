@@ -9,6 +9,37 @@ from .exceptions import ErrorCode as EC, InternalError, CompileError
 from .parser import parse_string
 
 
+class Variable:
+    def __init__(self, name, type, scope, routine):
+        assert isinstance(name, str)
+        assert isinstance(type, Type)
+        assert scope in ['param', 'local', 'global', 'static']
+        assert isinstance(routine, Routine)
+
+        self.name = name
+        self.type = type
+        self.scope = scope
+        self.routine = routine
+
+    def __repr__(self):
+        return f'<Var {self._name} {self.scope}>'
+
+    @property
+    def full_name(self):
+        if self.scope == 'static':
+            return f'_static_{self.routine.name}_{self.name}'
+        else:
+            return self.name
+
+    @property
+    def is_global(self):
+        return self.scope in ('global', 'static')
+
+    @property
+    def is_global(self):
+        return self.scope in ('local', 'param')
+
+
 class Routine:
     "Represents a SUB or a FUNCTION"
 
@@ -28,23 +59,11 @@ class Routine:
         self.return_type = return_type
         self.params: dict[str, Type] = dict(params)
         self.local_vars: dict[str, Type] = {}
+        self.static_vars: dict[str, Type] = {}
         self.labels = set()
 
     def __repr__(self):
         return f'<Routine {self.kind} {self.name}>'
-
-    def get_variable_type(self, var_name):
-        if var_name in self.params:
-            var_type = self.params[var_name]
-            return var_type
-        if var_name in self.local_vars:
-            var_type = self.local_vars[var_name]
-            return var_type
-
-        if var_name in self.compiler.global_vars:
-            return self.compiler.global_vars[var_name]
-
-        return self.get_identifier_type(var_name)
 
     def get_identifier_type(self, identifier: str):
         if Type.is_type_char(identifier[-1]):
@@ -56,6 +75,38 @@ class Routine:
             # for now DEF* statements are not supported, so always the
             # default type
             return Type.SINGLE
+
+    def get_variable(self, name: str):
+        assert isinstance(name, str)
+
+        if name in self.params:
+            var_type = self.params[name]
+            scope = 'param'
+        elif name in self.local_vars:
+            var_type = self.local_vars[name]
+            scope = 'local'
+        elif name in self.static_vars:
+            var_type = self.static_vars[name]
+            scope = 'static'
+        elif name in self.compiler.global_vars:
+            var_type = self.compiler.global_vars[name]
+            scope = 'global'
+        else:
+            var_type = self.get_identifier_type(name)
+            scope = 'local'
+
+        return Variable(name,
+                        type=var_type,
+                        scope=scope,
+                        routine=self)
+
+    def has_variable(self, name: str):
+        return (
+            name in self.local_vars or
+            name in self.params or
+            name in self.static_vars or
+            name in self.compiler.global_vars
+        )
 
     @property
     def params_size(self):
@@ -119,9 +170,6 @@ class Compiler:
     def is_const(self, name):
         "Return whether the given name is a const or not"
         return name in self.consts
-
-    def is_var_global(self, name):
-        return name in self.global_vars
 
     def get_type_size(self, type):
         return Type.get_type_size(type, self.user_types)
@@ -331,10 +379,8 @@ class Compiler:
                 'A sub-routine with the same name exists',
                 node=node)
 
-        if node.base_var not in self.cur_routine.local_vars and \
-           node.base_var not in self.cur_routine.params and \
-           not node.base_var in self.consts and \
-           not node.base_var in self.global_vars:
+        if not self.cur_routine.has_variable(node.base_var) and \
+           not node.base_var in self.consts:
             # Implicitly defined variable
             decl = VarDeclClause(node.base_var, None)
             if node.array_indices:
@@ -367,9 +413,8 @@ class Compiler:
                     node=node)
 
     def _compile_array_pass_pass1_pre(self, node):
-        var_type = node.parent_routine.get_variable_type(
-            node.identifier)
-        if not var_type.is_array:
+        var = node.parent_routine.get_variable(node.identifier)
+        if not var.type.is_array:
             raise CompileError(
                 EC.TYPE_MISMATCH,
                 'Not an array',
@@ -448,10 +493,18 @@ class Compiler:
         self._perform_argument_matching(node, 'sub')
 
     def _compile_dim_pass1_pre(self, node):
-        if node.shared and node.parent_routine.kind != 'toplevel':
+        if node.kind == 'dim_shared' \
+           and node.parent_routine.kind != 'toplevel':
             raise CompileError(
                 EC.ILLEGAL_IN_SUB,
                 'SHARED is only allowed in top-level',
+                node=node,
+            )
+        elif node.kind == 'static' and \
+             node.parent_routine.kind == 'toplevel':
+            raise CompileError(
+                EC.ILLEGAL_OUTSIDE_SUB,
+                'STATIC is only allowed in SUB/FUNCTION',
                 node=node,
             )
 
@@ -465,8 +518,10 @@ class Compiler:
                     EC.DUPLICATE_DEFINITION,
                     node=decl)
 
-            if node.shared:
+            if node.kind == 'dim_shared':
                 self.global_vars[decl.name] = decl.type
+            elif node.kind == 'static':
+                self.cur_routine.static_vars[decl.name] = decl.type
             else:
                 self.cur_routine.local_vars[decl.name] = decl.type
 

@@ -777,7 +777,7 @@ class Lvalue(Expr):
 
     @property
     def base_type(self):
-        return self.parent_routine.get_variable_type(self.base_var)
+        return self.parent_routine.get_variable(self.base_var).type
 
     @property
     def base_is_ref(self):
@@ -785,6 +785,9 @@ class Lvalue(Expr):
             self.base_var in self.parent_routine.params or
             self.type.is_dynamic_array
         )
+
+    def get_base_variable(self):
+        return self.parent_routine.get_variable(self.base_var)
 
     def eval(self):
         if not self.is_const:
@@ -829,7 +832,7 @@ function. For example: CALL foo(x())"""
 
     @property
     def type(self):
-        return self.parent_routine.get_variable_type(self.identifier)
+        return self.parent_routine.get_variable(self.identifier).type
 
 
 class FuncCall(Expr):

@@ -648,22 +648,23 @@ def gen_lvalue_write(node, code, codegen):
 
     assert isinstance(node, expr.Lvalue)
 
-    if node.base_is_ref or node.base_type.is_array:
+    base_var = node.get_base_variable()
+    if node.base_is_ref or base_var.type.is_array:
         gen_lvalue_ref(node, code, codegen)
         code.add(('storeref',))
         return
 
     idx = get_lvalue_dotted_index(node, codegen)
 
-    if codegen.compiler.is_var_global(node.base_var):
+    if base_var.is_global:
         scope = 'g'  # global
     else:
         scope = 'l'  # local
 
     if idx == 0:
-        code.add((f'store{scope}', node.base_var))
+        code.add((f'store{scope}', base_var.full_name))
     else:
-        code.add((f'storeidx{scope}', node.base_var, idx))
+        code.add((f'storeidx{scope}', base_var.full_name, idx))
 
 
 def gen_lvalue_ref(node, code, codegen):
@@ -674,17 +675,18 @@ def gen_lvalue_ref(node, code, codegen):
             codegen.gen_code_for_node(aidx, code)
             gen_code_for_conv(expr.Type.LONG, aidx, code, codegen)
 
-    if codegen.compiler.is_var_global(node.base_var):
+    base_var = node.get_base_variable()
+    if base_var.is_global:
         scope = 'g'  # global
     else:
         scope = 'l'  # local
 
     if node.base_is_ref:
         # already a reference; just read it onto stack
-        code.add((f'read{scope}@', node.base_var))
+        code.add((f'read{scope}@', base_var.full_name))
     else:
         # push a reference to base onto the stack
-        code.add((f'pushref{scope}', node.base_var))
+        code.add((f'pushref{scope}', base_var.full_name))
 
     if node.array_indices:
         code.add(('arridx', len(node.array_indices)))
@@ -731,6 +733,11 @@ def gen_program(node, code, codegen):
     code.add_routine(node.routine)
 
     code._globals = codegen.compiler.global_vars
+    for routine in codegen.compiler.routines.values():
+        code._globals.update({
+            routine.get_variable(svar).full_name: stype
+            for svar, stype in routine.static_vars.items()
+        })
 
     code.add(('_label', '_sub_' + node.routine.name))
     code.add(('frame',
@@ -789,32 +796,33 @@ def gen_lvalue(node, code, codegen):
             code.add((f'push{node.type.type_char}', node.eval()))
         return
 
-    if codegen.compiler.is_var_global(node.base_var):
+    base_var = node.get_base_variable()
+    if base_var.is_global:
         scope = 'g'  # global
     else:
         scope = 'l'  # local
 
-    if node.base_is_ref or node.base_type.is_array:
+    if node.base_is_ref or base_var.type.is_array:
         gen_lvalue_ref(node, code, codegen)
         code.add(('deref',))
     else:
         idx = get_lvalue_dotted_index(node, codegen)
         if idx == 0:
             type_char = node.type.type_char
-            code.add((f'read{scope}{type_char}', node.base_var))
+            code.add((f'read{scope}{type_char}', base_var.full_name))
         else:
-            type_char = node.base_type.type_char
+            type_char = base_var.type.type_char
             code.add((f'readidx{scope}{type_char}',
-                      node.base_var,
+                      base_var.full_name,
                       idx))
 
 
 @QvmCodeGen.generator_for(expr.ArrayPass)
 def gen_array_pass(node, code, codegen):
-    var_type = node.parent_routine.get_variable_type(node.identifier)
-    assert var_type.is_array
+    var = node.parent_routine.get_variable(node.identifier)
+    assert var.type.is_array
 
-    if codegen.compiler.is_var_global(node.identifier):
+    if var.is_global:
         scope = 'g'  # global
     else:
         scope = 'l'  # local
@@ -1011,7 +1019,7 @@ def gen_dim(node, code, codegen):
                 expr.Type.LONG, dim_range.ubound, code, codegen)
         code.add(('allocarr', len(decl.array_dims)))
 
-        if codegen.compiler.is_var_global(decl.name):
+        if decl.var.is_global:
             scope = 'g'  # global
         else:
             scope = 'l'  # local
@@ -1061,7 +1069,8 @@ def gen_for_block(node, code, codegen):
 
     var_type = node.var.type
     type_char = var_type.type_char
-    if codegen.compiler.is_var_global(node.var.base_var):
+    base_var = node.get_base_variable()
+    if base_var.is_global:
         scope = 'g'  # global
     else:
         scope = 'l'  # local
@@ -1082,9 +1091,10 @@ def gen_for_block(node, code, codegen):
     codegen.gen_code_for_node(node.to_expr, code)
     gen_code_for_conv(var_type, node.to_expr, code, codegen)
 
+    var = node.get_base_variable()
     code.add(('_label', check_label))
     code.add(('dupl',))
-    code.add((f'read{scope}{type_char}', node.var.base_var))
+    code.add((f'read{scope}{type_char}', var.name))
     code.add(('cmp',))
     code.add(('ne',))
     code.add(('jz', end_label))
@@ -1098,9 +1108,9 @@ def gen_for_block(node, code, codegen):
         code.add((f'read{scope}{type_char}', step_var))
     else:
         code.add((f'push{type_char}', step_value))
-    code.add((f'read{scope}{type_char}', node.var.base_var))
+    code.add((f'read{scope}{type_char}', var.name))
     code.add(('add',))
-    code.add((f'store{scope}', node.var.base_var))
+    code.add((f'store{scope}', var.name))
     code.add(('jmp', check_label))
 
     code.add(('_label', end_label))
