@@ -482,10 +482,11 @@ class ViewPrintStmt(Stmt):
 
 class SubStmt(Stmt):
     child_fields = ['params']
-    def __init__(self, name, params):
+    def __init__(self, name, params, is_static):
         assert all(isinstance(p, VarDeclClause) for p in params)
         self.name = name
         self.params = params
+        self.is_static = is_static
 
     def __repr__(self):
         return f'<SubStmt {self.name} with {len(self.params)} param(s)>'
@@ -508,7 +509,7 @@ class ExitSubStmt(Stmt):
 class FunctionStmt(Stmt):
     child_fields = ['params']
 
-    def __init__(self, name, params):
+    def __init__(self, name, params, is_static):
         assert all(isinstance(p, VarDeclClause) for p in params)
 
         if any(name.endswith(c) for c in Type.type_chars):
@@ -520,6 +521,7 @@ class FunctionStmt(Stmt):
 
         self.name = name
         self.params = params
+        self.is_static = is_static
 
     def __repr__(self):
         return (
@@ -740,9 +742,10 @@ class IfBlock(Block, start=IfBeginStmt, end=EndIfStmt):
 class SubBlock(Block, start=SubStmt, end=EndSubStmt):
     child_fields = ['params', 'block']
 
-    def __init__(self, name, params, block):
+    def __init__(self, name, params, is_static, block):
         self.name = name
         self.params = params
+        self.is_static = is_static
         self.block = block
 
         # This will be set by the compiler later to a Routine object
@@ -756,15 +759,17 @@ class SubBlock(Block, start=SubStmt, end=EndSubStmt):
 
     @classmethod
     def create_block(cls, sub_stmt, end_sub_stmt, body):
-        return cls(sub_stmt.name, sub_stmt.params, body)
+        return cls(sub_stmt.name, sub_stmt.params, sub_stmt.is_static,
+                   body)
 
 
 class FunctionBlock(Block, start=FunctionStmt, end=EndFunctionStmt):
     child_fields = ['params', 'block']
 
-    def __init__(self, name, params, block):
+    def __init__(self, name, params, is_static, block):
         self._name = name
         self.params = params
+        self.is_static = is_static
         self.block = block
 
         # This will be set by the compiler later to a Routine object
@@ -789,7 +794,8 @@ class FunctionBlock(Block, start=FunctionStmt, end=EndFunctionStmt):
 
     @classmethod
     def create_block(cls, func_stmt, end_func_stmt, body):
-        return cls(func_stmt.name, func_stmt.params, body)
+        return cls(func_stmt.name, func_stmt.params,
+                   func_stmt.is_static, body)
 
 
 class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):

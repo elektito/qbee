@@ -424,11 +424,13 @@ param_list = delimited_list(param_decl, delim=comma)
 sub_stmt = (
     sub_kw.suppress() -
     untyped_identifier +
-    (
+    Opt(Group(
         lpar.suppress() +
         param_list +
-        rpar.suppress()
-    )[0, 1]
+        rpar.suppress(),
+        aslist=True
+    ), default=None) +
+    Opt(static_kw, default=None)
 ).set_name('sub_stmt')
 end_sub_stmt = end_kw + sub_kw
 exit_sub_stmt = exit_kw + sub_kw
@@ -436,11 +438,13 @@ exit_sub_stmt = exit_kw + sub_kw
 function_stmt = (
     function_kw.suppress() -
     identifier +
-    (
+    Opt(Group(
         lpar.suppress() +
         param_list +
-        rpar.suppress()
-    )[0, 1]
+        rpar.suppress(),
+        aslist=True
+    ), default=None) +
+    Opt(static_kw, default=None)
 ).set_name('function_stmt')
 end_function_stmt = end_kw + function_kw
 exit_function_stmt = exit_kw + function_kw
@@ -897,8 +901,9 @@ def parse_line(toks):
 
 @parse_action(sub_stmt)
 def parse_sub_stmt(toks):
-    name, *params = toks
-    return SubStmt(name, params)
+    name, params, is_static = toks
+    params = params or []
+    return SubStmt(name, params, bool(is_static))
 
 
 @parse_action(end_sub_stmt)
@@ -913,8 +918,9 @@ def parse_exit_sub(toks):
 
 @parse_action(function_stmt)
 def parse_function_stmt(toks):
-    name, *params = toks
-    return FunctionStmt(name, params)
+    name, params, is_static = toks
+    params = params or []
+    return FunctionStmt(name, params, bool(is_static))
 
 
 @parse_action(end_function_stmt)

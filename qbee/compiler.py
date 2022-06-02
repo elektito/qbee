@@ -43,7 +43,8 @@ class Variable:
 class Routine:
     "Represents a SUB or a FUNCTION"
 
-    def __init__(self, name, kind, compiler, params, return_type=None):
+    def __init__(self, name, kind, compiler, params, is_static=False,
+                 return_type=None):
         kind = kind.lower()
         assert kind in ('sub', 'function', 'toplevel')
 
@@ -56,6 +57,7 @@ class Routine:
         self.compiler = compiler
         self.name = name
         self.kind = kind
+        self.is_static = is_static
         self.return_type = return_type
         self.params: dict[str, Type] = dict(params)
         self.local_vars: dict[str, Type] = {}
@@ -63,7 +65,8 @@ class Routine:
         self.labels = set()
 
     def __repr__(self):
-        return f'<Routine {self.kind} {self.name}>'
+        static = ' STATIC' if self.is_static else ''
+        return f'<Routine {self.kind} {self.name}{static}>'
 
     def get_identifier_type(self, identifier: str):
         if Type.is_type_char(identifier[-1]):
@@ -394,7 +397,11 @@ class Compiler:
                 for d in decl.array_dims:
                     d.bind(self)
             decl.bind(self)
-            self.cur_routine.local_vars[node.base_var] = decl.type
+
+            if self.cur_routine.is_static:
+                self.cur_routine.static_vars[node.base_var] = decl.type
+            else:
+                self.cur_routine.local_vars[node.base_var] = decl.type
 
         if node.array_indices:
             if not node.base_type.is_array:
@@ -511,8 +518,7 @@ class Compiler:
         for decl in node.var_decls:
             self._validate_decl(decl)
 
-            if decl.name in self.cur_routine.local_vars or \
-               decl.name in self.global_vars or \
+            if self.cur_routine.has_variable(decl.name) or \
                decl.name in self.routines:
                 raise CompileError(
                     EC.DUPLICATE_DEFINITION,
@@ -520,7 +526,7 @@ class Compiler:
 
             if node.kind == 'dim_shared':
                 self.global_vars[decl.name] = decl.type
-            elif node.kind == 'static':
+            elif node.kind == 'static' or self.cur_routine.is_static:
                 self.cur_routine.static_vars[decl.name] = decl.type
             else:
                 self.cur_routine.local_vars[decl.name] = decl.type
@@ -557,7 +563,8 @@ class Compiler:
         for decl in node.params:
             self._validate_decl(decl)
         params = [(decl.name, decl.type) for decl in node.params]
-        routine = Routine(node.name, 'sub', self, params)
+        routine = Routine(node.name, 'sub', self, params,
+                          is_static=node.is_static)
         self.routines[node.name] = routine
         self.cur_routine = routine
         node.routine = routine
@@ -577,6 +584,7 @@ class Compiler:
             self._validate_decl(decl)
         params = [(decl.name, decl.type) for decl in node.params]
         routine = Routine(node.name, 'function', self, params,
+                          is_static=node.is_static,
                           return_type=node.type)
         self.routines[node.name] = routine
         self.cur_routine = routine
