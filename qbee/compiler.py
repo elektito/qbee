@@ -425,9 +425,7 @@ class Pass1(CompilePass):
                 node.parent_routine.local_vars[decl.name] = decl.type
 
     def process_for_block_pre(self, node):
-        var_type = node.parent_routine.get_identifier_type(
-            node.var.base_var)
-        if not var_type.is_numeric:
+        if not node.var.base_type.is_numeric:
             raise CompileError(
                 EC.TYPE_MISMATCH,
                 'FOR variable must be numeric',
