@@ -309,12 +309,15 @@ class CompilePass:
 
 
 class Pass1(CompilePass):
-    # gather labels/line numbers
-    # gather subs and functions/create routines/set parent_routine
-    # gather dims
-    # convert some assignments to return value statements
-    # convert for/next to if
-    # convert select to if
+    # This pass does the following:
+    #
+    # 1. Gather labels/line numbers
+    # 2. Gather subs and functions, create routines, set parent_routine
+    # 3. Gather variable declarations (both implicit and explicit)
+    # 4. Gather user-defined types.
+    # 5. Convert some assignments to return value statements in
+    #    functions
+    # 6. Perform checks on some statements and expressions
 
     def process_program_pre(self, node):
         node.routine = self.compilation.routines['_main']
@@ -561,7 +564,14 @@ class Pass1(CompilePass):
 
 
 class Pass2(CompilePass):
-    # convert some lvalues to func calls
+    # This pass does the following:
+    #
+    # 1. Convert lvalues to function calls where the base_var is a
+    #    function.
+    # 2. Perform argument count/type checking on sub calls (but not on
+    #    functions, since
+    #    we're just finding function calls in this pass)
+    # 3. Perform target checking in GOTO statements.
 
     def process_lvalue_pre(self, node):
         func = self.compilation.get_routine(node.base_var, 'function')
@@ -646,8 +656,10 @@ class Pass2(CompilePass):
 
 
 class Pass3(CompilePass):
-    # arg check func calls
-    # check for assignment to func call
+    # This pass does the following:
+    #
+    # 1. Perform argument count/type checking for function calls
+    # 2. Check for assignment to function calls (which is an error)
 
     def process_array_pass_pre(self, node):
         if not isinstance(node.parent, (FuncCall, CallStmt)):
