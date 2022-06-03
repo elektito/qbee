@@ -743,7 +743,7 @@ class Lvalue(Expr):
         if self.array_indices or self.dotted_vars:
             return False
 
-        return self.compiler.is_const(self.base_var)
+        return self.compilation.is_const(self.base_var)
 
     @property
     def type(self):
@@ -759,7 +759,7 @@ class Lvalue(Expr):
                     'Identifier cannot include period',
                     node=self)
 
-            struct = self.compiler.user_types.get(
+            struct = self.compilation.user_types.get(
                 var_type.user_type_name)
             if struct is None:
                 raise CompileError(
@@ -794,7 +794,7 @@ class Lvalue(Expr):
             raise InternalError(
                 'Attempting to evaluate non-const expression')
 
-        return self.compiler.consts[self.base_var].eval()
+        return self.compilation.consts[self.base_var].eval()
 
 
 class StringLiteral(Expr):

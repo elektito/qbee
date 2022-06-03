@@ -607,8 +607,8 @@ class QvmCode(BaseCode):
 
 
 class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
-    def __init__(self, compiler):
-        self.compiler = compiler
+    def __init__(self, compilation):
+        self.compilation = compilation
         self.last_label = None
         self.label_counter = 1
 
@@ -618,7 +618,7 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
         return label
 
     def init_code(self, code):
-        for user_type in self.compiler.user_types.values():
+        for user_type in self.compilation.user_types.values():
             code.add_user_type(user_type)
 
 
@@ -633,7 +633,7 @@ def get_lvalue_dotted_index(lvalue, codegen):
         base_type = lvalue.base_type
         for var in lvalue.dotted_vars:
             struct_name = base_type.user_type_name
-            struct = codegen.compiler.user_types[struct_name]
+            struct = codegen.compilation.user_types[struct_name]
             field_index = list(struct.fields).index(var)
             idx += field_index
             base_type = struct.fields[var]
@@ -732,8 +732,8 @@ def gen_program(node, code, codegen):
     code._main_routine = node.routine
     code.add_routine(node.routine)
 
-    code._globals = codegen.compiler.global_vars
-    for routine in codegen.compiler.routines.values():
+    code._globals = codegen.compilation.global_vars
+    for routine in codegen.compilation.routines.values():
         code._globals.update({
             routine.get_variable(svar).full_name: stype
             for svar, stype in routine.static_vars.items()
@@ -775,7 +775,7 @@ def gen_paren(node, code, codegen):
 
 @QvmCodeGen.generator_for(expr.FuncCall)
 def gen_func_call(node, code, codegen):
-    routine = codegen.compiler.get_routine(node.name)
+    routine = codegen.compilation.get_routine(node.name)
     gen_code_for_args(
         node.args, routine.params.values(), code, codegen)
     code.add(('call', '_func_' + node.name))
@@ -954,7 +954,7 @@ def gen_beep(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.CallStmt)
 def gen_call(node, code, codegen):
-    routine = codegen.compiler.routines[node.name]
+    routine = codegen.compilation.routines[node.name]
     gen_code_for_args(
         node.args, routine.params.values(), code, codegen)
     code.add(('call', '_sub_' + node.name))

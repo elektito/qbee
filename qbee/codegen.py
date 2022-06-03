@@ -9,8 +9,8 @@ class CodeGen:
     # maps names of codegens to codegen classes
     codegens = {}
 
-    def __init__(self, codegen_name, compiler):
-        self.compiler = compiler
+    def __init__(self, codegen_name, compilation):
+        self.compilation = compilation
         self.codegen_name = codegen_name
 
         if self.codegen_name not in CodeGen.codegens:
@@ -18,7 +18,7 @@ class CodeGen:
                 f'Unknown code generator: {self.codegen_name}')
 
         impl_class = CodeGen.codegens[codegen_name]
-        self._impl = impl_class(compiler)
+        self._impl = impl_class(compilation)
 
     def gen_code(self, program):
         return self._impl.gen_code(program)

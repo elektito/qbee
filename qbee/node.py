@@ -13,18 +13,19 @@ class Node(ABC):
             child.parent = obj
         return obj
 
-    def bind(self, compiler):
-        self._compiler = compiler
+    def bind(self, compilation):
+        self._compilation = compilation
         for child in self.children:
             child.parent = self
-            child.bind(compiler)
+            child.bind(compilation)
 
     @property
-    def compiler(self):
-        if not hasattr(self, '_compiler') or self._compiler is None:
+    def compilation(self):
+        if not hasattr(self, '_compilation') or \
+           self._compilation is None:
             raise InternalError(
-                'Expression node not bound to a compiler')
-        return self._compiler
+                'Expression node not bound to a compilation unit')
+        return self._compilation
 
     @property
     def parent_routine(self):
@@ -123,4 +124,4 @@ class Node(ABC):
         new_child.loc_start = old_child.loc_start
         new_child.loc_end = old_child.loc_end
         new_child.parent = self
-        new_child.bind(self.compiler)
+        new_child.bind(self.compilation)

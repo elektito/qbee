@@ -97,7 +97,7 @@ class VarDeclClause(Stmt):
         else:
             # parameter default types are based on the DEF* statements
             # in the module level
-            top_level_routine = self.compiler.routines['_main']
+            top_level_routine = self.compilation.routines['_main']
             _type = top_level_routine.get_identifier_type(self.name)
 
         if self.array_dims or self.is_nodim_array:
@@ -534,7 +534,7 @@ class FunctionStmt(Stmt):
         if self.type_char:
             return Type.from_type_char(self.type_char)
         else:
-            return self.compiler.get_identifier_type(self.name)
+            return self.compilation.get_identifier_type(self.name)
 
 
 class EndFunctionStmt(Stmt):
