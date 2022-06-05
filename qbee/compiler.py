@@ -22,7 +22,7 @@ class Variable:
         self.routine = routine
 
     def __repr__(self):
-        return f'<Var {self._name} {self.scope}>'
+        return f'<Var {self.name} {self.scope}>'
 
     @property
     def full_name(self):
