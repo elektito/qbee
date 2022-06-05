@@ -840,18 +840,23 @@ def gen_binary_op(node, code, codegen):
         left_type = node.type
         right_type = node.type
     elif node.op.is_comparison:
-        # Convert both operands to the bigger type of both
-        if node.left.type == Type.DOUBLE or \
-           node.right.type == Type.DOUBLE:
-            left_type = right_type = Type.DOUBLE
-        elif (node.left.type == Type.SINGLE or
-              node.right.type == Type.SINGLE):
-            left_type = right_type = Type.SINGLE
-        elif (node.left.type == Type.LONG or
-              node.right.type == Type.LONG):
-            left_type = right_type = Type.LONG
+        if node.left.type.is_numeric and node.right.type.is_numeric:
+            # Convert both operands to the bigger type of both
+            if node.left.type == Type.DOUBLE or \
+               node.right.type == Type.DOUBLE:
+                left_type = right_type = Type.DOUBLE
+            elif (node.left.type == Type.SINGLE or
+                  node.right.type == Type.SINGLE):
+                left_type = right_type = Type.SINGLE
+            elif (node.left.type == Type.LONG or
+                  node.right.type == Type.LONG):
+                left_type = right_type = Type.LONG
+            else:
+                left_type = right_type = Type.INTEGER
+        elif node.left.type == node.right.type == Type.STRING:
+            left_type = right_type = Type.STRING
         else:
-            left_type = right_type = Type.INTEGER
+            assert False
     elif node.op == Operator.MOD or \
          node.op.is_logical or \
          node.op == Operator.INTDIV:

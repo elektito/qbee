@@ -358,6 +358,23 @@ class Pass1(CompilePass):
                 node=node)
 
     def process_binary_op_pre(self, node):
+        if node.op.is_comparison:
+            if node.left.type.is_numeric and \
+               not node.right.type.is_numeric:
+                raise CompileError(EC.TYPE_MISMATCH, node=node)
+            elif node.right.type.is_numeric and \
+                 not node.left.type.is_numeric:
+                raise CompileError(EC.TYPE_MISMATCH, node=node)
+            elif node.left.type == Type.STRING and \
+                 node.right.type != Type.STRING:
+                raise CompileError(EC.TYPE_MISMATCH, node=node)
+            elif node.right.type == Type.STRING and \
+                 node.left.type != Type.STRING:
+                raise CompileError(EC.TYPE_MISMATCH, node=node)
+            elif not node.left.type.is_builtin or \
+                 not node.right.type.is_builtin:
+                raise CompileError(EC.TYPE_MISMATCH, node=node)
+
         if node.type == Type.UNKNOWN:
             raise CompileError(EC.TYPE_MISMATCH, node=node)
 
