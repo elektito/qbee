@@ -535,6 +535,10 @@ class BinaryOp(Expr):
 
     @property
     def type(self):
+        if self.left.type == Type.UNKNOWN or \
+           self.right.type == Type.UNKNOWN:
+            return Type.UNKNOWN
+
         if self.op.is_logical:
             if not self.left.type.is_numeric or \
                not self.right.type.is_numeric:
@@ -662,6 +666,9 @@ class UnaryOp(Expr):
 
     @property
     def type(self):
+        if self.arg.type == Type.UNKNOWN:
+            return Type.UNKNOWN
+
         if self.op.is_logical:
             if self.arg.type == Type.INTEGER:
                 return Type.INTEGER
