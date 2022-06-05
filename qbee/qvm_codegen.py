@@ -76,6 +76,7 @@ class CanonicalOp(Enum):
     REFIDX = auto()
     RET = auto()
     RETV = auto()
+    SIGN = auto()
     SUB = auto()
     STORE = auto()
     STOREIDX = auto()
@@ -1053,20 +1054,6 @@ def gen_loop(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.ForBlock)
 def gen_for_block(node, code, codegen):
-    step_var = None
-    step_value = 1
-    if node.step_expr:
-        if node.step_expr.is_const:
-            step_value = node.step_expr.eval()
-        else:
-            step_var = codegen.get_label('step_var')
-
-    init_label = codegen.get_label('for_init')
-    check_label = codegen.get_label('for_check')
-    body_label = codegen.get_label('for_body')
-    next_label = codegen.get_label('for_next')
-    end_label = codegen.get_label('for_end')
-
     var_type = node.var.type
     type_char = var_type.type_char
     base_var = node.var.get_base_variable()
@@ -1075,46 +1062,96 @@ def gen_for_block(node, code, codegen):
     else:
         scope = 'l'  # local
 
-    step_value = var_type.py_type(step_value)
+    init_label = codegen.get_label('for_init')
+    check_label = codegen.get_label('for_check')
+    body_label = codegen.get_label('for_body')
+    next_label = codegen.get_label('for_next')
+    end_label = codegen.get_label('for_end')
 
-    code.add(('_label', init_label))
-    if step_var:
-        codegen.gen_code_for_node(node.step_expr, code)
-        gen_code_for_conv(var_type, node.step_expr, code, codegen)
-        code.add((f'storel', step_var))
-        node.parent_routine.local_vars[step_var] = var_type
+    # we use get_label to get unique names for our variables
+    step_var = codegen.get_label('for_step')
+    step_sign_var = codegen.get_label('for_step_sign')
+    to_var = codegen.get_label('for_to')
 
-    codegen.gen_code_for_node(node.from_expr, code)
-    gen_code_for_conv(var_type, node.from_expr, code, codegen)
-    gen_lvalue_write(node.var, code, codegen)
-
-    codegen.gen_code_for_node(node.to_expr, code)
-    gen_code_for_conv(var_type, node.to_expr, code, codegen)
+    node.parent_routine.local_vars[step_var] = var_type
+    node.parent_routine.local_vars[step_sign_var] = var_type
+    node.parent_routine.local_vars[to_var] = var_type
 
     var = node.var.get_base_variable()
+
+    code.add(('_label', init_label))
+    if node.step_expr:
+        codegen.gen_code_for_node(node.step_expr, code)
+        gen_code_for_conv(var_type, node.step_expr, code, codegen)
+        code.add(
+            ('dupl',),
+            ('storel', step_var),
+            ('sign',),
+            ('storel', step_sign_var),
+        )
+    else:
+        code.add(
+            (f'push1{type_char}', 1),
+            ('storel', step_var),
+            (f'push1{type_char}', 1),
+            ('storel', step_sign_var),
+        )
+    codegen.gen_code_for_node(node.from_expr, code)
+    gen_code_for_conv(var_type, node.from_expr, code, codegen)
+    code.add((f'store{scope}', var.name))
+    codegen.gen_code_for_node(node.to_expr, code)
+    gen_code_for_conv(var_type, node.to_expr, code, codegen)
+    code.add(('storel', to_var))
+
+    # make sure the range is compatible with the step value (by
+    # checking if (to - from) has the same sign as step value). if
+    # not, skip the loop.
+    code.add(
+        (f'readl{type_char}', to_var),
+        (f'read{scope}{type_char}', var.name),
+        ('sub',),
+        (f'readl{type_char}', step_sign_var),
+        ('mul',),
+        (f'push{type_char}', 0),
+        ('cmp',),
+        ('ge',),
+        ('jz', end_label),
+    )
+
+    # multiply "to" value with the step sign so that we can always use
+    # the same compare instruction
+    code.add(
+        (f'readl{type_char}', step_sign_var),
+        (f'readl{type_char}', to_var),
+        ('mul',),
+        (f'storel{type_char}', to_var),
+    )
+
     code.add(('_label', check_label))
-    code.add(('dupl',))
-    code.add((f'read{scope}{type_char}', var.name))
-    code.add(('cmp',))
-    code.add(('ne',))
-    code.add(('jz', end_label))
+    code.add(
+        (f'read{scope}{type_char}', var.name),
+        (f'readl{type_char}', step_sign_var),
+        ('mul',),
+        (f'readl{type_char}', to_var),
+        ('cmp',),
+        ('le',),
+        ('jz', end_label),
+    )
 
     code.add(('_label', body_label))
     for inner_stmt in node.body:
         codegen.gen_code_for_node(inner_stmt, code)
 
-    code.add(('_label', next_label))
-    if step_var:
-        code.add((f'read{scope}{type_char}', step_var))
-    else:
-        code.add((f'push{type_char}', step_value))
-    code.add((f'read{scope}{type_char}', var.name))
-    code.add(('add',))
-    code.add((f'store{scope}', var.name))
-    code.add(('jmp', check_label))
+    code.add(
+        ('_label', next_label),
+        (f'read{scope}{type_char}', var.name),
+        (f'readl{type_char}', step_var),
+        ('add',),
+        (f'store{scope}', var.name),
+        ('jmp', check_label),
+    )
 
     code.add(('_label', end_label))
-    code.add(('pop',)) # throw away "from" result
 
 
 @QvmCodeGen.generator_for(stmt.EndStmt)
