@@ -51,7 +51,9 @@ class Type:
         return hash((self._type, self.user_type_name))
 
     def __repr__(self):
-        if self.is_builtin:
+        if self._type == BuiltinType.UNKNOWN:
+            s = 'Type.UNKNOWN'
+        elif self.is_builtin:
             s = f'Type.{self.name.upper()}'
         else:
             s = f'Type.USER_DEFINED({self.name})'
