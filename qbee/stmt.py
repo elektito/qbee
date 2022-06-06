@@ -234,7 +234,7 @@ class LoopStmt(Stmt):
         self.cond = cond
 
     def __repr__(self):
-        cond = f' {cond}' if self.cond else ''
+        cond = f' {self.cond}' if self.cond else ''
         return f'<LoopStmt {self.kind}{cond}>'
 
 
