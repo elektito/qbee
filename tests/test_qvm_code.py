@@ -102,3 +102,63 @@ def test_eliminate_read_store_incompatible_arg():
         ('readl', 'x'),
         ('storel', 'y'),
     ]
+
+
+def test_eliminate_extra_jump1():
+    code = QvmCode()
+    code.add(
+        ('ret',),
+        ('ret',),
+    )
+    code.optimize()
+    assert code._instrs == [
+        ('ret',),
+    ]
+
+
+def test_eliminate_extra_jump2():
+    code = QvmCode()
+    code.add(
+        ('jmp', 1000),
+        ('ret',),
+    )
+    code.optimize()
+    assert code._instrs == [
+        ('jmp', 1000),
+    ]
+
+
+def test_eliminate_extra_jump3():
+    code = QvmCode()
+    code.add(
+        ('ret',),
+        ('jmp', 1000),
+    )
+    code.optimize()
+    assert code._instrs == [
+        ('ret',),
+    ]
+
+
+def test_eliminate_extra_jump4():
+    code = QvmCode()
+    code.add(
+        ('jmp', 2000),
+        ('jmp', 1000),
+    )
+    code.optimize()
+    assert code._instrs == [
+        ('jmp', 2000),
+    ]
+
+
+def test_eliminate_extra_jump5():
+    code = QvmCode()
+    code.add(
+        ('ijmp',),
+        ('retv',),
+    )
+    code.optimize()
+    assert code._instrs == [
+        ('ijmp',),
+    ]

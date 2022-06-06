@@ -399,10 +399,17 @@ class QvmCode(BaseCode):
 
                 continue
 
-            # Eliminate consecutive returns
-            if cur.op == prev1.op == Op.RET:
+            # Eliminate consecutive jump-like instructions
+            jump_instrs = [
+                Op.JMP,
+                Op.IJMP,
+                Op.RET,
+                Op.RETV,
+            ]
+            if cur.op in jump_instrs and prev1.op in jump_instrs:
                 del self._instrs[i]
                 i -= 1
+                continue
 
             i += 1
 
