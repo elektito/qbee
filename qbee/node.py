@@ -24,7 +24,7 @@ class Node(ABC):
         if not hasattr(self, '_compilation') or \
            self._compilation is None:
             raise InternalError(
-                'Expression node not bound to a compilation unit')
+                f'Node {self} not bound to a compilation unit')
         return self._compilation
 
     @property
