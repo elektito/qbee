@@ -1238,10 +1238,13 @@ def gen_print_stmt(node, code, codegen):
         if isinstance(item, expr.Expr):
             code.add(('push%', 0))
             codegen.gen_code_for_node(item, code)
-        elif item == ';':
-            code.add(('push%', 1))
-        elif item == ',':
-            code.add(('push%', 2))
+        elif isinstance(item, stmt.PrintSep):
+            if item.sep == ';':
+                code.add(('push%', 1))
+            elif item.sep == ',':
+                code.add(('push%', 2))
+            else:
+                assert False
         else:
             assert False
     code.add(('io', 'screen', 'print'))

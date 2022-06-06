@@ -22,7 +22,7 @@ from .stmt import (
     EndFunctionStmt, ExitFunctionStmt, DoStmt, LoopStmt, EndStmt,
     ForStmt, NextStmt, ViewPrintStmt, SelectStmt, SimpleCaseClause,
     RangeCaseClause, CompareCaseClause, CaseStmt, CaseElseStmt,
-    EndSelectStmt,
+    EndSelectStmt, PrintSep,
 )
 from .program import Label, LineNo, Line
 
@@ -404,7 +404,9 @@ input_stmt = (
     delimited_list(lvalue, delim=',')
 ).set_name('input_stmt')
 
-print_sep = semicolon | comma
+print_sep = Located(
+    semicolon | comma
+).set_name('print_sep')
 print_stmt = (
     print_kw.suppress() +
     Opt(using_kw - expr - semicolon) +
@@ -922,6 +924,15 @@ def parse_input(toks):
     var_list = list(toks)
 
     return InputStmt(same_line, prompt, prompt_question, var_list)
+
+
+@parse_action(print_sep)
+def parse_print_sep(toks):
+    loc_start, (tok,), loc_end = toks
+    sep = PrintSep(tok)
+    sep.loc_start = loc_start
+    sep.loc_end = loc_end
+    return sep
 
 
 @parse_action(print_stmt)

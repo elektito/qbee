@@ -382,6 +382,18 @@ class InputStmt(Stmt):
         )
 
 
+class PrintSep(Stmt):
+    child_fields = []
+
+    def __init__(self, sep):
+        assert sep in (';', ',')
+        self.sep = sep
+
+    @classmethod
+    def node_name(cls):
+        return 'PRINT SEP'
+
+
 class PrintStmt(Stmt):
     child_fields = ['items', 'format_string']
 
