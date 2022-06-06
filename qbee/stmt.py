@@ -179,6 +179,18 @@ class DeclareStmt(Stmt):
         return f'<DeclareStmt {self.routine_kind} {self.name}>'
 
 
+class DefTypeStmt(Stmt):
+    child_fields = []
+
+    def __init__(self, def_type, letters):
+        self.type = def_type
+        self.letters = list(letters)
+
+    def __repr__(self):
+        letters = ",".join(sorted(self.letters))
+        return f'<DefTypeStmt {self.type} {letters}>'
+
+
 class DimStmt(Stmt):
     child_fields = ['var_decls']
 

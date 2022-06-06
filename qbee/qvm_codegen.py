@@ -1011,6 +1011,12 @@ def gen_declare(node, code, codegen):
     pass
 
 
+@QvmCodeGen.generator_for(stmt.DefTypeStmt)
+def gen_def_type(node, code, codegen):
+    # no code for DEF* statements
+    pass
+
+
 @QvmCodeGen.generator_for(stmt.DimStmt)
 def gen_dim(node, code, codegen):
     for decl in node.children:

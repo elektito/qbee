@@ -65,6 +65,7 @@ class Routine:
         self.local_vars: dict[str, Type] = {}
         self.static_vars: dict[str, Type] = {}
         self.labels = set()
+        self.def_letter_types = {}  # maps a single letter to a type
 
     def __repr__(self):
         static = ' STATIC' if self.is_static else ''
@@ -77,8 +78,11 @@ class Routine:
             if identifier in self.compilation.global_vars:
                 return self.compilation.global_vars[identifier]
 
-            # for now DEF* statements are not supported, so always the
-            # default type
+            def_type = self.def_letter_types.get(identifier[0])
+            if def_type:
+                return def_type
+
+            # No matching DEF* statement, so use the default type
             return Type.SINGLE
 
     def get_variable(self, name: str):
@@ -320,6 +324,7 @@ class Pass1(CompilePass):
     # 5. Convert some assignments to return value statements in
     #    functions
     # 6. Perform checks on some statements and expressions
+    # 7. Gather DEF* statements
 
     def process_program_pre(self, node):
         node.routine = self.compilation.routines['_main']
@@ -343,6 +348,10 @@ class Pass1(CompilePass):
                 node=node)
         node.parent_routine.labels.add(node.canonical_name)
         self.compilation.all_labels.add(node.canonical_name)
+
+    def process_def_type_pre(self, node):
+        for letter in node.letters:
+            node.parent_routine.def_letter_types[letter] = node.type
 
     def process_const_pre(self, node):
         if not node.value.is_const:

@@ -22,7 +22,7 @@ from .stmt import (
     EndFunctionStmt, ExitFunctionStmt, DoStmt, LoopStmt, EndStmt,
     ForStmt, NextStmt, ViewPrintStmt, SelectStmt, SimpleCaseClause,
     RangeCaseClause, CompareCaseClause, CaseStmt, CaseElseStmt,
-    EndSelectStmt, PrintSep, WhileStmt, WendStmt,
+    EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -48,6 +48,11 @@ color_kw = CaselessKeyword('color')
 const_kw = CaselessKeyword('const')
 data_kw = CaselessKeyword('data')
 declare_kw = CaselessKeyword('declare')
+defdbl_kw = CaselessKeyword('defdbl')
+defint_kw = CaselessKeyword('defint')
+deflng_kw = CaselessKeyword('deflng')
+defsng_kw = CaselessKeyword('defsng')
+defstr_kw = CaselessKeyword('defstr')
 dim_kw = CaselessKeyword('dim')
 do_kw = CaselessKeyword('do')
 double_kw = CaselessKeyword('double')
@@ -110,6 +115,8 @@ type_name = (
 # Operators and punctuation
 
 type_char = Regex(r'[%&$#!]')
+letter = Regex('[a-z]', re.I)
+dash = Literal('-')
 single_quote = Literal("'")
 eq = Literal('=')
 comma = Literal(',')
@@ -308,6 +315,14 @@ const_stmt = (
     eq.suppress() -
     expr
 ).set_name('const_stmt')
+
+letter_range = Group(
+    letter + Opt(dash.suppress() - letter, default=None)
+).set_name('letter_range')
+deftype_stmt = (
+    (defint_kw | deflng_kw | defsng_kw | defdbl_kw | defstr_kw) -
+    delimited_list(letter_range, delim=comma)
+).set_name('deftype_stmt')
 
 array_dim_range = Located(Group(
     expr +
@@ -523,6 +538,7 @@ stmt = Located(
     const_stmt |
     data_stmt |
     declare_stmt |
+    deftype_stmt |
     dim_stmt |
 
     do_stmt |
@@ -803,6 +819,28 @@ def parse_const_stmt(toks):
 def parse_declare(toks):
     routine_type, name, *var_decls = list(toks)
     return DeclareStmt(routine_type, name, var_decls)
+
+
+@parse_action(deftype_stmt)
+def parse_deftype(toks):
+    kw, *ranges = toks
+
+    letters = set()
+    for start, end in ranges:
+        if end:
+            letters.update(
+                chr(c) for c in range(ord(start), ord(end) + 1))
+        else:
+            letters.add(start)
+
+    def_type = {
+        'defint': Type.INTEGER,
+        'deflng': Type.LONG,
+        'defsng': Type.SINGLE,
+        'defdbl': Type.DOUBLE,
+        'defstr': Type.STRING,
+    }[kw]
+    return DefTypeStmt(def_type, letters)
 
 
 @parse_action(dim_stmt)
