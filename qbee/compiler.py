@@ -37,7 +37,7 @@ class Variable:
         return self.scope in ('global', 'static')
 
     @property
-    def is_global(self):
+    def is_local(self):
         return self.scope in ('local', 'param')
 
 
