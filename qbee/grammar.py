@@ -84,6 +84,7 @@ then_kw = CaselessKeyword('then')
 to_kw = CaselessKeyword('to')
 type_kw = CaselessKeyword('type')
 until_kw = CaselessKeyword('until')
+using_kw = CaselessKeyword('using')
 view_kw = CaselessKeyword('view')
 while_kw = CaselessKeyword('while')
 xor_kw = CaselessKeyword('xor')
@@ -406,6 +407,7 @@ input_stmt = (
 print_sep = semicolon | comma
 print_stmt = (
     print_kw.suppress() +
+    Opt(using_kw - expr - semicolon) +
     (expr[0, 1] + print_sep)[...]
     + expr[0, 1]
 ).set_name('print_stmt')
@@ -925,7 +927,12 @@ def parse_input(toks):
 @parse_action(print_stmt)
 def parse_print(toks):
     items = list(toks)
-    return PrintStmt(items)
+
+    format_string = None
+    if items and items[0] == 'using':
+        using_kw, format_string, semicolon, *items = items
+
+    return PrintStmt(items, format_string)
 
 
 @parse_action(data_stmt)

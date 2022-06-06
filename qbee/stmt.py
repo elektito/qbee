@@ -412,10 +412,11 @@ class InputStmt(Stmt):
 
 
 class PrintStmt(Stmt):
-    child_fields = ['items']
+    child_fields = ['items', 'format_string']
 
-    def __init__(self, items):
+    def __init__(self, items, format_string=None):
         self.items = items
+        self.format_string = format_string
 
     def __repr__(self):
         return f'<PrintStmt {" ".join(str(i) for i in self.items)}>'

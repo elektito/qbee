@@ -556,15 +556,6 @@ class Pass1(CompilePass):
                 'ELSE outside IF block',
                 node=node)
 
-    def process_print_pre(self, node):
-        for item in node.items:
-            if isinstance(item, Expr):
-                if not item.type.is_builtin:
-                    raise CompileError(
-                        EC.TYPE_MISMATCH,
-                        f'Cannot print value',
-                        node=item)
-
     def process_view_print_pre(self, node):
         if node.top_expr and not node.top_expr.type.is_numeric:
             raise CompileError(
@@ -740,6 +731,22 @@ class Pass3(CompilePass):
                             EC.TYPE_MISMATCH,
                             node=clause.value,
                         )
+
+    def process_print_pre(self, node):
+        if node.format_string and \
+           node.format_string.type != Type.STRING:
+            raise CompileError(
+                EC.TYPE_MISMATCH,
+                f'Format string must be a STRING',
+                node=node.format_string)
+
+        for item in node.items:
+            if isinstance(item, Expr):
+                if not item.type.is_builtin:
+                    raise CompileError(
+                        EC.TYPE_MISMATCH,
+                        f'Cannot print value',
+                        node=item)
 
 
 class Compiler:

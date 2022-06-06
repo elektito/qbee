@@ -1231,6 +1231,9 @@ def gen_input(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.PrintStmt)
 def gen_print_stmt(node, code, codegen):
+    if node.format_string:
+        code.add(('push%', 4))
+        codegen.gen_code_for_node(node.format_string, code)
     for item in node.items:
         if isinstance(item, expr.Expr):
             code.add(('push%', 0))
