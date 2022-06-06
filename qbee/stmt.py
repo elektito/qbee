@@ -1031,7 +1031,6 @@ class SelectBlock(Block, start=SelectStmt, end=EndSelectStmt):
             i = int(attr[len('_case_body_'):])
             return self.case_blocks[i][1]
         else:
-            print(attr)
             raise AttributeError
 
     def __setattr__(self, attr, value):
