@@ -54,6 +54,7 @@ class Routine:
             for pname, ptype in params
         )
         assert return_type is None or isinstance(return_type, Type)
+        assert isinstance(compilation, CompilationUnit)
 
         self.compilation = compilation
         self.name = name
@@ -491,7 +492,7 @@ class Pass1(CompilePass):
                 EC.ILLEGAL_IN_SUB,
                 'Function only allowed in the top-level',
                 node=node)
-        if node.name in self.routines:
+        if node.name in self.compilation.routines:
             raise CompileError(
                 EC.DUPLICATE_DEFINITION,
                 f'Duplicate routine definition: {node.name}',
@@ -499,7 +500,8 @@ class Pass1(CompilePass):
         for decl in node.params:
             self.compilation.validate_decl(decl)
         params = [(decl.name, decl.type) for decl in node.params]
-        routine = Routine(node.name, 'function', self, params,
+        routine = Routine(node.name, 'function', self.compilation,
+                          params,
                           is_static=node.is_static,
                           return_type=node.type)
         self.compilation.routines[node.name] = routine
