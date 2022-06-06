@@ -23,7 +23,7 @@ from .stmt import (
     ForStmt, NextStmt, ViewPrintStmt, SelectStmt, SimpleCaseClause,
     RangeCaseClause, CompareCaseClause, CaseStmt, CaseElseStmt,
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
-    RandomizeStmt,
+    RandomizeStmt, GosubStmt, ReturnStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -64,6 +64,7 @@ exit_kw = CaselessKeyword('exit')
 eqv_kw = CaselessKeyword('eqv')
 for_kw = CaselessKeyword('for')
 function_kw = CaselessKeyword('function')
+gosub_kw = CaselessKeyword('gosub')
 goto_kw = CaselessKeyword('goto')
 if_kw = CaselessKeyword('if')
 input_kw = CaselessKeyword('input')
@@ -80,6 +81,7 @@ or_kw = CaselessKeyword('or')
 print_kw = CaselessKeyword('print')
 randomize_kw = CaselessKeyword('randomize')
 rem_kw = CaselessKeyword('rem')
+return_kw = CaselessKeyword('return')
 select_kw = CaselessKeyword('select')
 shared_kw = CaselessKeyword('shared')
 single_kw = CaselessKeyword('single')
@@ -394,6 +396,15 @@ next_stmt = (
     next_kw.suppress() + Opt(Located(identifier), default=None)
 ).set_name('next_stmt')
 
+gosub_stmt = (
+    gosub_kw.suppress() -
+    (untyped_identifier | line_no_value)
+).set_name('gosub_stmt')
+return_stmt = (
+    return_kw.suppress() -
+    Opt(untyped_identifier | line_no_value, default=None)
+).set_name('return_stmt')
+
 goto_stmt = goto_kw.suppress() - (untyped_identifier | line_no_value)
 
 else_clause = Located(
@@ -587,6 +598,8 @@ stmt = Located(
     function_stmt |
     end_function_stmt |
     exit_function_stmt |
+    gosub_stmt |
+    return_stmt |
     goto_stmt |
     input_stmt |
     print_stmt |
@@ -928,6 +941,24 @@ def parse_next_stmt(toks):
 @parse_action(end_stmt)
 def parse_end_stmt(toks):
     return EndStmt()
+
+
+@parse_action(gosub_stmt)
+def parse_gosub(toks):
+    target = toks[0]
+    if target[0].isnumeric():
+        # it's a line number
+        target = int(target)
+    return GosubStmt(target)
+
+
+@parse_action(return_stmt)
+def parse_return(toks):
+    target = toks[0]
+    if target and target[0].isnumeric():
+        # it's a line number
+        target = int(target)
+    return ReturnStmt(target)
 
 
 @parse_action(goto_stmt)

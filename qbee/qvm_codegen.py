@@ -67,6 +67,7 @@ class CanonicalOp(Enum):
     GT = auto()
     HALT = auto()
     IDIV = auto()
+    IJMP = auto()
     IMP = auto()
     IO = auto()
     JMP = auto()
@@ -1190,6 +1191,25 @@ def gen_for_block(node, code, codegen):
 @QvmCodeGen.generator_for(stmt.EndStmt)
 def gen_end(node, code, codegen):
     code.add(('halt',))
+
+
+@QvmCodeGen.generator_for(stmt.GosubStmt)
+def gen_gosub(node, code, codegen):
+    code.add(('call', node.canonical_target))
+
+
+@QvmCodeGen.generator_for(stmt.ReturnStmt)
+def gen_return(node, code, codegen):
+    if node.target:
+        code.add(
+            # throw away the return address
+            ('pop',),
+
+            # jump to target
+            ('jmp', node.canonical_target),
+        )
+    else:
+        code.add(('ijmp',))
 
 
 @QvmCodeGen.generator_for(stmt.GotoStmt)

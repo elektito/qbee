@@ -297,6 +297,40 @@ class GotoStmt(Stmt):
         return f'<GotoStmt {self.target}>'
 
 
+class GosubStmt(Stmt):
+    child_fields = []
+
+    def __init__(self, target):
+        self.target = target
+
+        if isinstance(target, int):
+            self.canonical_target = LineNo.get_canonical_name(target)
+        else:
+            self.canonical_target = target
+
+    def __repr__(self):
+        return f'<GosubStmt {self.target}>'
+
+
+class ReturnStmt(Stmt):
+    child_fields = []
+
+    def __init__(self, target):
+        self.target = target
+
+        if isinstance(target, int):
+            self.canonical_target = LineNo.get_canonical_name(target)
+        else:
+            self.canonical_target = target
+
+    def __repr__(self):
+        if self.target:
+            target = f' {self.target}'
+        else:
+            target = ''
+        return f'<ReturnStmt{target}>'
+
+
 class IfStmt(Stmt):
     # Denotes an IF statement with at least one statement after THEN,
     # and possibly an ELSE clause.

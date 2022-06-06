@@ -667,6 +667,45 @@ class Pass2(CompilePass):
     def process_call_pre(self, node):
         self.compilation.perform_argument_matching(node, 'sub')
 
+    def process_gosub_pre(self, node):
+        if isinstance(node.target, int):
+            label_type = 'Line number'
+        else:
+            label_type = 'Label'
+
+        if node.canonical_target not in self.compilation.all_labels:
+            raise CompileError(
+                EC.LABEL_NOT_DEFINED,
+                f'{label_type} not defined: {node.target}',
+                node=node)
+        if node.canonical_target not in node.parent_routine.labels:
+            raise CompileError(
+                EC.LABEL_NOT_DEFINED,
+                (f'{label_type} not in the same routine as GOTO: '
+                 f'{node.target}'),
+                node=node)
+
+    def process_return_pre(self, node):
+        if node.target is None:
+            return
+
+        if isinstance(node.target, int):
+            label_type = 'Line number'
+        else:
+            label_type = 'Label'
+
+        if node.canonical_target not in self.compilation.all_labels:
+            raise CompileError(
+                EC.LABEL_NOT_DEFINED,
+                f'{label_type} not defined: {node.target}',
+                node=node)
+        if node.canonical_target not in node.parent_routine.labels:
+            raise CompileError(
+                EC.LABEL_NOT_DEFINED,
+                (f'{label_type} not in the same routine as GOTO: '
+                 f'{node.target}'),
+                node=node)
+
     def process_goto_pre(self, node):
         if isinstance(node.target, int):
             label_type = 'Line number'
