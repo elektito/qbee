@@ -451,6 +451,23 @@ class ViewPrintStmt(Stmt):
         return f'<ViewPrintStmt{lines}>'
 
 
+class WhileStmt(Stmt):
+    child_fields = ['cond']
+
+    def __init__(self, cond):
+        self.cond = cond
+
+    def __repr__(self):
+        return '<WhileStmt {self.cond}>'
+
+
+class WendStmt(Stmt):
+    child_fields = []
+
+    def __repr__(self):
+        return '<WendStmt>'
+
+
 class SubStmt(Stmt):
     child_fields = ['params']
     def __init__(self, name, params, is_static):
@@ -1043,3 +1060,15 @@ class SelectBlock(Block, start=SelectStmt, end=EndSelectStmt):
         case_blocks.append((cur_case, cur_body))
 
         return SelectBlock(start_stmt.value, case_blocks)
+
+
+class WhileBlock(Block, start=WhileStmt, end=WendStmt):
+    child_fields = ['cond', 'body']
+
+    def __init__(self, cond, body):
+        self.cond = cond
+        self.body = body
+
+    @classmethod
+    def create_block(cls, while_stmt, wend_stmt, body):
+        return WhileBlock(while_stmt.cond, body)

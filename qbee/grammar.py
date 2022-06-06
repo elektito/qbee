@@ -22,7 +22,7 @@ from .stmt import (
     EndFunctionStmt, ExitFunctionStmt, DoStmt, LoopStmt, EndStmt,
     ForStmt, NextStmt, ViewPrintStmt, SelectStmt, SimpleCaseClause,
     RangeCaseClause, CompareCaseClause, CaseStmt, CaseElseStmt,
-    EndSelectStmt, PrintSep,
+    EndSelectStmt, PrintSep, WhileStmt, WendStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -86,6 +86,7 @@ type_kw = CaselessKeyword('type')
 until_kw = CaselessKeyword('until')
 using_kw = CaselessKeyword('using')
 view_kw = CaselessKeyword('view')
+wend_kw = CaselessKeyword('wend')
 while_kw = CaselessKeyword('while')
 xor_kw = CaselessKeyword('xor')
 
@@ -429,6 +430,14 @@ view_print_stmt = (
     )
 ).set_name('view_print_stmt')
 
+while_stmt = (
+    while_kw.suppress() -
+    expr
+).set_name('while_stmt')
+wend_stmt = (
+    wend_kw
+).set_name('wend_stmt')
+
 type_stmt = (
     type_kw.suppress() -
     untyped_identifier
@@ -518,6 +527,9 @@ stmt = Located(
 
     do_stmt |
     loop_stmt |
+
+    while_stmt |
+    wend_stmt |
 
     for_stmt |
     next_stmt |
@@ -1096,6 +1108,17 @@ def parse_view_print(toks):
 
     top_expr, bottom_expr = toks[0]
     return ViewPrintStmt(top_expr, bottom_expr)
+
+
+@parse_action(while_stmt)
+def parse_while_stmt(toks):
+    cond = toks[0]
+    return WhileStmt(cond)
+
+
+@parse_action(wend_stmt)
+def parse_wend_stmt(toks):
+    return WendStmt()
 
 
 def main():

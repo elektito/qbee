@@ -1327,6 +1327,25 @@ def gen_view_print(node, code, codegen):
     code.add(('io', 'screen', 'view_print'))
 
 
+@QvmCodeGen.generator_for(stmt.WhileBlock)
+def gen_while_block(node, code, codegen):
+    check_label = codegen.get_label('while_check')
+    body_label = codegen.get_label('while_body')
+    wend_label = codegen.get_label('wend')
+
+    code.add(('_label', check_label))
+    codegen.gen_code_for_node(node.cond, code)
+    gen_code_for_conv(expr.Type.INTEGER, node.cond, code, codegen)
+    code.add(('jz', wend_label))
+
+    code.add(('_label', body_label))
+    for child_stmt in node.body:
+        codegen.gen_code_for_node(child_stmt, code)
+    code.add(('jmp', check_label))
+
+    code.add(('_label', wend_label))
+
+
 @QvmCodeGen.generator_for(stmt.SelectBlock)
 def gen_select_block(node, code, codegen):
     start_label = codegen.get_label('select_start')

@@ -748,6 +748,13 @@ class Pass3(CompilePass):
                         f'Cannot print value',
                         node=item)
 
+    def process_while_block_pre(self, node):
+        if not node.cond.type.is_numeric:
+            raise CompileError(
+                EC.TYPE_MISMATCH,
+                'WHILE condition should be a numeric expression',
+                node=node.cond)
+
 
 class Compiler:
     def __init__(self, codegen_name, optimization_level=0):
