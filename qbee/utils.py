@@ -98,6 +98,7 @@ def display_with_context(text, loc_start, loc_end=None, msg='Error'):
     if len(target_lines) == 1:
         eprint(' :: ' + ' ' * target_col + '^')
         eprint(' :: ' + ' ' * target_col + msg)
+        eprint(' :: ')
     for line in next_lines:
         eprint(' || ', line)
 
