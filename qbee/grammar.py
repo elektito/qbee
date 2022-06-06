@@ -1085,7 +1085,7 @@ def parse_type_stmt(toks):
 
 
 @parse_action(view_print_stmt)
-def parse_type_stmt(toks):
+def parse_view_print(toks):
     if toks[0] is None:
         return ViewPrintStmt(None, None)
 
