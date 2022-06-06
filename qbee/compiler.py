@@ -1,6 +1,7 @@
 from .stmt import (
     Stmt, IfBlock, VarDeclClause, ArrayDimRange, CallStmt,
-    ReturnValueSetStmt, FunctionBlock, SubBlock,
+    ReturnValueSetStmt, FunctionBlock, SubBlock, SimpleCaseClause,
+    RangeCaseClause, CompareCaseClause, CaseElseStmt,
 )
 from .expr import Type, Expr, Lvalue, NumericLiteral, FuncCall
 from .program import Label, LineNo
@@ -709,6 +710,36 @@ class Pass3(CompilePass):
                 EC.DUPLICATE_DEFINITION,
                 'A function with the same name exists',
                 node=node.lvalue)
+
+    def process_select_block_pre(self, node):
+        vtype = node.value.type
+        for case, body in node.case_blocks:
+            if isinstance(case, CaseElseStmt):
+                continue
+            for clause in case.cases:
+                if isinstance(clause, SimpleCaseClause):
+                    if not clause.value.type.is_coercible_to(vtype):
+                        raise CompileError(
+                            EC.TYPE_MISMATCH,
+                            node=clause.value,
+                        )
+                elif isinstance(clause, RangeCaseClause):
+                    if not clause.from_value.type.is_coercible_to(vtype):
+                        raise CompileError(
+                            EC.TYPE_MISMATCH,
+                            node=clause.from_value,
+                        )
+                    elif not clause.to_value.type.is_coercible_to(vtype):
+                        raise CompileError(
+                            EC.TYPE_MISMATCH,
+                            node=clause.to_value,
+                        )
+                elif isinstance(clause, CompareCaseClause):
+                    if not clause.value.type.is_coercible_to(vtype):
+                        raise CompileError(
+                            EC.TYPE_MISMATCH,
+                            node=clause.value,
+                        )
 
 
 class Compiler:

@@ -20,7 +20,9 @@ from .stmt import (
     SubStmt, VarDeclClause, AnyVarDeclClause, ArrayDimRange,
     EndSubStmt, ExitSubStmt, TypeStmt, EndTypeStmt, FunctionStmt,
     EndFunctionStmt, ExitFunctionStmt, DoStmt, LoopStmt, EndStmt,
-    ForStmt, NextStmt, ViewPrintStmt,
+    ForStmt, NextStmt, ViewPrintStmt, SelectStmt, SimpleCaseClause,
+    RangeCaseClause, CompareCaseClause, CaseStmt, CaseElseStmt,
+    EndSelectStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -39,6 +41,7 @@ and_kw = CaselessKeyword('and')
 any_kw = CaselessKeyword('any')
 as_kw = CaselessKeyword('as')
 beep_kw = CaselessKeyword('beep')
+case_kw = CaselessKeyword('case')
 call_kw = CaselessKeyword('call')
 cls_kw = CaselessKeyword('cls')
 color_kw = CaselessKeyword('color')
@@ -60,6 +63,7 @@ if_kw = CaselessKeyword('if')
 input_kw = CaselessKeyword('input')
 imp_kw = CaselessKeyword('imp')
 integer_kw = CaselessKeyword('integer')
+is_kw = CaselessKeyword('is')
 let_kw = CaselessKeyword('let')
 long_kw = CaselessKeyword('long')
 loop_kw = CaselessKeyword('loop')
@@ -69,6 +73,7 @@ not_kw = CaselessKeyword('not')
 or_kw = CaselessKeyword('or')
 print_kw = CaselessKeyword('print')
 rem_kw = CaselessKeyword('rem')
+select_kw = CaselessKeyword('select')
 shared_kw = CaselessKeyword('shared')
 single_kw = CaselessKeyword('single')
 static_kw = CaselessKeyword('static')
@@ -250,6 +255,23 @@ assignment_stmt = (
 ).set_name('assignment')
 
 beep_stmt = beep_kw
+
+select_stmt = (
+    select_kw.suppress() -
+    case_kw.suppress() -
+    expr
+).set_name('select_stmt')
+case_clause = Located(
+    Group(is_kw + compare_op + expr) |
+    Group(expr + to_kw + expr) |
+    Group(expr)
+).set_name('case_clause')
+case_stmt = (
+    case_kw.suppress() +
+    delimited_list(case_clause, delim=comma)
+).set_name('case_stmt')
+case_else_stmt = (case_kw + else_kw).set_name('case_else_stmt')
+end_select_stmt = (end_kw + select_kw).set_name('end_select_stmt')
 
 call_stmt = (
     (
@@ -504,6 +526,11 @@ stmt = Located(
     elseif_stmt |
     end_if_stmt |
 
+    select_stmt |
+    case_stmt |
+    case_else_stmt |
+    end_select_stmt |
+
     sub_stmt |
     end_sub_stmt |
     exit_sub_stmt |
@@ -665,6 +692,46 @@ def parse_assignment(toks):
 @parse_action(beep_stmt)
 def parse_beep(toks):
     return BeepStmt()
+
+
+@parse_action(select_stmt)
+def parse_select_stmt(toks):
+    return SelectStmt(toks[0])
+
+
+@parse_action(case_clause)
+def parse_case_clause(toks):
+    loc_start, (toks,), loc_end = toks
+    if len(toks) == 1:
+        clause = SimpleCaseClause(toks[0])
+    elif toks[0] == 'is':
+        _, op, value = toks
+        clause = CompareCaseClause(op, value)
+    elif toks[1] == 'to':
+        from_value, _, to_value = toks
+        clause = RangeCaseClause(from_value, to_value)
+    else:
+        assert False
+
+    clause.loc_start = loc_start
+    clause.loc_end = loc_end
+
+    return clause
+
+
+@parse_action(case_stmt)
+def parse_case_stmt(toks):
+    return CaseStmt(list(toks))
+
+
+@parse_action(case_else_stmt)
+def parse_case_else(toks):
+    return CaseElseStmt()
+
+
+@parse_action(end_select_stmt)
+def parse_end_select(toks):
+    return EndSelectStmt()
 
 
 @parse_action(array_pass)

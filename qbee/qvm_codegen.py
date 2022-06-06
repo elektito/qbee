@@ -81,6 +81,8 @@ class CanonicalOp(Enum):
     STORE = auto()
     STOREIDX = auto()
     STOREREF = auto()
+    SWAP = auto()
+    SWAPPREV = auto()
     XOR = auto()
 
     _LABEL = 10000
@@ -1317,3 +1319,98 @@ def gen_view_print(node, code, codegen):
         code.add(('pushm1%',))
 
     code.add(('io', 'screen', 'view_print'))
+
+
+@QvmCodeGen.generator_for(stmt.SelectBlock)
+def gen_select_block(node, code, codegen):
+    start_label = codegen.get_label('select_start')
+    end_label = codegen.get_label('select_end')
+
+    value_type = node.value.type
+
+    code.add(('_label', start_label))
+    codegen.gen_code_for_node(node.value, code)
+
+    cur_case_label = codegen.get_label('case')
+    next_case_label = codegen.get_label('case')
+    if node.case_blocks:
+        last_case = node.case_blocks[-1][0]
+    for case, body in node.case_blocks:
+        if case == last_case:
+            next_case_label = end_label
+        code.add(('_label', cur_case_label))
+        codegen.gen_code_for_node(case, code)
+        code.add(('jz', next_case_label))
+
+        code.add(('_label', codegen.get_label('case_body')))
+        for child_stmt in body:
+            codegen.gen_code_for_node(child_stmt, code)
+        code.add(('jmp', end_label))
+
+        cur_case_label = next_case_label
+        next_case_label = codegen.get_label('case')
+
+    code.add(
+        ('_label', end_label),
+        ('pop',),
+    )
+
+
+@QvmCodeGen.generator_for(stmt.CaseStmt)
+def gen_case_stmt(node, code, codegen):
+    codegen.gen_code_for_node(node.cases[0], code)
+    for case in node.cases[1:]:
+        code.add(('swap',))
+        codegen.gen_code_for_node(case, code)
+        code.add(('swapprev',))
+        code.add(('or',))
+
+
+@QvmCodeGen.generator_for(stmt.CaseElseStmt)
+def gen_case_else_stmt(node, code, codegen):
+    code.add(('push%', -1))
+
+
+@QvmCodeGen.generator_for(stmt.SimpleCaseClause)
+def gen_simple_case_clause(node, code, codegen):
+    value_type = node.parent.parent.value.type
+
+    code.add(('dupl',))
+    codegen.gen_code_for_node(node.value, code)
+    gen_code_for_conv(value_type, node.value, code, codegen)
+    code.add(('cmp',), ('eq',))
+
+
+@QvmCodeGen.generator_for(stmt.CompareCaseClause)
+def gen_compare_case_clause(node, code, codegen):
+    value_type = node.parent.parent.value.type
+
+    code.add(('dupl',))
+    codegen.gen_code_for_node(node.value, code)
+    gen_code_for_conv(value_type, node.value, code, codegen)
+
+    op = {
+        expr.Operator.CMP_EQ: 'eq',
+        expr.Operator.CMP_NE: 'ne',
+        expr.Operator.CMP_LT: 'lt',
+        expr.Operator.CMP_GT: 'gt',
+        expr.Operator.CMP_LE: 'le',
+        expr.Operator.CMP_GE: 'ge',
+    }[node.op]
+    code.add((op,))
+
+
+@QvmCodeGen.generator_for(stmt.RangeCaseClause)
+def gen_range_case_clause(node, code, codegen):
+    value_type = node.parent.parent.value.type
+
+    code.add(('dupl',))
+    code.add(('dupl',))
+    codegen.gen_code_for_node(node.from_value, code)
+    gen_code_for_conv(value_type, node.from_value, code, codegen)
+    code.add(('ge',))
+    code.add(('swap',))
+    codegen.gen_code_for_node(node.to_value, code)
+    gen_code_for_conv(value_type, node.to_value, code, codegen)
+    code.add(('le',))
+    code.add(('and',))

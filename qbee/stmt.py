@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from .node import Node
-from .expr import Expr, Type
+from .expr import Expr, Type, Operator
 from .program import LineNo
 from .utils import parse_data, split_camel
 from .exceptions import (
@@ -561,6 +561,94 @@ class ReturnValueSetStmt(Stmt):
         return f'<ReturnValueSetStmt {self.value}>'
 
 
+class SelectStmt(Stmt):
+    child_fields = ['value']
+
+    def __init__(self, value):
+        assert isinstance(value, Expr)
+        self.value = value
+
+
+    def __repr__(self):
+        return f'<SelectStmt {self.value}>'
+
+
+class SimpleCaseClause(Stmt):
+    child_fields = ['value']
+
+    def __init__(self, value):
+        assert isinstance(value, Expr)
+        self.value = value
+
+    def __repr__(self):
+        return f'Case({self.value})'
+
+    @classmethod
+    def node_name(self):
+        return 'SIMPLE CASE CLAUSE'
+
+
+class RangeCaseClause(Stmt):
+    child_fields = ['from_value', 'to_value']
+
+    def __init__(self, from_value, to_value):
+        assert isinstance(from_value, Expr)
+        assert isinstance(to_value, Expr)
+        self.from_value = from_value
+        self.to_value = to_value
+
+    def __repr__(self):
+        return f'Case({self.from_value} To {self.to_value})'
+
+    @classmethod
+    def node_name(self):
+        return 'RANGE CASE CLAUSE'
+
+
+class CompareCaseClause(Stmt):
+    child_fields = ['value']
+    node_name = 'COMPARE CASE CLAUSE'
+
+    def __init__(self, op, value):
+        assert isinstance(value, Expr)
+        self.op = Operator.binary_op_from_token(op)
+        self.value = value
+
+        assert self.op.is_comparison
+
+    def __repr__(self):
+        return f'Case(Is {self.op} {self.value})'
+
+    @classmethod
+    def node_name(self):
+        return 'COMPARE CASE CLAUSE'
+
+
+class CaseStmt(Stmt):
+    child_fields = ['cases']
+
+    def __init__(self, cases):
+        self.cases = cases
+
+    def __repr__(self):
+        cases = ' '.join(str(c) for c in self.cases)
+        return f'<CaseStmt {cases}>'
+
+
+class CaseElseStmt(Stmt):
+    child_fields = []
+
+    def __repr__(self):
+        return '<CaseElseStmt>'
+
+
+class EndSelectStmt(Stmt):
+    child_fields = []
+
+    def __repr__(self):
+        return '<EndSelectStmt>'
+
+
 # Blocks
 
 
@@ -904,3 +992,84 @@ class ForBlock(Block, start=ForStmt, end=NextStmt):
             for_stmt.step_expr,
             body,
         )
+
+
+class SelectBlock(Block, start=SelectStmt, end=EndSelectStmt):
+    # child_fields implemented further down as a property
+
+    def __init__(self, value, case_blocks):
+        assert isinstance(value, Expr)
+        assert isinstance(case_blocks, list)
+        assert all(isinstance(c, tuple) for c in case_blocks)
+        assert all(
+            isinstance(case, (CaseStmt, CaseElseStmt)) and
+            isinstance(body, list) and
+            all(isinstance(s, Stmt) for s in body)
+            for case, body in case_blocks
+        )
+
+        self.value = value
+        self.case_blocks = case_blocks
+
+    @property
+    def child_fields(self):
+        # we have a dynamic number of child fields, so we give them
+        # fake names here and handle them in __getattr__ and
+        # __setattr__
+        fields = ['value']
+        for i, (cond, body) in enumerate(self.case_blocks):
+            fields.append(f'_case_stmt_{i}')
+            fields.append(f'_case_body_{i}')
+        return fields
+
+    def __getattr__(self, attr):
+        if attr.startswith('_case_stmt_'):
+            i = int(attr[len('_case_stmt_'):])
+            return self.case_blocks[i][0]
+        elif attr.startswith('_case_body_'):
+            i = int(attr[len('_case_body_'):])
+            return self.case_blocks[i][1]
+        else:
+            print(attr)
+            raise AttributeError
+
+    def __setattr__(self, attr, value):
+        if attr.startswith('_case_stmt_'):
+            i = int(attr[len('_case_stmt_'):])
+            self.case_blocks[i] = (value, self.case_blocks[i][1])
+        elif attr.startswith('_case_body_'):
+            i = int(attr[len('_case_body_'):])
+            self.case_blocks[i] = (self.case_blocks[i][0], value)
+        else:
+            super().__setattr__(attr, value)
+
+    def __repr__(self):
+        return (
+            f'<SelectBlock {self.value} with {len(self.case_blocks)} '
+            'case blocks>'
+        )
+
+    @classmethod
+    def create_block(cls, start_stmt, end_stmt, body):
+        if not body:
+            return SelectBlock(start_stmt.value, [])
+
+        if not isinstance(body[0], CaseStmt):
+            raise SyntaxError(
+                loc=stmt.loc_start,
+                msg='Statements illegal between SELECT CASE and CASE')
+
+        cur_case = body[0]
+        cur_body = []
+        case_blocks = []
+        for stmt in body[1:]:
+            if isinstance(stmt, (CaseStmt, CaseElseStmt)):
+                case_blocks.append((cur_case, cur_body))
+                cur_case = stmt
+                cur_body = []
+            else:
+                cur_body.append(stmt)
+
+        case_blocks.append((cur_case, cur_body))
+
+        return SelectBlock(start_stmt.value, case_blocks)
