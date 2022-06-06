@@ -555,7 +555,7 @@ class SimpleCaseClause(Stmt):
         return f'Case({self.value})'
 
     @classmethod
-    def node_name(self):
+    def node_name(cls):
         return 'SIMPLE CASE CLAUSE'
 
 
@@ -572,7 +572,7 @@ class RangeCaseClause(Stmt):
         return f'Case({self.from_value} To {self.to_value})'
 
     @classmethod
-    def node_name(self):
+    def node_name(cls):
         return 'RANGE CASE CLAUSE'
 
 
@@ -591,7 +591,7 @@ class CompareCaseClause(Stmt):
         return f'Case(Is {self.op} {self.value})'
 
     @classmethod
-    def node_name(self):
+    def node_name(cls):
         return 'COMPARE CASE CLAUSE'
 
 
