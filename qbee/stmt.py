@@ -79,18 +79,6 @@ class VarDeclClause(Stmt):
         )
 
     @property
-    def children(self):
-        return self.array_dims
-
-    def replace_child(self, old_child, new_child):
-        for i in range(len(self.array_dims)):
-            if self.array_dims[i] == old_child:
-                self.array_dims[i] = new_child
-                return
-
-        raise InternalError(f'No such child to replace: {old_child}')
-
-    @property
     def type(self):
         if self.var_type_name:
             _type = Type.from_name(self.var_type_name)
@@ -393,23 +381,6 @@ class InputStmt(Stmt):
             f'<InputStmt "{self.prompt}" {len(self.var_list)} var(s)>'
         )
 
-    @property
-    def children(self):
-        return [self.prompt] + self.var_list
-
-    def replace_child(self, old_child, new_child):
-        if self.prompt == old_child:
-            self.prompt = new_child
-            return
-
-        for i in range(len(self.var_list)):
-            if self.var_list[i] == old_child:
-                self.var_list[i] = new_child
-                return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
-
 
 class PrintStmt(Stmt):
     child_fields = ['items', 'format_string']
@@ -420,19 +391,6 @@ class PrintStmt(Stmt):
 
     def __repr__(self):
         return f'<PrintStmt {" ".join(str(i) for i in self.items)}>'
-
-    @property
-    def children(self):
-        return [i for i in self.items if isinstance(i, Node)]
-
-    def replace_child(self, old_child, new_child):
-        for i in range(len(self.items)):
-            if self.items[i] == old_child:
-                self.items[i] = new_child
-                return
-
-        raise InternalError(
-            f'No such child to replace: {old_child}')
 
 
 class DataStmt(Stmt):
