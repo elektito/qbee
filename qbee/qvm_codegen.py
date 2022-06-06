@@ -31,6 +31,12 @@ QVM_DEVICES = {
             'input': 1,
         },
     },
+    'time': {
+        'id': 5,
+        'ops': {
+            'get_time': 1,
+        }
+    }
 }
 
 
@@ -931,6 +937,14 @@ def gen_unary_op(node, code, codegen):
             arg_type_char = node.arg.type.type_char
             code.add((f'conv{arg_type_char}{result_type_char}',))
         code.add(('not',))
+
+
+@QvmCodeGen.generator_for(expr.BuiltinFuncCall)
+def gen_builtin_func_call(node, code, codegen):
+    if node.name == 'timer':
+        code.add(('io', 'time', 'get_time'))
+    else:
+        assert False, f'Unknown builtin function: {node.name}'
 
 
 # Code generators for statements

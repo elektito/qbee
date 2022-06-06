@@ -593,6 +593,16 @@ class Pass2(CompilePass):
         for letter in node.letters:
             node.parent_routine.def_letter_types[letter] = node.type
 
+    def process_builtin_func_call_pre(self, node):
+        if node.name == 'timer':
+            if len(node.args) != 0:
+                raise CompileError(
+                    EC.ARGUMENT_COUNT_MISMATCH,
+                    node=node)
+        else:
+            raise InternalError(
+                f'Unknown built-in function: {node.name}')
+
     def process_lvalue_pre(self, node):
         func = self.compilation.get_routine(node.base_var, 'function')
         if func is not None:

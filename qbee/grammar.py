@@ -11,7 +11,7 @@ from pyparsing import (
 from .exceptions import SyntaxError
 from .expr import (
     Type, Operator, NumericLiteral, BinaryOp, UnaryOp, Lvalue,
-    StringLiteral, ParenthesizedExpr, ArrayPass,
+    StringLiteral, ParenthesizedExpr, ArrayPass, BuiltinFuncCall,
 )
 from .stmt import (
     AssignmentStmt, BeepStmt, CallStmt, ClsStmt, ColorStmt, ConstStmt,
@@ -86,6 +86,7 @@ step_kw = CaselessKeyword('step')
 string_kw = CaselessKeyword('string')
 sub_kw = CaselessKeyword('sub')
 then_kw = CaselessKeyword('then')
+timer_kw = CaselessKeyword('timer')
 to_kw = CaselessKeyword('to')
 type_kw = CaselessKeyword('type')
 until_kw = CaselessKeyword('until')
@@ -176,13 +177,22 @@ lvalue = Forward().set_name('lvalue')
 expr = Forward().set_name('expr')
 
 expr_list = delimited_list(expr, delim=',', min=1)
+builtin_func = (
+    (timer_kw) +
+    Opt(
+        lpar.suppress() +
+        Group(expr_list, aslist=True) +
+        rpar.suppress(),
+        default=None
+    )
+).set_name('builtin_func')
 paren_expr = (
     lpar.suppress() - expr + rpar.suppress()
 )
 atom = (
     addsub_op[...] +
     (
-        (lvalue | numeric_literal | string_literal) |
+        (builtin_func | lvalue | numeric_literal | string_literal) |
         paren_expr
     )
 )
@@ -616,6 +626,13 @@ def parse_expr(toks):
     tok.loc_start = loc_start
     tok.loc_end = loc_end
     return tok
+
+
+@parse_action(builtin_func)
+def parse_builtin_func(toks):
+    func, args = toks
+    args = args or []
+    return BuiltinFuncCall(func, args)
 
 
 @parse_action(paren_expr)

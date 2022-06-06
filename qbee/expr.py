@@ -868,3 +868,23 @@ class FuncCall(Expr):
     @property
     def type(self):
         return self._type
+
+
+class BuiltinFuncCall(Expr):
+    child_fields = ['args']
+    is_const = False
+    is_literal = False
+
+    def __init__(self, name: str, args: list[Expr]):
+        self.name = name
+        self.args = args
+
+    def __repr__(self):
+        return f'<BuiltinFuncCall {self.name} {self.args}>'
+
+    @property
+    def type(self):
+        if self.name == 'timer':
+            return Type.SINGLE
+        else:
+            assert False, f'Unknown built-in function: {self.name}'
