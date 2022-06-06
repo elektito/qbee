@@ -414,6 +414,16 @@ class PrintStmt(Stmt):
         return f'<PrintStmt {" ".join(str(i) for i in self.items)}>'
 
 
+class RandomizeStmt(Stmt):
+    child_fields = ['seed']
+
+    def __init__(self, seed):
+        self.seed = seed
+
+    def __repr__(self):
+        return f'<RandomizeStmt {self.seed}>'
+
+
 class DataStmt(Stmt):
     child_fields = []
 

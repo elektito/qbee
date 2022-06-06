@@ -23,6 +23,7 @@ from .stmt import (
     ForStmt, NextStmt, ViewPrintStmt, SelectStmt, SimpleCaseClause,
     RangeCaseClause, CompareCaseClause, CaseStmt, CaseElseStmt,
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
+    RandomizeStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -77,6 +78,7 @@ next_kw = CaselessKeyword('next')
 not_kw = CaselessKeyword('not')
 or_kw = CaselessKeyword('or')
 print_kw = CaselessKeyword('print')
+randomize_kw = CaselessKeyword('randomize')
 rem_kw = CaselessKeyword('rem')
 select_kw = CaselessKeyword('select')
 shared_kw = CaselessKeyword('shared')
@@ -440,6 +442,11 @@ print_stmt = (
     + expr[0, 1]
 ).set_name('print_stmt')
 
+randomize_stmt = (
+    randomize_kw.suppress() -
+    expr
+).set_name('randomize_stmt')
+
 type_field_decl = Located(
     untyped_identifier +
     as_kw -
@@ -573,6 +580,7 @@ stmt = Located(
     case_else_stmt |
     end_select_stmt |
 
+    randomize_stmt |
     sub_stmt |
     end_sub_stmt |
     exit_sub_stmt |
@@ -1013,6 +1021,12 @@ def parse_print(toks):
         using_kw, format_string, semicolon, *items = items
 
     return PrintStmt(items, format_string)
+
+
+@parse_action(randomize_stmt)
+def parse_randomize(toks):
+    seed = toks[0]
+    return RandomizeStmt(seed)
 
 
 @parse_action(data_stmt)

@@ -36,6 +36,12 @@ QVM_DEVICES = {
         'ops': {
             'get_time': 1,
         }
+    },
+    'rng': {
+        'id': 6,
+        'ops': {
+            'seed': 1,
+        }
     }
 }
 
@@ -1268,6 +1274,12 @@ def gen_print_stmt(node, code, codegen):
         else:
             assert False
     code.add(('io', 'screen', 'print'))
+
+
+@QvmCodeGen.generator_for(stmt.RandomizeStmt)
+def gen_randomize(node, code, codegen):
+    codegen.gen_code_for_node(node.seed, code)
+    code.add(('io', 'rng', 'seed'))
 
 
 @QvmCodeGen.generator_for(stmt.DataStmt)
