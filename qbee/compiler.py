@@ -324,7 +324,6 @@ class Pass1(CompilePass):
     # 5. Convert some assignments to return value statements in
     #    functions
     # 6. Perform checks on some statements and expressions
-    # 7. Gather DEF* statements
 
     def process_program_pre(self, node):
         node.routine = self.compilation.routines['_main']
@@ -348,10 +347,6 @@ class Pass1(CompilePass):
                 node=node)
         node.parent_routine.labels.add(node.canonical_name)
         self.compilation.all_labels.add(node.canonical_name)
-
-    def process_def_type_pre(self, node):
-        for letter in node.letters:
-            node.parent_routine.def_letter_types[letter] = node.type
 
     def process_const_pre(self, node):
         if not node.value.is_const:
@@ -592,6 +587,11 @@ class Pass2(CompilePass):
     #    functions, since
     #    we're just finding function calls in this pass)
     # 3. Perform target checking in GOTO statements.
+    # 4. Gather DEF* statements
+
+    def process_def_type_pre(self, node):
+        for letter in node.letters:
+            node.parent_routine.def_letter_types[letter] = node.type
 
     def process_lvalue_pre(self, node):
         func = self.compilation.get_routine(node.base_var, 'function')
