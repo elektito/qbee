@@ -83,10 +83,7 @@ class VarDeclClause(Stmt):
         if self.var_type_name:
             _type = Type.from_name(self.var_type_name)
         else:
-            # parameter default types are based on the DEF* statements
-            # in the module level
-            top_level_routine = self.compilation.routines['_main']
-            _type = top_level_routine.get_identifier_type(self.name)
+            _type = self.parent_routine.get_variable(self.name).type
 
         if self.array_dims or self.is_nodim_array:
             _type.is_array = True

@@ -611,6 +611,7 @@ class Pass2(CompilePass):
            not node.base_var in self.compilation.consts:
             # Implicitly defined variable
             decl = VarDeclClause(node.base_var, None)
+            decl.parent_routine = node.parent_routine
             if node.array_indices:
                 # It's an array; implicit arrays have a range of 0 to
                 # 10 for all their dimensions.
