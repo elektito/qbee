@@ -1084,6 +1084,11 @@ def parse_type_stmt(toks):
     return TypeStmt(toks[0])
 
 
+@parse_action(end_type_stmt)
+def parse_end_type(toks):
+    return EndTypeStmt()
+
+
 @parse_action(view_print_stmt)
 def parse_view_print(toks):
     if toks[0] is None:
@@ -1091,11 +1096,6 @@ def parse_view_print(toks):
 
     top_expr, bottom_expr = toks[0]
     return ViewPrintStmt(top_expr, bottom_expr)
-
-
-@parse_action(end_type_stmt)
-def parse_end_type(toks):
-    return EndTypeStmt()
 
 
 def main():
