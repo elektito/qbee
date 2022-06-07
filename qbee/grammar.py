@@ -24,6 +24,7 @@ from .stmt import (
     RangeCaseClause, CompareCaseClause, CaseStmt, CaseElseStmt,
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
     RandomizeStmt, GosubStmt, ReturnStmt, DefSegStmt, PokeStmt,
+    ReadStmt, RestoreStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -83,7 +84,9 @@ peek_kw = CaselessKeyword('peek')
 poke_kw = CaselessKeyword('poke')
 print_kw = CaselessKeyword('print')
 randomize_kw = CaselessKeyword('randomize')
+read_kw = CaselessKeyword('read')
 rem_kw = CaselessKeyword('rem')
+restore_kw = CaselessKeyword('restore')
 return_kw = CaselessKeyword('return')
 seg_kw = CaselessKeyword('seg')
 select_kw = CaselessKeyword('select')
@@ -472,6 +475,16 @@ randomize_stmt = (
     expr
 ).set_name('randomize_stmt')
 
+read_stmt = (
+    read_kw.suppress() -
+    delimited_list(lvalue, delim=comma)
+).set_name('read_stmt')
+
+restore_stmt = (
+    restore_kw.suppress() +
+    Opt(untyped_identifier | line_no_value, default=None)
+).set_name('restore_stmt')
+
 type_field_decl = Located(
     untyped_identifier +
     as_kw -
@@ -607,6 +620,8 @@ stmt = Located(
     end_select_stmt |
 
     randomize_stmt |
+    read_stmt |
+    restore_stmt |
     sub_stmt |
     end_sub_stmt |
     exit_sub_stmt |
@@ -1086,6 +1101,21 @@ def parse_print(toks):
 def parse_randomize(toks):
     seed = toks[0]
     return RandomizeStmt(seed)
+
+
+@parse_action(read_stmt)
+def parse_read_stmt(toks):
+    targets = toks
+    return ReadStmt(list(targets))
+
+
+@parse_action(restore_stmt)
+def parse_restore_stmt(toks):
+    target = toks[0]
+    if target and target[0].isnumeric():
+        # it's a line number
+        target = int(target)
+    return RestoreStmt(target)
 
 
 @parse_action(data_stmt)

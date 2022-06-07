@@ -479,6 +479,31 @@ class RandomizeStmt(Stmt):
         return f'<RandomizeStmt {self.seed}>'
 
 
+class ReadStmt(Stmt):
+    child_fields = ['var_list']
+
+    def __init__(self, var_list: list):
+        self.var_list = var_list
+
+    def __repr__(self):
+        return f'<ReadStmt {len(self.var_list)} var(s)>'
+
+
+class RestoreStmt(Stmt):
+    child_fields = []
+
+    def __init__(self, target):
+        self.target = target
+
+        if isinstance(target, int):
+            self.canonical_target = LineNo.get_canonical_name(target)
+        else:
+            self.canonical_target = target
+
+    def __repr__(self):
+        return f'<RestoreStmt {self.target}>'
+
+
 class DataStmt(Stmt):
     child_fields = []
 

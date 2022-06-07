@@ -1333,6 +1333,26 @@ def gen_randomize(node, code, codegen):
     code.add(('io', 'rng', 'seed'))
 
 
+@QvmCodeGen.generator_for(stmt.ReadStmt)
+def gen_read_stmt(node, code, codegen):
+    for var in node.var_list:
+        code.add(('push%', var.type.type_id))
+        code.add(('io', 'data', 'read'))
+        gen_lvalue_write(var, code, codegen)
+
+
+@QvmCodeGen.generator_for(stmt.RestoreStmt)
+def gen_read_stmt(node, code, codegen):
+    target = node.canonical_target
+    if target is None:
+        target = ''
+
+    code.add(
+        ('push$', f'"{target}"'),
+        ('io', 'data', 'restore'),
+    )
+
+
 @QvmCodeGen.generator_for(stmt.DataStmt)
 def gen_data(node, code, codegen):
     code.add_data(node.items, codegen.last_label)
