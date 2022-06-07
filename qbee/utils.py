@@ -66,7 +66,10 @@ def display_with_context(text, loc_start, loc_end=None, msg='Error'):
     target_lines = []
     i = 0
     target_col = None
+    target_line = None
+    cur_line = 0
     while i < len(text):
+        cur_line += 1
         try:
             nl = text.index('\n', i)
         except ValueError:
@@ -81,6 +84,7 @@ def display_with_context(text, loc_start, loc_end=None, msg='Error'):
         ):
             target_lines.append(line)
             target_col = loc_start - i + 1
+            target_line = cur_line
         elif i < loc_start:
             prev_lines.append(line)
         else:
@@ -91,16 +95,23 @@ def display_with_context(text, loc_start, loc_end=None, msg='Error'):
 
         i = nl + 1
 
-    for line in prev_lines[-n_context_lines:]:
-        eprint(' || ', line)
+    line_no_width = len(str(target_line + n_context_lines))
+
+    prev_lines = prev_lines[-n_context_lines:]
+    for i, line in enumerate(prev_lines):
+        line_no = target_line - (len(prev_lines) - i)
+        eprint(f' {line_no: >{line_no_width}} || ', line)
+
     for line in target_lines:
-        eprint(' >> ', line)
+        eprint(f' {target_line: >{line_no_width}} >> ', line)
     if len(target_lines) == 1:
-        eprint(' :: ' + ' ' * target_col + '^')
-        eprint(' :: ' + ' ' * target_col + msg)
-        eprint(' :: ')
-    for line in next_lines:
-        eprint(' || ', line)
+        eprint(' ' * line_no_width + '  :: ' + ' ' * target_col + '^')
+        eprint(' ' * line_no_width + '  :: ' + ' ' * target_col + msg)
+        eprint(' ' * line_no_width + '  :: ')
+
+
+    for i, line in enumerate(next_lines):
+        eprint(f' {target_line + i + 1: >{line_no_width}} || ', line)
 
 
 def split_camel(name):
