@@ -189,7 +189,7 @@ lvalue = Forward().set_name('lvalue')
 expr = Forward().set_name('expr')
 
 expr_list = delimited_list(expr, delim=',', min=1)
-builtin_func = (
+builtin_func = Located(
     (timer_kw | peek_kw) +
     Opt(
         lpar.suppress() +
@@ -198,10 +198,10 @@ builtin_func = (
         default=None
     )
 ).set_name('builtin_func')
-paren_expr = (
+paren_expr = Located(
     lpar.suppress() - expr + rpar.suppress()
 )
-atom = (
+atom = Located(
     addsub_op[...] +
     (
         (builtin_func | lvalue | numeric_literal | string_literal) |
@@ -209,26 +209,26 @@ atom = (
     )
 )
 exponent_expr = Forward()
-exponent_expr <<= atom + (exponent_op + exponent_expr)[...]
+exponent_expr <<= Located(atom + (exponent_op + exponent_expr)[...])
 not_expr = Forward()
-unary_expr = (
+unary_expr = Located(
     addsub_op[1, ...] - exponent_expr |
     addsub_op[1, ...] - not_expr |  # allow combination of the two
                                     # unaries without parentheses
     exponent_expr
-)
-muldiv_expr = unary_expr - (muldiv_op - unary_expr)[...]
-intdiv_expr = muldiv_expr - (intdiv_op - muldiv_expr)[...]
-mod_expr = intdiv_expr - (mod_kw - intdiv_expr)[...]
-addsub_expr = mod_expr - (addsub_op - mod_expr)[...]
-compare_expr = addsub_expr - (compare_op - addsub_expr)[...]
-not_expr <<= not_kw[...] - compare_expr
-and_expr = not_expr - (and_kw - not_expr)[...]
-or_expr = and_expr - (or_kw - and_expr)[...]
-xor_expr = or_expr - (xor_kw - or_expr)[...]
-eqv_expr = xor_expr - (xor_kw - xor_expr)[...]
-imp_expr = eqv_expr - (eqv_kw - eqv_expr)[...]
-expr <<= Located(
+).set_name('unary_expr')
+muldiv_expr = Located(unary_expr - (muldiv_op - unary_expr)[...])
+intdiv_expr = Located(muldiv_expr - (intdiv_op - muldiv_expr)[...])
+mod_expr = Located(intdiv_expr - (mod_kw - intdiv_expr)[...])
+addsub_expr = Located(mod_expr - (addsub_op - mod_expr)[...])
+compare_expr = Located(addsub_expr - (compare_op - addsub_expr)[...])
+not_expr <<= Located(not_kw[...] - compare_expr)
+and_expr = Located(not_expr - (and_kw - not_expr)[...])
+or_expr = Located(and_expr - (or_kw - and_expr)[...])
+xor_expr = Located(or_expr - (xor_kw - or_expr)[...])
+eqv_expr = Located(xor_expr - (xor_kw - xor_expr)[...])
+imp_expr = Located(eqv_expr - (eqv_kw - eqv_expr)[...])
+expr <<= (
     array_pass |
     imp_expr
 )
@@ -678,25 +678,30 @@ def parse_action(rule):
     return wrapper
 
 
-@parse_action(expr)
-def parse_expr(toks):
-    loc_start, (tok,), loc_end = toks
-    tok.loc_start = loc_start
-    tok.loc_end = loc_end
-    return tok
+@parse_action(atom)
+def parse_atom(toks):
+    loc_start, toks, loc_end = toks
+    return toks
 
 
 @parse_action(builtin_func)
 def parse_builtin_func(toks):
-    func, args = toks
+    loc_start, (func, args), loc_end = toks
     args = args or []
-    return BuiltinFuncCall(func, args)
+    call = BuiltinFuncCall(func, args)
+    call.loc_start = loc_start
+    call.loc_end = loc_end
+    return call
 
 
 @parse_action(paren_expr)
 def parse_paren_expr(toks):
+    loc_start, toks, loc_end = toks
     assert len(toks) == 1
-    return ParenthesizedExpr(toks[0])
+    expr = ParenthesizedExpr(toks[0])
+    expr.loc_start = loc_start
+    expr.loc_end = loc_end
+    return expr
 
 
 @parse_action(stmt)
@@ -745,34 +750,49 @@ def parse_num_literal(s, loc, toks):
 @parse_action(xor_expr)
 @parse_action(eqv_expr)
 @parse_action(imp_expr)
+@parse_action(compare_expr)
 def parse_left_assoc_binary_expr(toks):
+    loc_start, toks, loc_end = toks
     assert len(toks) % 2 == 1
     node = toks[0]
     for i in range(1, len(toks), 2):
         op = Operator.binary_op_from_token(toks[i])
         node = BinaryOp(node, toks[i+1], op)
+    node.loc_start = loc_start
+    node.loc_end = loc_end
     return node
 
 
 @parse_action(exponent_expr)
 def parse_right_assoc_binary_expr(toks):
+    loc_start, toks, loc_end = toks
     assert len(toks) % 2 == 1
     node = toks[-1]
     for i in range(-2, -len(toks) - 1, -2):
         assert toks[i] == '^'
         node = BinaryOp(toks[i-1], node, Operator.EXP)
+        node.loc_start = loc_start
+        node.loc_end = loc_end
+    node.loc_start = loc_start
+    node.loc_end = loc_end
     return node
 
 
 @parse_action(not_expr)
 @parse_action(unary_expr)
 def parse_unary_expr(toks):
+    loc_start, toks, loc_end = toks
     if len(toks) > 0 and toks[0] in ('-', '+', 'not'):
         ops = toks[:-1]
         node = toks[-1]
         for op in reversed(ops):
             node = UnaryOp(node, Operator.unary_op_from_token(op))
+            node.loc_start = loc_start
+            node.loc_end = loc_end
+        node.loc_start = loc_start
+        node.loc_end = loc_end
         return node
+    return toks
 
 
 @parse_action(expr_list)
