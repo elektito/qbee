@@ -217,7 +217,9 @@ class CompilationUnit:
                 if arg.type != param_type:
                     raise CompileError(
                         EC.TYPE_MISMATCH,
-                        'Parameter type mismatch',
+                        f'Parameter type mismatch; expected a '
+                        f'{param_type.name.upper()}, got '
+                        f'{arg.type.name.upper()}',
                         node=arg)
             elif not arg.type.is_coercible_to(param_type):
                 error_msg = (
