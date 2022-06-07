@@ -78,7 +78,7 @@ class Routine:
             if identifier in self.compilation.global_vars:
                 return self.compilation.global_vars[identifier]
 
-            def_type = self.def_letter_types.get(identifier[0])
+            def_type = self.def_letter_types.get(identifier[0].lower())
             if def_type:
                 return def_type
 
@@ -356,7 +356,7 @@ class Pass1(CompilePass):
 
     def process_def_type_pre(self, node):
         for letter in node.letters:
-            self.toplevel_deftype_letters[letter] = node.type
+            self.toplevel_deftype_letters[letter.lower()] = node.type
 
     def process_const_pre(self, node):
         if not node.value.is_const:
@@ -495,9 +495,12 @@ class Pass1(CompilePass):
             # set type based on existing top-level DEF* statements (if
             # any) when no explicit type is specified
             param_type = decl.type
-            if decl.var_type_name is None:
-                if decl.name[0] in self.toplevel_deftype_letters:
-                    param_type = self.toplevel_deftype_letters[decl.name[0]]
+            if decl.var_type_name is None and \
+               not Type.name_ends_with_type_char(decl.name):
+                letter = decl.name[0].lower()
+                if letter in self.toplevel_deftype_letters:
+                    letter = decl.name[0].lower()
+                    param_type = self.toplevel_deftype_letters[letter]
             params.append((decl.name, param_type))
 
         routine = Routine(node.name, 'sub', self.compilation, params,
@@ -529,9 +532,12 @@ class Pass1(CompilePass):
             # set type based on existing top-level DEF* statements (if
             # any) when no explicit type is specified
             param_type = decl.type
-            if decl.var_type_name is None:
-                if decl.name[0] in self.toplevel_deftype_letters:
-                    param_type = self.toplevel_deftype_letters[decl.name[0]]
+            if decl.var_type_name is None and \
+               not Type.name_ends_with_type_char(decl.name):
+                letter = decl.name[0].lower()
+                if letter in self.toplevel_deftype_letters:
+                    letter = decl.name[0].lower()
+                    param_type = self.toplevel_deftype_letters[letter]
             params.append((decl.name, param_type))
 
         routine = Routine(node.name, 'function', self.compilation,
@@ -621,6 +627,7 @@ class Pass2(CompilePass):
 
     def process_def_type_pre(self, node):
         for letter in node.letters:
+            letter = letter.lower()
             node.parent_routine.def_letter_types[letter] = node.type
 
     def process_builtin_func_call_pre(self, node):
