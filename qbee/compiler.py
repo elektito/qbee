@@ -627,6 +627,17 @@ class Pass2(CompilePass):
                 raise CompileError(
                     EC.ARGUMENT_COUNT_MISMATCH,
                     node=node)
+        elif node.name == 'peek':
+            if len(node.args) != 1:
+                raise CompileError(
+                    EC.ARGUMENT_COUNT_MISMATCH,
+                    node=node)
+            if not node.args[0].type.is_coercible_to(Type.INTEGER):
+                raise CompileError(
+                    EC.TYPE_MISMATCH,
+                    f'Type mismatch; expected INTEGER; got '
+                    f'{node.args[0].type.name.upper()}',
+                    node=node.args[0])
         else:
             raise InternalError(
                 f'Unknown built-in function: {node.name}')

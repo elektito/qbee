@@ -23,7 +23,7 @@ from .stmt import (
     ForStmt, NextStmt, ViewPrintStmt, SelectStmt, SimpleCaseClause,
     RangeCaseClause, CompareCaseClause, CaseStmt, CaseElseStmt,
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
-    RandomizeStmt, GosubStmt, ReturnStmt,
+    RandomizeStmt, GosubStmt, ReturnStmt, DefSegStmt, PokeStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -49,6 +49,7 @@ color_kw = CaselessKeyword('color')
 const_kw = CaselessKeyword('const')
 data_kw = CaselessKeyword('data')
 declare_kw = CaselessKeyword('declare')
+def_kw = CaselessKeyword('def')
 defdbl_kw = CaselessKeyword('defdbl')
 defint_kw = CaselessKeyword('defint')
 deflng_kw = CaselessKeyword('deflng')
@@ -78,10 +79,13 @@ mod_kw = CaselessKeyword('mod')
 next_kw = CaselessKeyword('next')
 not_kw = CaselessKeyword('not')
 or_kw = CaselessKeyword('or')
+peek_kw = CaselessKeyword('peek')
+poke_kw = CaselessKeyword('poke')
 print_kw = CaselessKeyword('print')
 randomize_kw = CaselessKeyword('randomize')
 rem_kw = CaselessKeyword('rem')
 return_kw = CaselessKeyword('return')
+seg_kw = CaselessKeyword('seg')
 select_kw = CaselessKeyword('select')
 shared_kw = CaselessKeyword('shared')
 single_kw = CaselessKeyword('single')
@@ -182,7 +186,7 @@ expr = Forward().set_name('expr')
 
 expr_list = delimited_list(expr, delim=',', min=1)
 builtin_func = (
-    (timer_kw) +
+    (timer_kw | peek_kw) +
     Opt(
         lpar.suppress() +
         Group(expr_list, aslist=True) +
@@ -330,6 +334,12 @@ const_stmt = (
     expr
 ).set_name('const_stmt')
 
+def_seg_stmt = (
+    def_kw.suppress() +
+    seg_kw.suppress() +
+    Opt(eq.suppress() - expr, default=None)
+).set_name('def_seg_stmt')
+
 letter_range = Group(
     letter + Opt(dash.suppress() - letter, default=None)
 ).set_name('letter_range')
@@ -442,6 +452,10 @@ input_stmt = (
     )[0, 1] +
     delimited_list(lvalue, delim=',')
 ).set_name('input_stmt')
+
+poke_stmt = (
+    poke_kw.suppress() - expr - comma.suppress() - expr
+).set_name('poke_stmt')
 
 print_sep = Located(
     semicolon | comma
@@ -565,6 +579,7 @@ stmt = Located(
     color_stmt |
     const_stmt |
     data_stmt |
+    def_seg_stmt |
     declare_stmt |
     deftype_stmt |
     dim_stmt |
@@ -602,6 +617,7 @@ stmt = Located(
     return_stmt |
     goto_stmt |
     input_stmt |
+    poke_stmt |
     print_stmt |
     rem_stmt |
     view_print_stmt |
@@ -853,6 +869,12 @@ def parse_const_stmt(toks):
     return ConstStmt(name, value)
 
 
+@parse_action(def_seg_stmt)
+def parse_def_seg_stmt(toks):
+    segment, = toks
+    return DefSegStmt(segment)
+
+
 @parse_action(declare_stmt)
 def parse_declare(toks):
     routine_type, name, *var_decls = list(toks)
@@ -1032,6 +1054,12 @@ def parse_input(toks):
     var_list = list(toks)
 
     return InputStmt(same_line, prompt, prompt_question, var_list)
+
+
+@parse_action(poke_stmt)
+def parse_poke_stmt(toks):
+    address, value = toks
+    return PokeStmt(address, value)
 
 
 @parse_action(print_sep)

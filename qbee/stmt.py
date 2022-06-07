@@ -164,6 +164,17 @@ class ConstStmt(Stmt):
         return f'<ConstStmt {self.name} = {self.value}>'
 
 
+class DefSegStmt(Stmt):
+    child_fields = ['segment']
+
+    def __init__(self, segment):
+        self.segment = segment
+
+    def __repr__(self):
+        segment = f' {self.segment}' if self.segment else ''
+        return f'<DefSegStmt{segment}>'
+
+
 class DeclareStmt(Stmt):
     child_fields = ['params']
 
@@ -422,6 +433,17 @@ class InputStmt(Stmt):
         return (
             f'<InputStmt "{self.prompt}" {len(self.var_list)} var(s)>'
         )
+
+
+class PokeStmt(Stmt):
+    child_fields = ['address', 'value']
+
+    def __init__(self, address, value):
+        self.address = address
+        self.value = value
+
+    def __repr__(self):
+        return f'<PokeStmt {self.address} {self.value}>'
 
 
 class PrintSep(Stmt):

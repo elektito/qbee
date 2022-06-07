@@ -956,6 +956,10 @@ def gen_unary_op(node, code, codegen):
 def gen_builtin_func_call(node, code, codegen):
     if node.name == 'timer':
         code.add(('io', 'time', 'get_time'))
+    if node.name == 'peek':
+        codegen.gen_code_for_node(node.args[0], code)
+        gen_code_for_conv(expr.Type.LONG, node.args[0], code, codegen)
+        code.add(('io', 'memory', 'peek'))
     else:
         assert False, f'Unknown builtin function: {node.name}'
 
@@ -1030,6 +1034,16 @@ def gen_color(node, code, codegen):
 def gen_const_stmt(node, code, codegen):
     # No code for const statements needed
     pass
+
+
+@QvmCodeGen.generator_for(stmt.DefSegStmt)
+def gen_def_seg_stmt(node, code, codegen):
+    if node.segment is None:
+        code.add(('io', 'memory', 'set_default_segment'))
+    else:
+        codegen.gen_code_for_node(node.segment, code)
+        gen_code_for_conv(expr.Type.LONG, node.segment, code, codegen)
+        code.add(('io', 'memory', 'set_segment'))
 
 
 @QvmCodeGen.generator_for(stmt.DeclareStmt)
@@ -1279,6 +1293,17 @@ def gen_input(node, code, codegen):
         assert not var.array_indices
 
         gen_lvalue_write(var, code, codegen)
+
+
+@QvmCodeGen.generator_for(stmt.PokeStmt)
+def gen_poke_stmt(node, code, codegen):
+    codegen.gen_code_for_node(node.address, code)
+    gen_code_for_conv(expr.Type.LONG, node.address, code, codegen)
+
+    codegen.gen_code_for_node(node.value, code)
+    gen_code_for_conv(expr.Type.INTEGER, node.value, code, codegen)
+
+    code.add(('io', 'memory', 'poke'))
 
 
 @QvmCodeGen.generator_for(stmt.PrintStmt)
