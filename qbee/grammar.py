@@ -1161,7 +1161,7 @@ def parse_var_decl(toks):
 
     if len(toks) == 2:
         name, dims = toks
-        type_name = []
+        type_name = None
     elif len(toks) == 3:
         # type_field_decl, which does not support array_indices
         name, _, type_name = toks
