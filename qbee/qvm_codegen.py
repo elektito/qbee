@@ -1295,6 +1295,17 @@ def gen_input(node, code, codegen):
         gen_lvalue_write(var, code, codegen)
 
 
+@QvmCodeGen.generator_for(stmt.LocateStmt)
+def gen_locate_stmt(node, code, codegen):
+    codegen.gen_code_for_node(node.row, code)
+    gen_code_for_conv(expr.Type.INTEGER, node.row, code, codegen)
+
+    codegen.gen_code_for_node(node.col, code)
+    gen_code_for_conv(expr.Type.INTEGER, node.col, code, codegen)
+
+    code.add(('io', 'screen', 'locate'))
+
+
 @QvmCodeGen.generator_for(stmt.PokeStmt)
 def gen_poke_stmt(node, code, codegen):
     codegen.gen_code_for_node(node.address, code)

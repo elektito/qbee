@@ -24,7 +24,7 @@ from .stmt import (
     RangeCaseClause, CompareCaseClause, CaseStmt, CaseElseStmt,
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
     RandomizeStmt, GosubStmt, ReturnStmt, DefSegStmt, PokeStmt,
-    ReadStmt, RestoreStmt,
+    ReadStmt, RestoreStmt, LocateStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -74,6 +74,7 @@ imp_kw = CaselessKeyword('imp')
 integer_kw = CaselessKeyword('integer')
 is_kw = CaselessKeyword('is')
 let_kw = CaselessKeyword('let')
+locate_kw = CaselessKeyword('locate')
 long_kw = CaselessKeyword('long')
 loop_kw = CaselessKeyword('loop')
 mod_kw = CaselessKeyword('mod')
@@ -456,6 +457,10 @@ input_stmt = (
     delimited_list(lvalue, delim=',')
 ).set_name('input_stmt')
 
+locate_stmt = (
+    locate_kw.suppress() - expr - comma.suppress() - expr
+).set_name('locate_stmt')
+
 poke_stmt = (
     poke_kw.suppress() - expr - comma.suppress() - expr
 ).set_name('poke_stmt')
@@ -632,6 +637,7 @@ stmt = Located(
     return_stmt |
     goto_stmt |
     input_stmt |
+    locate_stmt |
     poke_stmt |
     print_stmt |
     rem_stmt |
@@ -1069,6 +1075,12 @@ def parse_input(toks):
     var_list = list(toks)
 
     return InputStmt(same_line, prompt, prompt_question, var_list)
+
+
+@parse_action(locate_stmt)
+def parse_locate_stmt(toks):
+    row, col = toks
+    return LocateStmt(row, col)
 
 
 @parse_action(poke_stmt)

@@ -435,6 +435,17 @@ class InputStmt(Stmt):
         )
 
 
+class LocateStmt(Stmt):
+    child_fields = ['row', 'col']
+
+    def __init__(self, row, col):
+        self.row = row
+        self.col = col
+
+    def __repr__(self):
+        return f'<LocateStmt {self.row} {self.col}>'
+
+
 class PokeStmt(Stmt):
     child_fields = ['address', 'value']
 

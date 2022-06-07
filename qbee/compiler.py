@@ -724,6 +724,12 @@ class Pass2(CompilePass):
                  f'{node.target}'),
                 node=node)
 
+    def process_locate_pre(self, node):
+        if not node.row.type.is_coercible_to(Type.LONG):
+            raise CompileError(EC.TYPE_MISMATCH, node=node.row)
+        if not node.col.type.is_coercible_to(Type.INTEGER):
+            raise CompileError(EC.TYPE_MISMATCH, node=node.col)
+
     def process_poke_pre(self, node):
         if not node.address.type.is_coercible_to(Type.LONG):
             raise CompileError(EC.TYPE_MISMATCH, node=node.address)
