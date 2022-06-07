@@ -813,7 +813,7 @@ def gen_lvalue(node, code, codegen):
     if node.is_const:
         # this is a constant declared in a const statement
         if node.type == expr.Type.STRING:
-            code.add((f'push$', '"{node.eval()}"'))
+            code.add(('push$', f'"{node.eval()}"'))
         else:
             code.add((f'push{node.type.type_char}', node.eval()))
         return
