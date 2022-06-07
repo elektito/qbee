@@ -1094,7 +1094,7 @@ class SelectBlock(Block, start=SelectStmt, end=EndSelectStmt):
 
         if not isinstance(body[0], CaseStmt):
             raise SyntaxError(
-                loc=stmt.loc_start,
+                loc=body[0].loc_start,
                 msg='Statements illegal between SELECT CASE and CASE')
 
         cur_case = body[0]
