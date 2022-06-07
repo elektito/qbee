@@ -3,9 +3,7 @@ from .node import Node
 from .expr import Expr, Type, Operator
 from .program import LineNo
 from .utils import parse_data, split_camel
-from .exceptions import (
-    ErrorCode as EC, SyntaxError, InternalError, CompileError,
-)
+from .exceptions import ErrorCode as EC, SyntaxError, CompileError
 
 
 class Stmt(Node):
@@ -369,6 +367,7 @@ class IfBeginStmt(Stmt):
 
 class ElseClause(Stmt):
     child_fields = ['stmts']
+
     def __init__(self, stmts):
         self.stmts = stmts
 
@@ -523,6 +522,7 @@ class WendStmt(Stmt):
 
 class SubStmt(Stmt):
     child_fields = ['params']
+
     def __init__(self, name, params, is_static):
         assert all(isinstance(p, VarDeclClause) for p in params)
         self.name = name
@@ -608,7 +608,6 @@ class SelectStmt(Stmt):
     def __init__(self, value):
         assert isinstance(value, Expr)
         self.value = value
-
 
     def __repr__(self):
         return f'<SelectStmt {self.value}>'
@@ -954,7 +953,6 @@ class TypeBlock(Block, start=TypeStmt, end=EndTypeStmt):
                 raise SyntaxError(
                     loc=stmt.loc_start,
                     msg='Statement illegal in TYPE block')
-            var_type = Type.from_name(stmt.var_type_name)
 
             if stmt.name in field_names:
                 raise SyntaxError(

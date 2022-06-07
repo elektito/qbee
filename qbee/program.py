@@ -1,5 +1,4 @@
 from .node import Node
-from .exceptions import InternalError
 
 
 class Label(Node):

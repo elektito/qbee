@@ -1123,7 +1123,7 @@ def parse_function_stmt(toks):
 
 
 @parse_action(end_function_stmt)
-def parse_end_sub(toks):
+def parse_end_function(toks):
     return EndFunctionStmt()
 
 

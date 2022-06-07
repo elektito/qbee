@@ -812,7 +812,6 @@ def gen_lvalue(node, code, codegen):
 
     if node.is_const:
         # this is a constant declared in a const statement
-        value = node.eval()
         if node.type == expr.Type.STRING:
             code.add((f'push$', '"{node.eval()}"'))
         else:
@@ -1028,7 +1027,7 @@ def gen_color(node, code, codegen):
 
 
 @QvmCodeGen.generator_for(stmt.ConstStmt)
-def gen_num_literal(node, code, codegen):
+def gen_const_stmt(node, code, codegen):
     # No code for const statements needed
     pass
 
@@ -1320,7 +1319,7 @@ def gen_exit_sub(node, code, codegen):
 
 
 @QvmCodeGen.generator_for(stmt.ExitFunctionStmt)
-def gen_exit_sub(node, code, codegen):
+def gen_exit_function(node, code, codegen):
     code.add(('ret',))
 
 
@@ -1409,8 +1408,6 @@ def gen_while_block(node, code, codegen):
 def gen_select_block(node, code, codegen):
     start_label = codegen.get_label('select_start')
     end_label = codegen.get_label('select_end')
-
-    value_type = node.value.type
 
     code.add(('_label', start_label))
     codegen.gen_code_for_node(node.value, code)

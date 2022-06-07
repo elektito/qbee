@@ -1,7 +1,6 @@
 import argparse
 import struct
 from .qvm_instrs import op_code_to_instr
-from .expr import Type
 from .utils import eprint
 
 
@@ -100,7 +99,6 @@ def decode_code(bcode, consts):
             args = [device, device_op]
         elif op[:4] == 'push' and op[4:] in '%&!#$':
             type_char = op[4]
-            _type = Type.from_type_char(type_char)
             if type_char == '%':
                 value, = struct.unpack(
                     '>h', bcode[idx:idx+2])

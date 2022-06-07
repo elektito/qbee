@@ -627,7 +627,7 @@ class Pass2(CompilePass):
                 node=node)
 
         if not node.parent_routine.has_variable(node.base_var) and \
-           not node.base_var in self.compilation.consts:
+           node.base_var not in self.compilation.consts:
             # Implicitly defined variable
             decl = VarDeclClause(node.base_var, None)
             decl.parent_routine = node.parent_routine
@@ -798,7 +798,7 @@ class Pass3(CompilePass):
            node.format_string.type != Type.STRING:
             raise CompileError(
                 EC.TYPE_MISMATCH,
-                f'Format string must be a STRING',
+                'Format string must be a STRING',
                 node=node.format_string)
 
         for item in node.items:
@@ -806,7 +806,7 @@ class Pass3(CompilePass):
                 if not item.type.is_builtin:
                     raise CompileError(
                         EC.TYPE_MISMATCH,
-                        f'Cannot print value',
+                        'Cannot print value',
                         node=item)
 
     def process_while_block_pre(self, node):
