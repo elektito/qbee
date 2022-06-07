@@ -325,6 +325,10 @@ class Pass1(CompilePass):
     #    functions
     # 6. Perform checks on some statements and expressions
 
+    def __init__(self, compilation):
+        super().__init__(compilation)
+        self.toplevel_deftype_letters = {}
+
     def process_program_pre(self, node):
         node.routine = self.compilation.routines['_main']
         self._set_parent_routine(
@@ -347,6 +351,10 @@ class Pass1(CompilePass):
                 node=node)
         node.parent_routine.labels.add(node.canonical_name)
         self.compilation.all_labels.add(node.canonical_name)
+
+    def process_def_type_pre(self, node):
+        for letter in node.letters:
+            self.toplevel_deftype_letters[letter] = node.type
 
     def process_const_pre(self, node):
         if not node.value.is_const:
@@ -477,9 +485,19 @@ class Pass1(CompilePass):
                 EC.DUPLICATE_DEFINITION,
                 f'Duplicate sub-routine definition: {node.name}',
                 node=node)
+
+        params = []
         for decl in node.params:
             self.compilation.validate_decl(decl)
-        params = [(decl.name, decl.type) for decl in node.params]
+
+            # set type based on existing top-level DEF* statements (if
+            # any) when no explicit type is specified
+            param_type = decl.type
+            if decl.var_type_name is None:
+                if decl.name[0] in self.toplevel_deftype_letters:
+                    param_type = self.toplevel_deftype_letters[decl.name[0]]
+            params.append((decl.name, param_type))
+
         routine = Routine(node.name, 'sub', self.compilation, params,
                           is_static=node.is_static)
         self.compilation.routines[node.name] = routine
@@ -501,9 +519,19 @@ class Pass1(CompilePass):
                 EC.DUPLICATE_DEFINITION,
                 f'Duplicate routine definition: {node.name}',
                 node=node)
+
+        params = []
         for decl in node.params:
             self.compilation.validate_decl(decl)
-        params = [(decl.name, decl.type) for decl in node.params]
+
+            # set type based on existing top-level DEF* statements (if
+            # any) when no explicit type is specified
+            param_type = decl.type
+            if decl.var_type_name is None:
+                if decl.name[0] in self.toplevel_deftype_letters:
+                    param_type = self.toplevel_deftype_letters[decl.name[0]]
+            params.append((decl.name, param_type))
+
         routine = Routine(node.name, 'function', self.compilation,
                           params,
                           is_static=node.is_static,
