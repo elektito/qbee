@@ -427,39 +427,6 @@ class Pass1(CompilePass):
                     node=arg,
                 )
 
-    def process_dim_pre(self, node):
-        if node.kind == 'dim_shared' \
-           and node.parent_routine.kind != 'toplevel':
-            raise CompileError(
-                EC.ILLEGAL_IN_SUB,
-                'SHARED is only allowed in top-level',
-                node=node,
-            )
-        elif node.kind == 'static' and \
-             node.parent_routine.kind == 'toplevel':
-            raise CompileError(
-                EC.ILLEGAL_OUTSIDE_SUB,
-                'STATIC is only allowed in SUB/FUNCTION',
-                node=node,
-            )
-
-        for decl in node.var_decls:
-            self.compilation.validate_decl(decl)
-
-            if node.parent_routine.has_variable(decl.name) or \
-               decl.name in self.compilation.routines:
-                raise CompileError(
-                    EC.DUPLICATE_DEFINITION,
-                    node=decl)
-
-            if node.kind == 'dim_shared':
-                self.compilation.global_vars[decl.name] = decl.type
-            elif node.kind == 'static' or \
-                 node.parent_routine.is_static:
-                node.parent_routine.static_vars[decl.name] = decl.type
-            else:
-                node.parent_routine.local_vars[decl.name] = decl.type
-
     def process_for_block_pre(self, node):
         if not node.var.base_type.is_numeric:
             raise CompileError(
@@ -804,6 +771,39 @@ class Pass2(CompilePass):
                 (f'{label_type} not in the same routine as GOTO: '
                  f'{node.target}'),
                 node=node)
+
+    def process_dim_pre(self, node):
+        if node.kind == 'dim_shared' \
+           and node.parent_routine.kind != 'toplevel':
+            raise CompileError(
+                EC.ILLEGAL_IN_SUB,
+                'SHARED is only allowed in top-level',
+                node=node,
+            )
+        elif node.kind == 'static' and \
+             node.parent_routine.kind == 'toplevel':
+            raise CompileError(
+                EC.ILLEGAL_OUTSIDE_SUB,
+                'STATIC is only allowed in SUB/FUNCTION',
+                node=node,
+            )
+
+        for decl in node.var_decls:
+            self.compilation.validate_decl(decl)
+
+            if node.parent_routine.has_variable(decl.name) or \
+               decl.name in self.compilation.routines:
+                raise CompileError(
+                    EC.DUPLICATE_DEFINITION,
+                    node=decl)
+
+            if node.kind == 'dim_shared':
+                self.compilation.global_vars[decl.name] = decl.type
+            elif node.kind == 'static' or \
+                 node.parent_routine.is_static:
+                node.parent_routine.static_vars[decl.name] = decl.type
+            else:
+                node.parent_routine.local_vars[decl.name] = decl.type
 
 
 class Pass3(CompilePass):
