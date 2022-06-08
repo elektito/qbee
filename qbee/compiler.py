@@ -225,8 +225,8 @@ class CompilationUnit:
             elif not arg.type.is_coercible_to(param_type):
                 error_msg = (
                     f'Argument type mismatch: '
-                    f'expected {param_type.name}, '
-                    f'got {arg.type.name}'
+                    f'expected {param_type.name.upper()}, '
+                    f'got {arg.type.name.upper()}'
                 )
                 raise CompileError(EC.TYPE_MISMATCH,
                                    msg=error_msg,
