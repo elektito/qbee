@@ -500,7 +500,18 @@ class Pass2(CompilePass):
     # 3. Perform target checking in GOTO statements.
 
     def process_builtin_func_call_pre(self, node):
-        if node.name == 'len':
+        if node.name == 'int':
+            if len(node.args) != 1:
+                raise CompileError(
+                    EC.ARGUMENT_COUNT_MISMATCH,
+                    node=node)
+            if not node.args[0].type.is_numeric:
+                raise CompileError(
+                    EC.TYPE_MISMATCH,
+                    f'Type mismatch; expected a numeric value; got '
+                    f'{node.args[0].type.name.upper()}',
+                    node=node.args[0])
+        elif node.name == 'len':
             if len(node.args) != 1:
                 raise CompileError(
                     EC.ARGUMENT_COUNT_MISMATCH,

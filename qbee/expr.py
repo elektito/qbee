@@ -933,7 +933,9 @@ class BuiltinFuncCall(Expr):
 
     @property
     def type(self):
-        if self.name == 'len':
+        if self.name == 'int':
+            return Type.LONG
+        elif self.name == 'len':
             return Type.LONG
         elif self.name == 'peek':
             return Type.INTEGER

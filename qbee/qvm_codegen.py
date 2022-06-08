@@ -72,6 +72,7 @@ class CanonicalOp(Enum):
     IDIV = auto()
     IJMP = auto()
     IMP = auto()
+    INT = auto()
     IO = auto()
     JMP = auto()
     JZ = auto()
@@ -958,7 +959,10 @@ def gen_unary_op(node, code, codegen):
 
 @QvmCodeGen.generator_for(expr.BuiltinFuncCall)
 def gen_builtin_func_call(node, code, codegen):
-    if node.name == 'len':
+    if node.name == 'int':
+        codegen.gen_code_for_node(node.args[0], code)
+        code.add(('int',))
+    elif node.name == 'len':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('strlen',))
     elif node.name == 'peek':
