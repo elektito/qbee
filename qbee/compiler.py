@@ -581,9 +581,6 @@ class Pass2(CompilePass):
                     EC.WRONG_NUMBER_OF_DIMENSIONS,
                     node=node)
 
-    def process_call_pre(self, node):
-        self.compilation.perform_argument_matching(node, 'sub')
-
     def process_gosub_pre(self, node):
         if isinstance(node.target, int):
             label_type = 'Line number'
@@ -768,6 +765,7 @@ class Pass2(CompilePass):
                     f'{arg.base_var}()?',
                     node=arg,
                 )
+        self.compilation.perform_argument_matching(node, 'sub')
 
     def process_for_block_pre(self, node):
         if not node.var.base_type.is_numeric:
