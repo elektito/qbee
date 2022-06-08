@@ -939,6 +939,7 @@ class BuiltinFuncCall(Expr):
             'lcase$': Type.STRING,
             'len': Type.LONG,
             'peek': Type.INTEGER,
+            'rnd': Type.SINGLE,
             'space$': Type.STRING,
             'str$': Type.STRING,
             'timer': Type.SINGLE,

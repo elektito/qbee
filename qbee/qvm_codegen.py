@@ -44,6 +44,7 @@ QVM_DEVICES = {
         'id': 6,
         'ops': {
             'seed': 1,
+            'rnd': 2,
         }
     }
 }
@@ -96,6 +97,7 @@ class CanonicalOp(Enum):
     REFIDX = auto()
     RET = auto()
     RETV = auto()
+    RND = auto()
     SDBL = auto()
     SIGN = auto()
     SPACE = auto()
@@ -983,6 +985,14 @@ def gen_builtin_func_call(node, code, codegen):
         codegen.gen_code_for_node(node.args[0], code)
         gen_code_for_conv(expr.Type.LONG, node.args[0], code, codegen)
         code.add(('io', 'memory', 'peek'))
+    elif node.name == 'rnd':
+        if len(node.args) == 1:
+            codegen.gen_code_for_node(node.args[0], code)
+            gen_code_for_conv(
+                expr.Type.SINGLE, node.args[0], code, codegen)
+        else:
+            code.add(('push!', 1))
+        code.add(('io', 'rng', 'rnd'))
     elif node.name == 'space$':
         codegen.gen_code_for_node(node.args[0], code)
         gen_code_for_conv(

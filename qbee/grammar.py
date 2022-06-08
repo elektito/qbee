@@ -94,6 +94,7 @@ read_kw = CaselessKeyword('read')
 rem_kw = CaselessKeyword('rem')
 restore_kw = CaselessKeyword('restore')
 return_kw = CaselessKeyword('return')
+rnd_kw = CaselessKeyword('rnd')
 screen_kw = CaselessKeyword('screen')
 seg_kw = CaselessKeyword('seg')
 select_kw = CaselessKeyword('select')
@@ -207,6 +208,7 @@ builtin_func = Located(
         lcase_dollar_kw |
         len_kw |
         peek_kw |
+        rnd_kw |
         space_dollar_kw |
         str_dollar_kw |
         timer_kw |

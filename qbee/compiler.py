@@ -499,17 +499,26 @@ class Pass2(CompilePass):
     #    we're just finding function calls in this pass)
     # 3. Perform target checking in GOTO statements.
 
-    def _check_function_args(self, func_node, arg_types):
-        if len(func_node.args) != len(arg_types):
-            raise CompileError(
+    def _check_function_args(self, func_node, nargs, arg_types):
+        if isinstance(nargs, tuple):
+            nfrom, nto = nargs
+            if not (nfrom <= len(func_node.args) <= nto):
+                raise CompileError(
                     EC.ARGUMENT_COUNT_MISMATCH,
-                    node=node)
+                    node=func_node)
+        else:
+            assert nargs == len(arg_types)
+            if len(func_node.args) != len(arg_types):
+                raise CompileError(
+                        EC.ARGUMENT_COUNT_MISMATCH,
+                        node=node)
         for arg, arg_type in zip(func_node.args, arg_types):
             if isinstance(arg_type, Type):
                 if not arg.type.is_coercible_to(arg_type):
                     raise CompileError(
                         EC.TYPE_MISMATCH,
-                        f'Type mismatch; expected STRING; got '
+                        f'Type mismatch; expected '
+                        f'{arg_type.name.upper()}; got '
                         f'{func_node.args[0].type.name.upper()}',
                         node=arg)
             elif arg_type == 'numeric':
@@ -529,6 +538,7 @@ class Pass2(CompilePass):
             'lcase$': (1, Type.STRING),
             'len': (1, Type.STRING),
             'peek': (1, Type.INTEGER),
+            'rnd': ((0, 1), Type.SINGLE),
             'space$': (1, Type.INTEGER),
             'str$': (1, 'numeric'),
             'timer': (0,),
@@ -538,7 +548,7 @@ class Pass2(CompilePass):
         if nargs is None:
             raise InternalError(
                 f'Unknown built-in function: {node.name}')
-        self._check_function_args(node, arg_types)
+        self._check_function_args(node, nargs, arg_types)
 
     def process_lvalue_pre(self, node):
         func = self.compilation.get_routine(node.base_var, 'function')
