@@ -57,6 +57,7 @@ class CanonicalOp(Enum):
     AND = auto()
     ARRIDX = auto()
     CALL = auto()
+    CHR = auto()
     CMP = auto()
     CONV = auto()
     DEREF = auto()
@@ -963,7 +964,12 @@ def gen_unary_op(node, code, codegen):
 
 @QvmCodeGen.generator_for(expr.BuiltinFuncCall)
 def gen_builtin_func_call(node, code, codegen):
-    if node.name == 'int':
+    if node.name == 'chr$':
+        codegen.gen_code_for_node(node.args[0], code)
+        gen_code_for_conv(
+            expr.Type.INTEGER, node.args[0], code, codegen)
+        code.add(('chr',))
+    elif node.name == 'int':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('int',))
     elif node.name == 'lcase$':

@@ -524,11 +524,12 @@ class Pass2(CompilePass):
 
     def process_builtin_func_call_pre(self, node):
         nargs, *arg_types = {
+            'chr$': (1, Type.INTEGER),
             'int': (1, 'numeric'),
             'lcase$': (1, Type.STRING),
             'len': (1, Type.STRING),
             'peek': (1, Type.INTEGER),
-            'space$': (1, 'numeric'),
+            'space$': (1, Type.INTEGER),
             'timer': (0,),
             'ucase$': (1, Type.STRING),
             'val': (1, Type.STRING),

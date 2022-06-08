@@ -934,6 +934,7 @@ class BuiltinFuncCall(Expr):
     @property
     def type(self):
         func_type = {
+            'chr$': Type.STRING,
             'int': Type.LONG,
             'lcase$': Type.STRING,
             'len': Type.LONG,

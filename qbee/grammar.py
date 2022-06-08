@@ -45,6 +45,7 @@ as_kw = CaselessKeyword('as')
 beep_kw = CaselessKeyword('beep')
 case_kw = CaselessKeyword('case')
 call_kw = CaselessKeyword('call')
+chr_dollar_kw = CaselessKeyword('chr$')
 cls_kw = CaselessKeyword('cls')
 color_kw = CaselessKeyword('color')
 const_kw = CaselessKeyword('const')
@@ -200,6 +201,7 @@ expr = Forward().set_name('expr')
 expr_list = delimited_list(expr, delim=',', min=1)
 builtin_func = Located(
     (
+        chr_dollar_kw |
         int_kw |
         lcase_dollar_kw |
         len_kw |
