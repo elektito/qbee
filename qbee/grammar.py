@@ -24,7 +24,7 @@ from .stmt import (
     RangeCaseClause, CompareCaseClause, CaseStmt, CaseElseStmt,
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
     RandomizeStmt, GosubStmt, ReturnStmt, DefSegStmt, PokeStmt,
-    ReadStmt, RestoreStmt, LocateStmt, ScreenStmt,
+    ReadStmt, RestoreStmt, LocateStmt, ScreenStmt, WidthStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -107,6 +107,7 @@ using_kw = CaselessKeyword('using')
 view_kw = CaselessKeyword('view')
 wend_kw = CaselessKeyword('wend')
 while_kw = CaselessKeyword('while')
+width_kw = CaselessKeyword('width')
 xor_kw = CaselessKeyword('xor')
 
 # create a single rule matching all keywords
@@ -496,12 +497,6 @@ screen_stmt = (
     delimited_list(expr, delim=comma, min=1, max=4)
 ).set_name('screen_stmt')
 
-type_field_decl = Located(
-    untyped_identifier +
-    as_kw -
-    type_name
-).set_name('type_field_decl')
-
 view_print_stmt = (
     view_kw.suppress() +
     print_kw.suppress() +
@@ -518,6 +513,21 @@ while_stmt = (
 wend_stmt = (
     wend_kw
 ).set_name('wend_stmt')
+
+width_stmt = (
+    width_kw.suppress() -
+    (
+        (expr + comma + expr) |
+        (comma + expr) |
+        (expr)
+    )
+).set_name('width_stmt')
+
+type_field_decl = Located(
+    untyped_identifier +
+    as_kw -
+    type_name
+).set_name('type_field_decl')
 
 type_stmt = (
     type_kw.suppress() -
@@ -649,6 +659,7 @@ stmt = Located(
     print_stmt |
     rem_stmt |
     view_print_stmt |
+    width_stmt |
 
     # this needs to be after all other statements starting with the
     # end keyword
@@ -1333,6 +1344,19 @@ def parse_while_stmt(toks):
 @parse_action(wend_stmt)
 def parse_wend_stmt(toks):
     return WendStmt()
+
+
+@parse_action(width_stmt)
+def parse_width_stmt(toks):
+    if len(toks) == 3:
+        columns, _, lines = toks
+    elif len(toks) == 2:
+        _, lines = toks
+        columns = None
+    else:
+        columns = toks[0]
+        lines = None
+    return WidthStmt(columns, lines)
 
 
 def main():

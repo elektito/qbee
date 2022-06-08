@@ -808,6 +808,12 @@ class Pass2(CompilePass):
         if node.vpage and not node.vpage.type.is_numeric:
             raise CompileError(EC.TYPE_MISMATCH, node=node.vpage)
 
+    def process_width_pre(self, node):
+        if node.columns and not node.columns.type.is_numeric:
+            raise CompileError(EC.TYPE_MISMATCH, node=node.columns)
+        if node.lines and not node.lines.type.is_numeric:
+            raise CompileError(EC.TYPE_MISMATCH, node=node.lines)
+
 
 class Pass3(CompilePass):
     # This pass does the following:

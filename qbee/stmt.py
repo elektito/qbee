@@ -595,6 +595,19 @@ class WendStmt(Stmt):
         return '<WendStmt>'
 
 
+class WidthStmt(Stmt):
+    child_fields = ['columns', 'lines']
+
+    def __init__(self, columns, lines):
+        self.columns = columns
+        self.lines = lines
+
+    def __repr__(self):
+        columns = f' {self.columns}' if self.columns else ''
+        lines = f' {self.lines}' if self.lines else ''
+        return f'<WidthStmt{columns}{lines}'
+
+
 class SubStmt(Stmt):
     child_fields = ['params']
 

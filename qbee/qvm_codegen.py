@@ -17,6 +17,8 @@ QVM_DEVICES = {
             'print': 2,
             'color': 3,
             'view_print': 4,
+            'set_mode': 5,
+            'width': 6,
         },
     },
     'pcspkr': {
@@ -1387,6 +1389,25 @@ def gen_screen_stmt(node, code, codegen):
     else:
         code.add(('push%', -1))
     code.add(('io', 'screen', 'set_mode'))
+
+
+@QvmCodeGen.generator_for(stmt.WidthStmt)
+def gen_width_stmt(node, code, codegen):
+    if node.columns:
+        codegen.gen_code_for_node(node.columns, code)
+        gen_code_for_conv(
+            expr.Type.INTEGER, node.columns, code, codegen)
+    else:
+        code.add(('push%', -1))
+
+    if node.lines:
+        codegen.gen_code_for_node(node.lines, code)
+        gen_code_for_conv(
+            expr.Type.INTEGER, node.lines, code, codegen)
+    else:
+        code.add(('push%', -1))
+
+    code.add(('io', 'screen', 'width'))
 
 
 @QvmCodeGen.generator_for(stmt.DataStmt)
