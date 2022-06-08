@@ -798,6 +798,16 @@ class Pass2(CompilePass):
                 node=node.bottom_expr
             )
 
+    def process_screen_pre(self, node):
+        if not node.mode.type.is_numeric:
+            raise CompileError(EC.TYPE_MISMATCH, node=node.mode)
+        if node.color_switch and not node.color_switch.type.is_numeric:
+            raise CompileError(EC.TYPE_MISMATCH, node=node.color_switch)
+        if node.apage and not node.apage.type.is_numeric:
+            raise CompileError(EC.TYPE_MISMATCH, node=node.apage)
+        if node.vpage and not node.vpage.type.is_numeric:
+            raise CompileError(EC.TYPE_MISMATCH, node=node.vpage)
+
 
 class Pass3(CompilePass):
     # This pass does the following:

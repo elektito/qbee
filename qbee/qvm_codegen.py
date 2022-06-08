@@ -1364,6 +1364,31 @@ def gen_restore_stmt(node, code, codegen):
     )
 
 
+@QvmCodeGen.generator_for(stmt.ScreenStmt)
+def gen_screen_stmt(node, code, codegen):
+    codegen.gen_code_for_node(node.mode, code)
+    gen_code_for_conv(expr.Type.INTEGER, node.mode, code, codegen)
+    if node.color_switch:
+        codegen.gen_code_for_node(node.color_switch, code)
+        gen_code_for_conv(
+            expr.Type.INTEGER, node.color_switch, code, codegen)
+    else:
+        code.add(('push%', -1))
+    if node.apage:
+        codegen.gen_code_for_node(node.apage, code)
+        gen_code_for_conv(
+            expr.Type.INTEGER, node.apage, code, codegen)
+    else:
+        code.add(('push%', -1))
+    if node.vpage:
+        codegen.gen_code_for_node(node.vpage, code)
+        gen_code_for_conv(
+            expr.Type.INTEGER, node.vpage, code, codegen)
+    else:
+        code.add(('push%', -1))
+    code.add(('io', 'screen', 'set_mode'))
+
+
 @QvmCodeGen.generator_for(stmt.DataStmt)
 def gen_data(node, code, codegen):
     code.add_data(node.items, codegen.last_label)

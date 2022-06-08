@@ -24,7 +24,7 @@ from .stmt import (
     RangeCaseClause, CompareCaseClause, CaseStmt, CaseElseStmt,
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
     RandomizeStmt, GosubStmt, ReturnStmt, DefSegStmt, PokeStmt,
-    ReadStmt, RestoreStmt, LocateStmt,
+    ReadStmt, RestoreStmt, LocateStmt, ScreenStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -89,6 +89,7 @@ read_kw = CaselessKeyword('read')
 rem_kw = CaselessKeyword('rem')
 restore_kw = CaselessKeyword('restore')
 return_kw = CaselessKeyword('return')
+screen_kw = CaselessKeyword('screen')
 seg_kw = CaselessKeyword('seg')
 select_kw = CaselessKeyword('select')
 shared_kw = CaselessKeyword('shared')
@@ -490,6 +491,11 @@ restore_stmt = (
     Opt(untyped_identifier | line_no_value, default=None)
 ).set_name('restore_stmt')
 
+screen_stmt = (
+    screen_kw.suppress() -
+    delimited_list(expr, delim=comma, min=1, max=4)
+).set_name('screen_stmt')
+
 type_field_decl = Located(
     untyped_identifier +
     as_kw -
@@ -627,6 +633,7 @@ stmt = Located(
     randomize_stmt |
     read_stmt |
     restore_stmt |
+    screen_stmt |
     sub_stmt |
     end_sub_stmt |
     exit_sub_stmt |
@@ -1148,6 +1155,23 @@ def parse_restore_stmt(toks):
         # it's a line number
         target = int(target)
     return RestoreStmt(target)
+
+
+@parse_action(screen_stmt)
+def parse_screen_stmt(toks):
+    if len(toks) == 1:
+        mode = toks[0]
+        color_switch = apage = vpage = None
+    elif len(toks) == 2:
+        mode, color_switch = toks
+        apage = vpage = None
+    elif len(toks) == 3:
+        mode, color_switch, apage = toks
+        vpage = None
+    else:
+        mode, color_switch, apage, vpage = toks
+
+    return ScreenStmt(mode, color_switch, apage, vpage)
 
 
 @parse_action(data_stmt)

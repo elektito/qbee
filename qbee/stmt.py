@@ -526,6 +526,23 @@ class DataStmt(Stmt):
         return '<DataStmt>'
 
 
+class ScreenStmt(Stmt):
+    child_fields = ['mode', 'color_switch', 'apage', 'vpage']
+
+    def __init__(self, mode, color_switch=None, apage=None, vpage=None):
+        self.mode = mode
+        self.color_switch = color_switch
+        self.apage = apage
+        self.vpage = vpage
+
+    def __repr__(self):
+        csw = self.color_switch
+        csw = f' color_switch={csw}' if csw else ''
+        apage = f' apage={self.apage}' if self.apage else ''
+        vpage = f' vpage={self.vpage}' if self.vpage else ''
+        return f'<ScreenStmt {self.mode}{csw}{apage}{vpage}'
+
+
 class TypeStmt(Stmt):
     child_fields = []
 
