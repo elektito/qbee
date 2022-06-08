@@ -500,7 +500,8 @@ class QvmCode(BaseCode):
                 label, = args
                 s += f'{label}:\n'
             else:
-                s += f'    {op: <12}{", ".join(str(i) for i in args)}\n'
+                line = f'{op: <12}{", ".join(str(i) for i in args)}'
+                s += f'    {line.strip()}\n'
         return s
 
     @property
