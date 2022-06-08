@@ -956,7 +956,7 @@ def gen_unary_op(node, code, codegen):
 def gen_builtin_func_call(node, code, codegen):
     if node.name == 'timer':
         code.add(('io', 'time', 'get_time'))
-    if node.name == 'peek':
+    elif node.name == 'peek':
         codegen.gen_code_for_node(node.args[0], code)
         gen_code_for_conv(expr.Type.LONG, node.args[0], code, codegen)
         code.add(('io', 'memory', 'peek'))
