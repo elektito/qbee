@@ -614,6 +614,13 @@ class Pass2(CompilePass):
                     EC.WRONG_NUMBER_OF_DIMENSIONS,
                     node=node)
 
+            for idx in node.array_indices:
+                if not idx.type.is_numeric:
+                    raise CompileError(
+                        EC.TYPE_MISMATCH,
+                        'Array indices must be numeric',
+                        node=idx)
+
     def process_gosub_pre(self, node):
         if isinstance(node.target, int):
             label_type = 'Line number'
