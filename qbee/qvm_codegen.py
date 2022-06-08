@@ -86,6 +86,7 @@ class CanonicalOp(Enum):
     NEG = auto()
     NOP = auto()
     NOT = auto()
+    NTOS = auto()
     OR = auto()
     POP = auto()
     PUSH = auto()
@@ -987,6 +988,9 @@ def gen_builtin_func_call(node, code, codegen):
         gen_code_for_conv(
             expr.Type.INTEGER, node.args[0], code, codegen)
         code.add(('space',))
+    elif node.name == 'str$':
+        codegen.gen_code_for_node(node.args[0], code)
+        code.add(('ntos',))
     elif node.name == 'timer':
         code.add(('io', 'time', 'get_time'))
     elif node.name == 'val':

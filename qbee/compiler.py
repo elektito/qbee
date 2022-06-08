@@ -530,6 +530,7 @@ class Pass2(CompilePass):
             'len': (1, Type.STRING),
             'peek': (1, Type.INTEGER),
             'space$': (1, Type.INTEGER),
+            'str$': (1, 'numeric'),
             'timer': (0,),
             'ucase$': (1, Type.STRING),
             'val': (1, Type.STRING),

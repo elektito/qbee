@@ -102,6 +102,7 @@ single_kw = CaselessKeyword('single')
 space_dollar_kw = CaselessKeyword('space$')
 static_kw = CaselessKeyword('static')
 step_kw = CaselessKeyword('step')
+str_dollar_kw = CaselessKeyword('str$')
 string_kw = CaselessKeyword('string')
 sub_kw = CaselessKeyword('sub')
 then_kw = CaselessKeyword('then')
@@ -207,6 +208,7 @@ builtin_func = Located(
         len_kw |
         peek_kw |
         space_dollar_kw |
+        str_dollar_kw |
         timer_kw |
         ucase_dollar_kw |
         val_kw
