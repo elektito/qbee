@@ -84,9 +84,9 @@ class VarDeclClause(Stmt):
             _type = self.parent_routine.get_variable(self.name).type
 
         if self.array_dims or self.is_nodim_array:
-            _type.is_array = True
-            _type.array_dims = self.array_dims
-            _type.is_nodim_array = self.is_nodim_array
+            _type = _type.modified(is_array=True,
+                                   array_dims=self.array_dims,
+                                   is_nodim_array=self.is_nodim_array)
 
         return _type
 

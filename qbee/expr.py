@@ -1,6 +1,8 @@
 import numbers
 from enum import Enum
 from abc import abstractmethod
+from dataclasses import dataclass, replace as dataclass_replace
+from typing import ClassVar
 from .exceptions import ErrorCode as EC, InternalError, CompileError
 from .node import Node
 from .utils import split_camel
@@ -17,15 +19,15 @@ class BuiltinType(Enum):
     UNKNOWN = 200
 
 
+@dataclass(frozen=True)
 class Type:
-    type_chars = '%&!#$'
+    type_chars: ClassVar[str] = '%&!#$'
 
-    def __init__(self, builtin_type, user_type_name=None):
-        self._type = builtin_type
-        self.user_type_name = user_type_name
-        self.is_array = False
-        self.array_dims = None
-        self.is_nodim_array = False  # e.g.: x() as integer
+    _type: BuiltinType
+    is_array: bool
+    user_type_name: str
+    array_dims: list
+    is_nodim_array: bool  # e.g.: x() as integer
 
     def __eq__(self, other):
         assert isinstance(other, Type)
@@ -81,6 +83,9 @@ class Type:
         if self._type == BuiltinType.STRING and isinstance(value, str):
             return True
         return False
+
+    def modified(self, **changes):
+        return dataclass_replace(self, **changes)
 
     @property
     def name(self):
@@ -163,7 +168,11 @@ class Type:
     @property
     def array_base_type(self):
         assert self.is_array
-        return Type(self._type, self.user_type_name)
+        return Type(self._type,
+                    user_type_name=self.user_type_name,
+                    is_array=False,
+                    array_dims=None,
+                    is_nodim_array=False)
 
     @property
     def type_id(self):
@@ -196,32 +205,56 @@ class Type:
     @classmethod
     @property
     def INTEGER(cls):
-        return cls(BuiltinType.INTEGER)
+        return cls(BuiltinType.INTEGER,
+                   user_type_name=None,
+                   is_array=False,
+                   array_dims=None,
+                   is_nodim_array=False)
 
     @classmethod
     @property
     def LONG(cls):
-        return cls(BuiltinType.LONG)
+        return cls(BuiltinType.LONG,
+                   user_type_name=None,
+                   is_array=False,
+                   array_dims=None,
+                   is_nodim_array=False)
 
     @classmethod
     @property
     def SINGLE(cls):
-        return cls(BuiltinType.SINGLE)
+        return cls(BuiltinType.SINGLE,
+                   user_type_name=None,
+                   is_array=False,
+                   array_dims=None,
+                   is_nodim_array=False)
 
     @classmethod
     @property
     def DOUBLE(cls):
-        return cls(BuiltinType.DOUBLE)
+        return cls(BuiltinType.DOUBLE,
+                   user_type_name=None,
+                   is_array=False,
+                   array_dims=None,
+                   is_nodim_array=False)
 
     @classmethod
     @property
     def STRING(cls):
-        return cls(BuiltinType.STRING)
+        return cls(BuiltinType.STRING,
+                   user_type_name=None,
+                   is_array=False,
+                   array_dims=None,
+                   is_nodim_array=False)
 
     @classmethod
     @property
     def UNKNOWN(cls):
-        return cls(BuiltinType.UNKNOWN)
+        return cls(BuiltinType.UNKNOWN,
+                   user_type_name=None,
+                   is_array=False,
+                   array_dims=None,
+                   is_nodim_array=False)
 
     @classmethod
     @property
@@ -235,12 +268,22 @@ class Type:
         )
 
     @classmethod
-    def user_defined(cls, type_name):
+    def user_defined(cls, type_name, *,
+                     is_array=False,
+                     array_dims=None,
+                     is_nodim_array=False):
         assert type_name not in cls.builtin_types
-        return cls(BuiltinType.USER_DEFINED, type_name)
+        return cls(BuiltinType.USER_DEFINED,
+                   user_type_name=type_name,
+                   is_array=False,
+                   array_dims=None,
+                   is_nodim_array=False)
 
     @classmethod
-    def from_name(cls, type_name):
+    def from_name(cls, type_name, *,
+                  is_array=False,
+                  array_dims=None,
+                  is_nodim_array=False):
         builtins = {
             'integer': Type.INTEGER,
             'long': Type.LONG,
@@ -251,7 +294,13 @@ class Type:
         if type_name in builtins:
             return builtins[type_name]
         else:
-            return cls(BuiltinType.USER_DEFINED, type_name)
+            return cls(
+                _type=BuiltinType.USER_DEFINED,
+                user_type_name=type_name,
+                is_array=is_array,
+                array_dims=array_dims,
+                is_nodim_array=is_nodim_array,
+            )
 
     @staticmethod
     def name_ends_with_type_char(name: str):
