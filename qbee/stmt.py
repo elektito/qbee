@@ -446,6 +446,16 @@ class LocateStmt(Stmt):
         return f'<LocateStmt {self.row} {self.col}>'
 
 
+class PlayStmt(Stmt):
+    child_fields = ['command_string']
+
+    def __init__(self, command_string):
+        self.command_string = command_string
+
+    def __repr__(self):
+        return f'<PlayStmt {self.command_string}>'
+
+
 class PokeStmt(Stmt):
     child_fields = ['address', 'value']
 

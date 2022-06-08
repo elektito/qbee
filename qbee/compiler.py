@@ -814,6 +814,11 @@ class Pass2(CompilePass):
         if node.lines and not node.lines.type.is_numeric:
             raise CompileError(EC.TYPE_MISMATCH, node=node.lines)
 
+    def process_play_pre(self, node):
+        if node.command_string.type != Type.STRING:
+            raise CompileError(EC.TYPE_MISMATCH,
+                               node=node.command_string)
+
 
 class Pass3(CompilePass):
     # This pass does the following:

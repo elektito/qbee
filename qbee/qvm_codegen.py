@@ -25,6 +25,7 @@ QVM_DEVICES = {
         'id': 3,
         'ops': {
             'beep': 1,
+            'play': 2,
         },
     },
     'keyboard': {
@@ -1306,6 +1307,12 @@ def gen_locate_stmt(node, code, codegen):
     gen_code_for_conv(expr.Type.INTEGER, node.col, code, codegen)
 
     code.add(('io', 'screen', 'locate'))
+
+
+@QvmCodeGen.generator_for(stmt.PlayStmt)
+def gen_play_stmt(node, code, codegen):
+    codegen.gen_code_for_node(node.command_string, code)
+    code.add(('io', 'pcspkr', 'play'))
 
 
 @QvmCodeGen.generator_for(stmt.PokeStmt)

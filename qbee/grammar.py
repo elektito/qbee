@@ -24,7 +24,7 @@ from .stmt import (
     RangeCaseClause, CompareCaseClause, CaseStmt, CaseElseStmt,
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
     RandomizeStmt, GosubStmt, ReturnStmt, DefSegStmt, PokeStmt,
-    ReadStmt, RestoreStmt, LocateStmt, ScreenStmt, WidthStmt,
+    ReadStmt, RestoreStmt, LocateStmt, ScreenStmt, WidthStmt, PlayStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -82,6 +82,7 @@ next_kw = CaselessKeyword('next')
 not_kw = CaselessKeyword('not')
 or_kw = CaselessKeyword('or')
 peek_kw = CaselessKeyword('peek')
+play_kw = CaselessKeyword('play')
 poke_kw = CaselessKeyword('poke')
 print_kw = CaselessKeyword('print')
 randomize_kw = CaselessKeyword('randomize')
@@ -463,6 +464,11 @@ locate_stmt = (
     locate_kw.suppress() - expr - comma.suppress() - expr
 ).set_name('locate_stmt')
 
+play_stmt = (
+    play_kw.suppress() -
+    expr
+).set_name('play_stmt')
+
 poke_stmt = (
     poke_kw.suppress() - expr - comma.suppress() - expr
 ).set_name('poke_stmt')
@@ -655,6 +661,7 @@ stmt = Located(
     goto_stmt |
     input_stmt |
     locate_stmt |
+    play_stmt |
     poke_stmt |
     print_stmt |
     rem_stmt |
@@ -1119,6 +1126,12 @@ def parse_input(toks):
 def parse_locate_stmt(toks):
     row, col = toks
     return LocateStmt(row, col)
+
+
+@parse_action(play_stmt)
+def parse_play_stmt(toks):
+    command_string = toks[0]
+    return PlayStmt(command_string)
 
 
 @parse_action(poke_stmt)
