@@ -933,17 +933,17 @@ class BuiltinFuncCall(Expr):
 
     @property
     def type(self):
-        if self.name == 'int':
-            return Type.LONG
-        elif self.name == 'len':
-            return Type.LONG
-        elif self.name == 'peek':
-            return Type.INTEGER
-        elif self.name == 'space$':
-            return Type.STRING
-        elif self.name == 'timer':
-            return Type.SINGLE
-        elif self.name == 'val':
-            return Type.DOUBLE
-        else:
-            assert False, f'Unknown built-in function: {self.name}'
+        func_type = {
+            'int': Type.LONG,
+            'len': Type.LONG,
+            'peek': Type.INTEGER,
+            'space$': Type.STRING,
+            'timer': Type.SINGLE,
+            'val': Type.DOUBLE,
+        }.get(self.name)
+
+        if func_type is None:
+            raise InternalError(
+                f'Unknown built-in function: {self.name}')
+
+        return func_type
