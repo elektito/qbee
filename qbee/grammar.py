@@ -83,6 +83,7 @@ let_kw = CaselessKeyword('let')
 locate_kw = CaselessKeyword('locate')
 long_kw = CaselessKeyword('long')
 loop_kw = CaselessKeyword('loop')
+mid_dollar_kw = CaselessKeyword('mid$')
 mod_kw = CaselessKeyword('mod')
 next_kw = CaselessKeyword('next')
 not_kw = CaselessKeyword('not')
@@ -212,6 +213,7 @@ builtin_func = Located(
         lcase_dollar_kw |
         left_dollar_kw |
         len_kw |
+        mid_dollar_kw |
         peek_kw |
         right_dollar_kw |
         rnd_kw |

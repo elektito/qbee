@@ -539,6 +539,7 @@ class Pass2(CompilePass):
             'lcase$': (1, Type.STRING),
             'left$': (2, Type.STRING, Type.INTEGER),
             'len': (1, Type.STRING),
+            'mid$': ((2, 3), Type.STRING, Type.INTEGER, Type.INTEGER),
             'peek': (1, Type.INTEGER),
             'right$': (2, Type.STRING, Type.INTEGER),
             'rnd': ((0, 1), Type.SINGLE),

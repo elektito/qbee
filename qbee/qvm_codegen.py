@@ -108,6 +108,7 @@ class CanonicalOp(Enum):
     STOREREF = auto()
     STRLEFT = auto()
     STRLEN = auto()
+    STRMID = auto()
     STRRIGHT = auto()
     SWAP = auto()
     SWAPPREV = auto()
@@ -992,6 +993,21 @@ def gen_builtin_func_call(node, code, codegen):
     elif node.name == 'len':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('strlen',))
+    elif node.name == 'mid$':
+        codegen.gen_code_for_node(node.args[0], code)
+
+        codegen.gen_code_for_node(node.args[1], code)
+        gen_code_for_conv(
+            expr.Type.INTEGER, node.args[1], code, codegen)
+
+        if len(node.args) == 3:
+            codegen.gen_code_for_node(node.args[1], code)
+            gen_code_for_conv(
+                expr.Type.INTEGER, node.args[2], code, codegen)
+        else:
+            code.add(('push%', -1))
+
+        code.add(('strmid',))
     elif node.name == 'peek':
         codegen.gen_code_for_node(node.args[0], code)
         gen_code_for_conv(expr.Type.LONG, node.args[0], code, codegen)

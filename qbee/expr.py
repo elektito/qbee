@@ -940,6 +940,7 @@ class BuiltinFuncCall(Expr):
             'lcase$': Type.STRING,
             'left$': Type.STRING,
             'len': Type.LONG,
+            'mid$': Type.STRING,
             'peek': Type.INTEGER,
             'right$': Type.STRING,
             'rnd': Type.SINGLE,
