@@ -71,6 +71,7 @@ gosub_kw = CaselessKeyword('gosub')
 goto_kw = CaselessKeyword('goto')
 if_kw = CaselessKeyword('if')
 imp_kw = CaselessKeyword('imp')
+inkey_dollar_kw = CaselessKeyword('inkey$')
 input_kw = CaselessKeyword('input')
 integer_kw = CaselessKeyword('integer')
 int_kw = CaselessKeyword('int')
@@ -206,6 +207,7 @@ expr_list = delimited_list(expr, delim=',', min=1)
 builtin_func = Located(
     (
         chr_dollar_kw |
+        inkey_dollar_kw |
         int_kw |
         lcase_dollar_kw |
         left_dollar_kw |

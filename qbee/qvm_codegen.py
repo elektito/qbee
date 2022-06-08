@@ -32,6 +32,7 @@ QVM_DEVICES = {
         'id': 4,
         'ops': {
             'input': 1,
+            'inkey': 2,
         },
     },
     'time': {
@@ -974,6 +975,8 @@ def gen_builtin_func_call(node, code, codegen):
         gen_code_for_conv(
             expr.Type.INTEGER, node.args[0], code, codegen)
         code.add(('chr',))
+    elif node.name == 'inkey$':
+        code.add(('io', 'keyboard', 'inkey'))
     elif node.name == 'int':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('int',))

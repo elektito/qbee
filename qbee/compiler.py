@@ -534,6 +534,7 @@ class Pass2(CompilePass):
     def process_builtin_func_call_pre(self, node):
         nargs, *arg_types = {
             'chr$': (1, Type.INTEGER),
+            'inkey$': (0,),
             'int': (1, 'numeric'),
             'lcase$': (1, Type.STRING),
             'left$': (2, Type.STRING, Type.INTEGER),

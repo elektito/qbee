@@ -935,6 +935,7 @@ class BuiltinFuncCall(Expr):
     def type(self):
         func_type = {
             'chr$': Type.STRING,
+            'inkey$': Type.STRING,
             'int': Type.LONG,
             'lcase$': Type.STRING,
             'left$': Type.STRING,
