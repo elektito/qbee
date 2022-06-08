@@ -1353,7 +1353,7 @@ def gen_read_stmt(node, code, codegen):
 
 
 @QvmCodeGen.generator_for(stmt.RestoreStmt)
-def gen_read_stmt(node, code, codegen):
+def gen_restore_stmt(node, code, codegen):
     target = node.canonical_target
     if target is None:
         target = ''
