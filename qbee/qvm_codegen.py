@@ -76,6 +76,7 @@ class CanonicalOp(Enum):
     IO = auto()
     JMP = auto()
     JZ = auto()
+    LCASE = auto()
     LE = auto()
     LT = auto()
     MOD = auto()
@@ -103,6 +104,7 @@ class CanonicalOp(Enum):
     STRLEN = auto()
     SWAP = auto()
     SWAPPREV = auto()
+    UCASE = auto()
     XOR = auto()
 
     _LABEL = 10000
@@ -964,6 +966,9 @@ def gen_builtin_func_call(node, code, codegen):
     if node.name == 'int':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('int',))
+    elif node.name == 'lcase$':
+        codegen.gen_code_for_node(node.args[0], code)
+        code.add(('lcase',))
     elif node.name == 'len':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('strlen',))
@@ -976,11 +981,14 @@ def gen_builtin_func_call(node, code, codegen):
         gen_code_for_conv(
             expr.Type.INTEGER, node.args[0], code, codegen)
         code.add(('space',))
+    elif node.name == 'timer':
+        code.add(('io', 'time', 'get_time'))
     elif node.name == 'val':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('sdbl',))
-    elif node.name == 'timer':
-        code.add(('io', 'time', 'get_time'))
+    elif node.name == 'ucase$':
+        codegen.gen_code_for_node(node.args[0], code)
+        code.add(('ucase',))
     else:
         assert False, f'Unknown builtin function: {node.name}'
 

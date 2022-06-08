@@ -525,10 +525,12 @@ class Pass2(CompilePass):
     def process_builtin_func_call_pre(self, node):
         nargs, *arg_types = {
             'int': (1, 'numeric'),
+            'lcase$': (1, Type.STRING),
             'len': (1, Type.STRING),
             'peek': (1, Type.INTEGER),
             'space$': (1, 'numeric'),
             'timer': (0,),
+            'ucase$': (1, Type.STRING),
             'val': (1, Type.STRING),
         }.get(node.name, (None,))
         if nargs is None:

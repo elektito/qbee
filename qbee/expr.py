@@ -935,10 +935,12 @@ class BuiltinFuncCall(Expr):
     def type(self):
         func_type = {
             'int': Type.LONG,
+            'lcase$': Type.STRING,
             'len': Type.LONG,
             'peek': Type.INTEGER,
             'space$': Type.STRING,
             'timer': Type.SINGLE,
+            'ucase$': Type.STRING,
             'val': Type.DOUBLE,
         }.get(self.name)
 
