@@ -511,7 +511,7 @@ class Pass2(CompilePass):
             if len(func_node.args) != len(arg_types):
                 raise CompileError(
                         EC.ARGUMENT_COUNT_MISMATCH,
-                        node=node)
+                        node=func_node)
         for arg, arg_type in zip(func_node.args, arg_types):
             if isinstance(arg_type, Type):
                 if not arg.type.is_coercible_to(arg_type):
@@ -536,8 +536,10 @@ class Pass2(CompilePass):
             'chr$': (1, Type.INTEGER),
             'int': (1, 'numeric'),
             'lcase$': (1, Type.STRING),
+            'left$': (2, Type.STRING, Type.INTEGER),
             'len': (1, Type.STRING),
             'peek': (1, Type.INTEGER),
+            'right$': (2, Type.STRING, Type.INTEGER),
             'rnd': ((0, 1), Type.SINGLE),
             'space$': (1, Type.INTEGER),
             'str$': (1, 'numeric'),

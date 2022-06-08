@@ -105,7 +105,9 @@ class CanonicalOp(Enum):
     STORE = auto()
     STOREIDX = auto()
     STOREREF = auto()
+    STRLEFT = auto()
     STRLEN = auto()
+    STRRIGHT = auto()
     SWAP = auto()
     SWAPPREV = auto()
     UCASE = auto()
@@ -978,6 +980,12 @@ def gen_builtin_func_call(node, code, codegen):
     elif node.name == 'lcase$':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('lcase',))
+    elif node.name == 'left$':
+        codegen.gen_code_for_node(node.args[0], code)
+        codegen.gen_code_for_node(node.args[1], code)
+        gen_code_for_conv(
+            expr.Type.INTEGER, node.args[1], code, codegen)
+        code.add(('strleft',))
     elif node.name == 'len':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('strlen',))
@@ -985,6 +993,12 @@ def gen_builtin_func_call(node, code, codegen):
         codegen.gen_code_for_node(node.args[0], code)
         gen_code_for_conv(expr.Type.LONG, node.args[0], code, codegen)
         code.add(('io', 'memory', 'peek'))
+    elif node.name == 'right$':
+        codegen.gen_code_for_node(node.args[0], code)
+        codegen.gen_code_for_node(node.args[1], code)
+        gen_code_for_conv(
+            expr.Type.INTEGER, node.args[1], code, codegen)
+        code.add(('strright',))
     elif node.name == 'rnd':
         if len(node.args) == 1:
             codegen.gen_code_for_node(node.args[0], code)

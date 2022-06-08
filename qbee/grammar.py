@@ -76,6 +76,7 @@ integer_kw = CaselessKeyword('integer')
 int_kw = CaselessKeyword('int')
 is_kw = CaselessKeyword('is')
 lcase_dollar_kw = CaselessKeyword('lcase$')
+left_dollar_kw = CaselessKeyword('left$')
 len_kw = CaselessKeyword('len')
 let_kw = CaselessKeyword('let')
 locate_kw = CaselessKeyword('locate')
@@ -94,6 +95,7 @@ read_kw = CaselessKeyword('read')
 rem_kw = CaselessKeyword('rem')
 restore_kw = CaselessKeyword('restore')
 return_kw = CaselessKeyword('return')
+right_dollar_kw = CaselessKeyword('right$')
 rnd_kw = CaselessKeyword('rnd')
 screen_kw = CaselessKeyword('screen')
 seg_kw = CaselessKeyword('seg')
@@ -206,8 +208,10 @@ builtin_func = Located(
         chr_dollar_kw |
         int_kw |
         lcase_dollar_kw |
+        left_dollar_kw |
         len_kw |
         peek_kw |
+        right_dollar_kw |
         rnd_kw |
         space_dollar_kw |
         str_dollar_kw |
