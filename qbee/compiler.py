@@ -365,84 +365,6 @@ class Pass1(CompilePass):
                 node=node.value)
         self.compilation.consts[node.name] = node.value
 
-    def process_array_pass_pre(self, node):
-        var = node.parent_routine.get_variable(node.identifier)
-        if not var.type.is_array:
-            raise CompileError(
-                EC.TYPE_MISMATCH,
-                'Not an array',
-                node=node)
-
-    def process_binary_op_pre(self, node):
-        if node.op.is_comparison:
-            if node.left.type.is_numeric and \
-               not node.right.type.is_numeric:
-                raise CompileError(EC.TYPE_MISMATCH, node=node)
-            elif node.right.type.is_numeric and \
-                 not node.left.type.is_numeric:
-                raise CompileError(EC.TYPE_MISMATCH, node=node)
-            elif node.left.type == Type.STRING and \
-                 node.right.type != Type.STRING:
-                raise CompileError(EC.TYPE_MISMATCH, node=node)
-            elif node.right.type == Type.STRING and \
-                 node.left.type != Type.STRING:
-                raise CompileError(EC.TYPE_MISMATCH, node=node)
-            elif not node.left.type.is_builtin or \
-                 not node.right.type.is_builtin:
-                raise CompileError(EC.TYPE_MISMATCH, node=node)
-
-        if node.type == Type.UNKNOWN:
-            raise CompileError(EC.TYPE_MISMATCH, node=node)
-
-    def process_unary_op_pre(self, node):
-        # unary operators (NOT, +, -) are only valid on numeric
-        # expressions.
-        if not node.arg.type.is_numeric:
-            raise CompileError(EC.TYPE_MISMATCH, node=node)
-
-    def process_assignment_pre(self, node):
-        if not node.lvalue.type.is_coercible_to(node.rvalue.type):
-            raise CompileError(EC.TYPE_MISMATCH, node=node)
-
-        if Type.name_ends_with_type_char(node.lvalue.base_var):
-            base_name = node.lvalue.base_var[:-1]
-        else:
-            base_name = node.lvalue.base_var
-        if base_name == node.parent_routine.name and \
-           node.parent_routine.kind == 'function' and \
-           not node.lvalue.dotted_vars and \
-           not node.lvalue.array_indices:
-            # assigning to function name (return value)
-            new_node = ReturnValueSetStmt(node.rvalue)
-            node.parent.replace_child(node, new_node)
-            return
-
-    def process_call_pre(self, node):
-        for arg in node.args:
-            if isinstance(arg, Lvalue) and arg.type.is_array:
-                raise CompileError(
-                    EC.TYPE_MISMATCH,
-                    f'Parameter type mismatch. Did you mean '
-                    f'{arg.base_var}()?',
-                    node=arg,
-                )
-
-    def process_for_block_pre(self, node):
-        if not node.var.base_type.is_numeric:
-            raise CompileError(
-                EC.TYPE_MISMATCH,
-                'FOR variable must be numeric',
-                node=node.var,
-            )
-
-    def process_input_pre(self, node):
-        for lvalue in node.var_list:
-            if not lvalue.type.is_builtin:
-                raise CompileError(
-                    EC.TYPE_MISMATCH,
-                    'Input can only have builtin types',
-                    node=lvalue)
-
     def process_sub_block_pre(self, node):
         if node.parent_routine.name != '_main':
             raise CompileError(
@@ -564,21 +486,6 @@ class Pass1(CompilePass):
                 EC.ELSE_WITHOUT_IF,
                 'ELSE outside IF block',
                 node=node)
-
-    def process_view_print_pre(self, node):
-        if node.top_expr and not node.top_expr.type.is_numeric:
-            raise CompileError(
-                EC.TYPE_MISMATCH,
-                'Expected numeric expression',
-                node=node.top_expr
-            )
-
-        if node.bottom_expr and not node.bottom_expr.type.is_numeric:
-            raise CompileError(
-                EC.TYPE_MISMATCH,
-                'Expected numeric expression',
-                node=node.bottom_expr
-            )
 
 
 class Pass2(CompilePass):
@@ -804,6 +711,99 @@ class Pass2(CompilePass):
                 node.parent_routine.static_vars[decl.name] = decl.type
             else:
                 node.parent_routine.local_vars[decl.name] = decl.type
+
+    def process_assignment_pre(self, node):
+        if not node.lvalue.type.is_coercible_to(node.rvalue.type):
+            raise CompileError(EC.TYPE_MISMATCH, node=node)
+
+        if Type.name_ends_with_type_char(node.lvalue.base_var):
+            base_name = node.lvalue.base_var[:-1]
+        else:
+            base_name = node.lvalue.base_var
+        if base_name == node.parent_routine.name and \
+           node.parent_routine.kind == 'function' and \
+           not node.lvalue.dotted_vars and \
+           not node.lvalue.array_indices:
+            # assigning to function name (return value)
+            new_node = ReturnValueSetStmt(node.rvalue)
+            node.parent.replace_child(node, new_node)
+            return
+
+    def process_array_pass_pre(self, node):
+        var = node.parent_routine.get_variable(node.identifier)
+        if not var.type.is_array:
+            raise CompileError(
+                EC.TYPE_MISMATCH,
+                'Not an array',
+                node=node)
+
+    def process_binary_op_pre(self, node):
+        if node.op.is_comparison:
+            if node.left.type.is_numeric and \
+               not node.right.type.is_numeric:
+                raise CompileError(EC.TYPE_MISMATCH, node=node)
+            elif node.right.type.is_numeric and \
+                 not node.left.type.is_numeric:
+                raise CompileError(EC.TYPE_MISMATCH, node=node)
+            elif node.left.type == Type.STRING and \
+                 node.right.type != Type.STRING:
+                raise CompileError(EC.TYPE_MISMATCH, node=node)
+            elif node.right.type == Type.STRING and \
+                 node.left.type != Type.STRING:
+                raise CompileError(EC.TYPE_MISMATCH, node=node)
+            elif not node.left.type.is_builtin or \
+                 not node.right.type.is_builtin:
+                raise CompileError(EC.TYPE_MISMATCH, node=node)
+
+        if node.type == Type.UNKNOWN:
+            raise CompileError(EC.TYPE_MISMATCH, node=node)
+
+    def process_unary_op_pre(self, node):
+        # unary operators (NOT, +, -) are only valid on numeric
+        # expressions.
+        if not node.arg.type.is_numeric:
+            raise CompileError(EC.TYPE_MISMATCH, node=node)
+
+    def process_call_pre(self, node):
+        for arg in node.args:
+            if isinstance(arg, Lvalue) and arg.type.is_array:
+                raise CompileError(
+                    EC.TYPE_MISMATCH,
+                    f'Parameter type mismatch. Did you mean '
+                    f'{arg.base_var}()?',
+                    node=arg,
+                )
+
+    def process_for_block_pre(self, node):
+        if not node.var.base_type.is_numeric:
+            raise CompileError(
+                EC.TYPE_MISMATCH,
+                'FOR variable must be numeric',
+                node=node.var,
+            )
+
+    def process_input_pre(self, node):
+        for lvalue in node.var_list:
+            if not lvalue.type.is_builtin:
+                raise CompileError(
+                    EC.TYPE_MISMATCH,
+                    'Input can only have builtin types',
+                    node=lvalue)
+
+    def process_view_print_pre(self, node):
+        if node.top_expr and not node.top_expr.type.is_numeric:
+            raise CompileError(
+                EC.TYPE_MISMATCH,
+                'Expected numeric expression',
+                node=node.top_expr
+            )
+
+        if node.bottom_expr and not node.bottom_expr.type.is_numeric:
+            raise CompileError(
+                EC.TYPE_MISMATCH,
+                'Expected numeric expression',
+                node=node.bottom_expr
+            )
 
 
 class Pass3(CompilePass):
