@@ -58,9 +58,9 @@ class Type:
         elif self.is_builtin:
             s = f'Type.{self.name.upper()}'
         else:
-            s = f'Type.USER_DEFINED({self.name})'
-        if self.is_array:
-            s += '()'
+            s = f'Type.USER_DEFINED({self.user_type_name})'
+            if self.is_array:
+                s += '()'
         return s
 
     def can_hold(self, value):
