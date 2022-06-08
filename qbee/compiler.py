@@ -65,7 +65,6 @@ class Routine:
         self.local_vars: dict[str, Type] = {}
         self.static_vars: dict[str, Type] = {}
         self.labels = set()
-        self.def_letter_types = {}  # maps a single letter to a type
 
     def __repr__(self):
         static = ' STATIC' if self.is_static else ''
@@ -78,7 +77,8 @@ class Routine:
             if identifier in self.compilation.global_vars:
                 return self.compilation.global_vars[identifier]
 
-            def_type = self.def_letter_types.get(identifier[0].lower())
+            def_type = self.compilation.def_letter_types.get(
+                identifier[0].lower())
             if def_type:
                 return def_type
 
@@ -151,6 +151,7 @@ class CompilationUnit:
         self.user_types = {}
         self.consts = {}
         self.global_vars = {}
+        self.def_letter_types = {}  # maps a single letter to a type
 
     def is_const(self, name):
         "Return whether the given name is a const or not"
@@ -329,7 +330,6 @@ class Pass1(CompilePass):
 
     def __init__(self, compilation):
         super().__init__(compilation)
-        self.toplevel_deftype_letters = {}
 
     def process_program_pre(self, node):
         node.routine = self.compilation.routines['_main']
@@ -356,7 +356,8 @@ class Pass1(CompilePass):
 
     def process_def_type_pre(self, node):
         for letter in node.letters:
-            self.toplevel_deftype_letters[letter.lower()] = node.type
+            letter = letter.lower()
+            self.compilation.def_letter_types[letter] = node.type
 
     def process_const_pre(self, node):
         if not node.value.is_const:
@@ -387,9 +388,9 @@ class Pass1(CompilePass):
             if decl.var_type_name is None and \
                not Type.name_ends_with_type_char(decl.name):
                 letter = decl.name[0].lower()
-                if letter in self.toplevel_deftype_letters:
+                if letter in self.compilation.def_letter_types:
                     letter = decl.name[0].lower()
-                    param_type = self.toplevel_deftype_letters[letter]
+                    param_type = self.compilation.def_letter_types[letter]
             params.append((decl.name, param_type))
 
         routine = Routine(node.name, 'sub', self.compilation, params,
@@ -424,9 +425,9 @@ class Pass1(CompilePass):
             if decl.var_type_name is None and \
                not Type.name_ends_with_type_char(decl.name):
                 letter = decl.name[0].lower()
-                if letter in self.toplevel_deftype_letters:
+                if letter in self.compilation.def_letter_types:
                     letter = decl.name[0].lower()
-                    param_type = self.toplevel_deftype_letters[letter]
+                    param_type = self.compilation.def_letter_types[letter]
             params.append((decl.name, param_type))
 
         routine = Routine(node.name, 'function', self.compilation,
@@ -497,12 +498,6 @@ class Pass2(CompilePass):
     #    functions, since
     #    we're just finding function calls in this pass)
     # 3. Perform target checking in GOTO statements.
-    # 4. Gather DEF* statements
-
-    def process_def_type_pre(self, node):
-        for letter in node.letters:
-            letter = letter.lower()
-            node.parent_routine.def_letter_types[letter] = node.type
 
     def process_builtin_func_call_pre(self, node):
         if node.name == 'timer':
