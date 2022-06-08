@@ -47,6 +47,15 @@ QVM_DEVICES = {
             'seed': 1,
             'rnd': 2,
         }
+    },
+    'memory': {
+        'id': 7,
+        'ops': {
+            'poke': 1,
+            'peek': 2,
+            'set_segment': 3,
+            'set_default_segment': 4,
+        }
     }
 }
 
