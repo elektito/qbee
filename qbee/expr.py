@@ -933,9 +933,11 @@ class BuiltinFuncCall(Expr):
 
     @property
     def type(self):
-        if self.name == 'timer':
-            return Type.SINGLE
+        if self.name == 'len':
+            return Type.LONG
         elif self.name == 'peek':
             return Type.INTEGER
+        elif self.name == 'timer':
+            return Type.SINGLE
         else:
             assert False, f'Unknown built-in function: {self.name}'

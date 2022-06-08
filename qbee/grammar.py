@@ -73,6 +73,7 @@ input_kw = CaselessKeyword('input')
 imp_kw = CaselessKeyword('imp')
 integer_kw = CaselessKeyword('integer')
 is_kw = CaselessKeyword('is')
+len_kw = CaselessKeyword('len')
 let_kw = CaselessKeyword('let')
 locate_kw = CaselessKeyword('locate')
 long_kw = CaselessKeyword('long')
@@ -193,7 +194,7 @@ expr = Forward().set_name('expr')
 
 expr_list = delimited_list(expr, delim=',', min=1)
 builtin_func = Located(
-    (timer_kw | peek_kw) +
+    (len_kw | peek_kw | timer_kw) +
     Opt(
         lpar.suppress() +
         Group(expr_list, aslist=True) +
