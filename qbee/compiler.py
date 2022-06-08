@@ -533,6 +533,17 @@ class Pass2(CompilePass):
                     f'Type mismatch; expected INTEGER; got '
                     f'{node.args[0].type.name.upper()}',
                     node=node.args[0])
+        if node.name == 'space$':
+            if len(node.args) != 1:
+                raise CompileError(
+                    EC.ARGUMENT_COUNT_MISMATCH,
+                    node=node)
+            if not node.args[0].type.is_numeric:
+                raise CompileError(
+                    EC.TYPE_MISMATCH,
+                    f'Type mismatch; expected a numeric value; got '
+                    f'{node.args[0].type.name.upper()}',
+                    node=node.args[0])
         elif node.name == 'timer':
             if len(node.args) != 0:
                 raise CompileError(

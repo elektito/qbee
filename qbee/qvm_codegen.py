@@ -94,6 +94,7 @@ class CanonicalOp(Enum):
     RET = auto()
     RETV = auto()
     SIGN = auto()
+    SPACE = auto()
     SUB = auto()
     STORE = auto()
     STOREIDX = auto()
@@ -969,6 +970,11 @@ def gen_builtin_func_call(node, code, codegen):
         codegen.gen_code_for_node(node.args[0], code)
         gen_code_for_conv(expr.Type.LONG, node.args[0], code, codegen)
         code.add(('io', 'memory', 'peek'))
+    elif node.name == 'space$':
+        codegen.gen_code_for_node(node.args[0], code)
+        gen_code_for_conv(
+            expr.Type.INTEGER, node.args[0], code, codegen)
+        code.add(('space',))
     elif node.name == 'timer':
         code.add(('io', 'time', 'get_time'))
     else:

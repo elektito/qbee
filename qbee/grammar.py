@@ -97,6 +97,7 @@ seg_kw = CaselessKeyword('seg')
 select_kw = CaselessKeyword('select')
 shared_kw = CaselessKeyword('shared')
 single_kw = CaselessKeyword('single')
+space_dollar_kw = CaselessKeyword('space$')
 static_kw = CaselessKeyword('static')
 step_kw = CaselessKeyword('step')
 string_kw = CaselessKeyword('string')
@@ -195,7 +196,7 @@ expr = Forward().set_name('expr')
 
 expr_list = delimited_list(expr, delim=',', min=1)
 builtin_func = Located(
-    (int_kw | len_kw | peek_kw | timer_kw) +
+    (int_kw | len_kw | peek_kw | space_dollar_kw | timer_kw) +
     Opt(
         lpar.suppress() +
         Group(expr_list, aslist=True) +

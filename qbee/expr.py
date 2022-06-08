@@ -939,6 +939,8 @@ class BuiltinFuncCall(Expr):
             return Type.LONG
         elif self.name == 'peek':
             return Type.INTEGER
+        elif self.name == 'space$':
+            return Type.STRING
         elif self.name == 'timer':
             return Type.SINGLE
         else:
