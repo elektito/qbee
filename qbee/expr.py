@@ -943,5 +943,7 @@ class BuiltinFuncCall(Expr):
             return Type.STRING
         elif self.name == 'timer':
             return Type.SINGLE
+        elif self.name == 'val':
+            return Type.DOUBLE
         else:
             assert False, f'Unknown built-in function: {self.name}'

@@ -108,6 +108,7 @@ to_kw = CaselessKeyword('to')
 type_kw = CaselessKeyword('type')
 until_kw = CaselessKeyword('until')
 using_kw = CaselessKeyword('using')
+val_kw = CaselessKeyword('val')
 view_kw = CaselessKeyword('view')
 wend_kw = CaselessKeyword('wend')
 while_kw = CaselessKeyword('while')
@@ -196,7 +197,7 @@ expr = Forward().set_name('expr')
 
 expr_list = delimited_list(expr, delim=',', min=1)
 builtin_func = Located(
-    (int_kw | len_kw | peek_kw | space_dollar_kw | timer_kw) +
+    (int_kw | len_kw | peek_kw | space_dollar_kw | timer_kw | val_kw) +
     Opt(
         lpar.suppress() +
         Group(expr_list, aslist=True) +

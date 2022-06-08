@@ -93,6 +93,7 @@ class CanonicalOp(Enum):
     REFIDX = auto()
     RET = auto()
     RETV = auto()
+    SDBL = auto()
     SIGN = auto()
     SPACE = auto()
     SUB = auto()
@@ -975,6 +976,9 @@ def gen_builtin_func_call(node, code, codegen):
         gen_code_for_conv(
             expr.Type.INTEGER, node.args[0], code, codegen)
         code.add(('space',))
+    elif node.name == 'val':
+        codegen.gen_code_for_node(node.args[0], code)
+        code.add(('sdbl',))
     elif node.name == 'timer':
         code.add(('io', 'time', 'get_time'))
     else:
