@@ -265,9 +265,11 @@ class QvmCode(BaseCode):
             raise InternalError('Instruction not a tuple')
         self._instrs.extend([QvmInstr(*i) for i in instrs])
 
-    def add_data(self, data, label):
-        for part in data:
-            self._data[label].append(part)
+    def add_data(self, label, data: list):
+        self._data[label].extend(data)
+
+    def get_data_label_index(self, label):
+        return list(self._data.keys()).index(label)
 
     def add_user_type(self, type_block):
         self._user_types[type_block.name] = type_block
@@ -670,6 +672,11 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
     def init_code(self, code):
         for user_type in self.compilation.user_types.values():
             code.add_user_type(user_type)
+
+        for data_label, data_items in self.compilation.data.items():
+            if data_label is None:
+                data_label = '_toplevel_data'
+            code.add_data(data_label, data_items)
 
 
 # Shared code
@@ -1456,8 +1463,13 @@ def gen_restore_stmt(node, code, codegen):
     if target is None:
         target = ''
 
+    if target:
+        label_index = code.get_data_label_index(target)
+    else:
+        label_index = -1
+
     code.add(
-        ('push$', f'"{target}"'),
+        ('push%', label_index),
         ('io', 'data', 'restore'),
     )
 
@@ -1508,7 +1520,8 @@ def gen_width_stmt(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.DataStmt)
 def gen_data(node, code, codegen):
-    code.add_data(node.items, codegen.last_label)
+    # No code needs to be generated for DATA
+    pass
 
 
 @QvmCodeGen.generator_for(stmt.ExitSubStmt)

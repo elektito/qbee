@@ -1,3 +1,4 @@
+from collections import defaultdict
 from .stmt import (
     Stmt, IfBlock, VarDeclClause, ArrayDimRange, CallStmt,
     ReturnValueSetStmt, FunctionBlock, SubBlock, SimpleCaseClause,
@@ -152,6 +153,11 @@ class CompilationUnit:
         self.consts = {}
         self.global_vars = {}
         self.def_letter_types = {}  # maps a single letter to a type
+
+        # Maps labels to all data values after it. The DATA statements
+        # before which no label is found are collected under a "None"
+        # key.
+        self.data = defaultdict(list)
 
     def is_const(self, name):
         "Return whether the given name is a const or not"
@@ -330,6 +336,7 @@ class Pass1(CompilePass):
 
     def __init__(self, compilation):
         super().__init__(compilation)
+        self._last_label = None
 
     def process_program_pre(self, node):
         node.routine = self.compilation.routines['_main']
@@ -344,6 +351,7 @@ class Pass1(CompilePass):
                 node=node)
         node.parent_routine.labels.add(node.name)
         self.compilation.all_labels.add(node.name)
+        self._last_label = node.canonical_name
 
     def process_lineno_pre(self, node):
         if node.canonical_name in self.compilation.all_labels:
@@ -353,6 +361,7 @@ class Pass1(CompilePass):
                 node=node)
         node.parent_routine.labels.add(node.canonical_name)
         self.compilation.all_labels.add(node.canonical_name)
+        self._last_label = node.canonical_name
 
     def process_def_type_pre(self, node):
         for letter in node.letters:
@@ -487,6 +496,9 @@ class Pass1(CompilePass):
                 EC.ELSE_WITHOUT_IF,
                 'ELSE outside IF block',
                 node=node)
+
+    def process_data_pre(self, node):
+        self.compilation.data[self._last_label].extend(node.items)
 
 
 class Pass2(CompilePass):
