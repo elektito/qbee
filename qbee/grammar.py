@@ -860,6 +860,17 @@ def parse_expr_list(toks):
     return list(toks)
 
 
+@parse_action(dotted_vars)
+def parse_dotted_vars(toks):
+    # This is a workaround for a bug in pyparsing. The parse action
+    # for identifier and untyped_identifier is not called when inside
+    # dotted_vars at the moment, so we perform this action here, even
+    # though it should have been done in parse_identifier already
+    toks = toks[0]
+    toks = [t.lower() for t in toks]
+    return [toks]
+
+
 @parse_action(lvalue)
 def parse_lvalue(toks):
     loc_start, toks, loc_end = toks
@@ -1351,6 +1362,11 @@ def parse_var_decl(toks):
         dims = []
     else:
         is_nodim_array = False
+
+    # This should have been done in the parse_identifier, but that
+    # parse action is not always called at the moment due to a bug in
+    # pyparsing
+    name = name.lower()
 
     if type_name == 'any':
         clause = AnyVarDeclClause(name)
