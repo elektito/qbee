@@ -333,6 +333,7 @@ class Pass1(CompilePass):
     # 5. Convert some assignments to return value statements in
     #    functions
     # 6. Perform checks on some statements and expressions
+    # 7. Gather values in DATA statements and their labels
 
     def __init__(self, compilation):
         super().__init__(compilation)
