@@ -19,6 +19,7 @@ QVM_DEVICES = {
             'view_print': 4,
             'set_mode': 5,
             'width': 6,
+            'locate': 7,
         },
     },
     'pcspkr': {
@@ -55,6 +56,13 @@ QVM_DEVICES = {
             'peek': 2,
             'set_segment': 3,
             'set_default_segment': 4,
+        }
+    },
+    'data': {
+        'id': 8,
+        'ops': {
+            'read': 1,
+            'restore': 2,
         }
     }
 }
