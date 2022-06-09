@@ -1285,7 +1285,7 @@ def gen_for_block(node, code, codegen):
         (f'readl{type_char}', step_sign_var),
         (f'readl{type_char}', to_var),
         ('mul',),
-        (f'storel{type_char}', to_var),
+        (f'storel', to_var),
     )
 
     code.add(('_label', check_label))
