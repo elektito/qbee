@@ -290,7 +290,7 @@ line_no = Located(
 ).set_name('line_number')
 label = Located(
     ~keyword +
-    Regex(r'[a-z][a-z0-9]*', re.I) +
+    untyped_identifier +
     Literal(':').suppress()
 ).set_name('label')
 
@@ -730,6 +730,12 @@ def parse_action(rule):
             return func(*args, **kwargs)
         return func
     return wrapper
+
+
+@parse_action(typed_identifier)
+@parse_action(untyped_identifier)
+def parse_identifier(toks):
+    return [toks[0].lower()]
 
 
 @parse_action(atom)
