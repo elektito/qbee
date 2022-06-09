@@ -829,6 +829,7 @@ class Lvalue(Expr):
             if var_type is None:
                 raise CompileError(
                     EC.ELEMENT_NOT_DEFINED,
+                    f'No such element {var} in type {struct.name}',
                     node=self)
 
         return var_type
