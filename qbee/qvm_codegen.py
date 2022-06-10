@@ -632,37 +632,37 @@ class QvmCode(BaseCode):
         return bytes(code)
 
     def __bytes__(self):
-        const_section = b'\x01'
-        const_section += struct.pack('>H', len(self._consts))
+        sections = []
+
+        const_section = b''
         for const in self._consts:
             const_section += struct.pack('>H', len(const))
             const_section += const.encode('cp437')
+        sections.append((1, const_section))
 
-        data_section = b'\x02'
-        data_section += struct.pack('>H', len(self._data))
+        data_section = struct.pack('>H', len(self._data))
         for data_part in self._data.values():
             data_section += struct.pack('>H', len(data_part))
             for data_item in data_part:
                 data_section += struct.pack('>H', len(data_item))
                 data_section += data_item.encode('cp437')
+        sections.append((2, data_section))
 
-        global_section = b'\x03'
         n_global_cells = sum(
             expr.Type.get_type_size(vtype, self._user_types)
             for _, vtype in self._globals.items()
         )
-        global_section += struct.pack('>I', n_global_cells)
+        global_section = struct.pack('>I', n_global_cells)
+        sections.append((3, global_section))
 
-        code = self.assembled
-        code_size = len(code)
-        code_size = struct.pack('>I', code_size)
-        code_section = b'\x04' + code_size + code
+        code_section = self.assembled
+        sections.append((4, code_section))
 
-        return (
-            const_section +
-            data_section +
-            global_section +
-            code_section
+        return b''.join(
+            bytes([section_id]) +
+            struct.pack('>I', len(section)) +
+            section
+            for section_id, section in sections
         )
 
 

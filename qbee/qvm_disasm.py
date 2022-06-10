@@ -9,6 +9,58 @@ def perror(msg):
     exit(1)
 
 
+def parse_consts_section(section):
+    consts = []
+    idx = 0
+    while idx < len(section):
+        size, = struct.unpack('>H', section[idx:idx+2])
+        idx += 2
+        const_value = section[idx:idx+size]
+        idx += size
+        consts.append(const_value.decode('cp437'))
+
+    if idx != len(section):
+        perror('Extra data at the end of consts section')
+
+    return consts
+
+
+def parse_data_section(section):
+    data_parts = []
+    idx = 0
+    nparts, = struct.unpack('>H', section[idx:idx+2])
+    idx += 2
+    for i in range(nparts):
+        part = []
+        nitems, = struct.unpack('>H', section[idx:idx+2])
+        idx += 2
+        for j in range(nitems):
+            size, = struct.unpack('>H', section[idx:idx+2])
+            idx += 2
+            item = section[idx:idx+size]
+            idx += size
+            part.append(item.decode('cp437'))
+        data_parts.append(part)
+
+    if idx != len(section):
+        perror('Extra data at the end of data section')
+
+    return data_parts
+
+
+def parse_globals_section(section):
+    if len(section) != 4:
+        perror('consts section is not exactly 4 bytes')
+
+    n_global_cells, = struct.unpack('<I', section)
+
+    return n_global_cells
+
+
+def parse_code_section(section, consts):
+    return decode_code(section, consts)
+
+
 def disassemble(bcode: bytes):
     consts = []
     data_parts = []
@@ -22,39 +74,24 @@ def disassemble(bcode: bytes):
         if section_type in encountered_sections:
             perror('Multiple segments of the same type not supported')
         encountered_sections.add(section_type)
-
         idx += 1
+
+        section_len, = struct.unpack('>I', bcode[idx:idx+4])
+        idx += 4
+
+        section = bcode[idx:idx+section_len]
+        if len(section) != section_len:
+            perror('Invalid input module')
+        idx += section_len
+
         if section_type == 0x01:  # const section
-            nconsts, = struct.unpack('>H', bcode[idx:idx+2])
-            idx += 2
-            for i in range(nconsts):
-                size, = struct.unpack('>H', bcode[idx:idx+2])
-                idx += 2
-                const_value = bcode[idx:idx+size]
-                idx += size
-                consts.append(const_value.decode('cp437'))
+            consts = parse_consts_section(section)
         elif section_type == 0x02:  # data section
-            nparts, = struct.unpack('>H', bcode[idx:idx+2])
-            idx += 2
-            for i in range(nparts):
-                part = []
-                nitems, = struct.unpack('>H', bcode[idx:idx+2])
-                idx += 2
-                for j in range(nitems):
-                    size, = struct.unpack('>H', bcode[idx:idx+2])
-                    idx += 2
-                    item = bcode[idx:idx+size]
-                    idx += size
-                    part.append(item.decode('cp437'))
-                data_parts.append(part)
+            data_parts = parse_data_section(section)
         elif section_type == 0x03:  # globals section
-            n_global_cells, = struct.unpack('<I', bcode[idx:idx+4])
-            idx += 4
+            n_global_cells = parse_globals_section(section)
         elif section_type == 0x04:  # code section
-            code_size, = struct.unpack('>I', bcode[idx:idx+4])
-            idx += 4
-            code= decode_code(bcode[idx:idx+code_size], consts)
-            idx += code_size
+            code = parse_code_section(section, consts)
         else:
             perror(f'Unknown section id: {section_type}')
 
