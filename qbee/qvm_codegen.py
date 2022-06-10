@@ -728,7 +728,6 @@ def gen_code_for_args(args, param_types, code, codegen):
         else:
             codegen.gen_code_for_node(arg, code)
             gen_code_for_conv(param_type, arg, code, codegen)
-    code.add(('push%', len(args)))
 
 
 # Code generators for expressions
