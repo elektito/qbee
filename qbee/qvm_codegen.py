@@ -747,7 +747,7 @@ def gen_program(node, code, codegen):
         })
 
     code.add(('call', '_sub__main'),
-             ('ret',))
+             ('halt',))
     code.add(('_label', '_sub_' + node.routine.name))
     code.add(('frame',
               node.routine.params_size,
