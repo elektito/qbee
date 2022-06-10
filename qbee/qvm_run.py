@@ -325,19 +325,19 @@ class ScreenDevice(Device):
         printables = []
         format_string = None
         while i < len(args):
-            arg = args[i]
-            if i == 0:
+            arg = args[i].value
+            if arg == 0:
                 printables.append(args[i + 1])
                 i += 2
-            elif i == 1:
+            elif arg == 1:
                 printables.append(semicolon)
                 i += 1
-            elif i == 2:
+            elif arg == 2:
                 printables.append(comma)
                 i += 1
-            elif i == 3:
+            elif arg == 3:
                 if format_string is not None:
-                    self.device_error(
+                    self._device_error(
                         error_code=Device.DeviceError.BAD_ARG_VALUE,
                         error_msg=(
                             'Invalid argument type code for PRINT '
@@ -347,7 +347,7 @@ class ScreenDevice(Device):
                 format_string = args[i + 1]
                 i += 2
             else:
-                self.device_error(
+                self._device_error(
                     error_code=Device.DeviceError.BAD_ARG_VALUE,
                     error_msg=(
                         f'Invalid argument type code for PRINT '
