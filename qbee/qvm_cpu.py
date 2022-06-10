@@ -192,6 +192,7 @@ class CellValue:
         self.value = value
 
     def __repr__(self):
+        value = self.value
         if self.type == CellType.STRING:
             value = f'"{self.value}"'
         return (
