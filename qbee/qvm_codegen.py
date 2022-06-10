@@ -1458,7 +1458,7 @@ def gen_print_stmt(node, code, codegen):
             else:
                 assert False
 
-            nargs += 2
+            nargs += 1
         else:
             assert False
     code.add(('push%', nargs))
