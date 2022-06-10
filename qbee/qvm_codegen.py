@@ -1440,13 +1440,16 @@ def gen_poke_stmt(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.PrintStmt)
 def gen_print_stmt(node, code, codegen):
+    nargs = 0
     if node.format_string:
         code.add(('push%', 4))
         codegen.gen_code_for_node(node.format_string, code)
+        nargs += 2
     for item in node.items:
         if isinstance(item, expr.Expr):
             code.add(('push%', 0))
             codegen.gen_code_for_node(item, code)
+            nargs += 2
         elif isinstance(item, stmt.PrintSep):
             if item.sep == ';':
                 code.add(('push%', 1))
@@ -1454,8 +1457,11 @@ def gen_print_stmt(node, code, codegen):
                 code.add(('push%', 2))
             else:
                 assert False
+
+            nargs += 2
         else:
             assert False
+    code.add(('push%', nargs))
     code.add(('io', 'screen', 'print'))
 
 
