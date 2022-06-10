@@ -363,6 +363,7 @@ class QvmCpu:
     def _exec_deref(self):
         ref = self.pop(CellType.REFERENCE)
         derefed = ref.segment.get_local(ref.index)
+        logger.info(f'Derefed {ref} to {derefed}')
         self.push(derefed.type, derefed.value)
 
     def _exec_div(self):
