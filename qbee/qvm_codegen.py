@@ -804,6 +804,8 @@ def gen_program(node, code, codegen):
             for svar, stype in routine.static_vars.items()
         })
 
+    code.add(('call', '_sub__main'),
+             ('ret',))
     code.add(('_label', '_sub_' + node.routine.name))
     code.add(('frame',
               node.routine.params_size,
