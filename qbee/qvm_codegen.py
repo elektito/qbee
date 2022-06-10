@@ -1468,6 +1468,7 @@ def gen_print_stmt(node, code, codegen):
 @QvmCodeGen.generator_for(stmt.RandomizeStmt)
 def gen_randomize(node, code, codegen):
     codegen.gen_code_for_node(node.seed, code)
+    gen_code_for_conv(expr.Type.SINGLE, node.seed, code, codegen)
     code.add(('io', 'rng', 'seed'))
 
 
