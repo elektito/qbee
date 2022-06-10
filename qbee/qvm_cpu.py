@@ -343,8 +343,8 @@ class QvmCpu:
             self.trap(TrapCode.STACK_EMPTY)
 
     def _exec_add(self):
-        a = self.pop()
         b = self.pop()
+        a = self.pop()
 
         if not a.type.is_numeric or \
            not b.type.is_numeric:
@@ -450,8 +450,8 @@ class QvmCpu:
         device.execute(op_name)
 
     def _exec_mul(self):
-        a = self.pop()
         b = self.pop()
+        a = self.pop()
 
         if not a.type.is_numeric or \
            not b.type.is_numeric:
@@ -500,8 +500,8 @@ class QvmCpu:
         self.push(CellType.LONG, len(value))
 
     def _exec_sub(self):
-        a = self.pop()
         b = self.pop()
+        a = self.pop()
 
         if not a.type.is_numeric or \
            not b.type.is_numeric:
