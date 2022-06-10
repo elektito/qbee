@@ -6,66 +6,8 @@ from .program import Label, LineNo, Program
 from .exceptions import InternalError
 from .compiler import Routine
 from .qvm_instrs import op_to_instr
+from .qvm_run import QVM_DEVICES
 from . import stmt, expr
-
-
-QVM_DEVICES = {
-    'screen': {
-        'id': 2,
-        'ops': {
-            'cls': 1,
-            'print': 2,
-            'color': 3,
-            'view_print': 4,
-            'set_mode': 5,
-            'width': 6,
-            'locate': 7,
-        },
-    },
-    'pcspkr': {
-        'id': 3,
-        'ops': {
-            'beep': 1,
-            'play': 2,
-        },
-    },
-    'keyboard': {
-        'id': 4,
-        'ops': {
-            'input': 1,
-            'inkey': 2,
-        },
-    },
-    'time': {
-        'id': 5,
-        'ops': {
-            'get_time': 1,
-        }
-    },
-    'rng': {
-        'id': 6,
-        'ops': {
-            'seed': 1,
-            'rnd': 2,
-        }
-    },
-    'memory': {
-        'id': 7,
-        'ops': {
-            'poke': 1,
-            'peek': 2,
-            'set_segment': 3,
-            'set_default_segment': 4,
-        }
-    },
-    'data': {
-        'id': 8,
-        'ops': {
-            'read': 1,
-            'restore': 2,
-        }
-    }
-}
 
 
 class CanonicalOp(Enum):
