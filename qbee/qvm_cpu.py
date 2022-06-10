@@ -176,6 +176,9 @@ class CallFrame:
                                   idx=len(self.local_vars) - 1))
         self.set_local(idx, ref)
 
+    def destroy(self):
+        logger.info('Destroying dynamic arrays not implemented')
+
     def __repr__(self):
         ntemps = len(self.local_vars) - self.size
         return f'<CallFrame size={self.size} temps={ntemps}>'
@@ -403,6 +406,9 @@ class QvmCpu:
         # push back return address
         self.push(CellType.LONG, ret_addr)
 
+    def _exec_halt(self):
+        self.halted = True
+
     def _exec_idiv(self):
         a = self.pop()
         b = self.pop()
@@ -458,6 +464,12 @@ class QvmCpu:
 
     def _exec_push_string(self, value):
         self.push(CellType.STRING, value)
+
+    def _exec_ret(self):
+        self.cur_frame.destroy()
+        self.cur_frame = self.cur_frame.prev_frame
+        ret_addr = self.pop(CellType.LONG)
+        self.pc = ret_addr
 
     def _exec_readl_reference(self, idx):
         try:
