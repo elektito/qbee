@@ -1,4 +1,5 @@
 import argparse
+import struct
 import logging
 import logging.config
 from datetime import datetime
@@ -366,10 +367,21 @@ class ScreenDevice(Device):
             buf = ''
             def print_number(n):
                 nonlocal buf
-                if n >= 0:
-                    buf += f' {n}'
-                else:
-                    buf += str(n)
+                if n.value >= 0:
+                    buf += ' '
+                nval = n.value
+                if n.type == CellType.SINGLE:
+                    # limit it to a 32 bit float
+                    enc = struct.pack('>f', nval)
+                    nval, = struct.unpack('>f', enc)
+                nval = str(nval)
+                if nval.endswith('.0'):
+                    nval = nval[:-2]
+                if 'e' in nval and n.type == Type.DOUBLE:
+                    nval = nval.replace('e', 'D')
+                elif 'e' in nval:
+                    nval = nval.replace('e', 'E')
+                buf += nval
             for arg in printables:
                 if arg == semicolon:
                     pass
