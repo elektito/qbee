@@ -309,7 +309,7 @@ class ScreenDevice(Device):
         column = self._get_arg_from_stack(CellType.INTEGER)
         row = self._get_arg_from_stack(CellType.INTEGER)
 
-        print(f'\033[{row};{column}', end='')
+        print(f'\033[{row};{column}H', end='')
 
     def _exec_print(self):
         nargs = self._get_arg_from_stack(CellType.INTEGER)
