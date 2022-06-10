@@ -1412,6 +1412,12 @@ def gen_locate_stmt(node, code, codegen):
     codegen.gen_code_for_node(node.col, code)
     gen_code_for_conv(expr.Type.INTEGER, node.col, code, codegen)
 
+    code.add(
+        ('push%', -1),
+        ('push%', -1),
+        ('push%', -1),
+    )
+
     code.add(('io', 'screen', 'locate'))
 
 
