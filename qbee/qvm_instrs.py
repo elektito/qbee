@@ -15,7 +15,7 @@ class Operand:
     def decode(self, data: bytes) -> str:
         assert isinstance(data, bytes)
         assert len(data) == self.size
-        return str(self._decode(data))
+        return self.py_type(self._decode(data))
 
     def encode(self, value) -> bytes:
         assert isinstance(value, self.py_type)
@@ -76,7 +76,7 @@ class Label(Operand):
     py_type = int
 
     def _decode(self, data):
-        return hex(struct.unpack('>I', data)[0])
+        return struct.unpack('>I', data)[0]
 
     def _encode(self, value):
         assert 0 <= value <= 2 ** 32 - 1
@@ -218,8 +218,8 @@ def_instr('push2%', 60)
 def_instr('push2&', 61)
 def_instr('push2!', 62)
 def_instr('push2#', 63)
-def_instr('pushrefg', 64)
-def_instr('pushrefl', 65)
+def_instr('pushrefg', 64, [UInt16])
+def_instr('pushrefl', 65, [UInt16])
 def_instr('readg%', 66, [UInt16])
 def_instr('readg&', 67, [UInt16])
 def_instr('readg!', 68, [UInt16])
@@ -252,7 +252,7 @@ def_instr('sign', 106)
 def_instr('space', 112)
 def_instr('sub', 93)
 def_instr('storeg', 94, [UInt16])
-def_instr('storel', 95, UInt16)
+def_instr('storel', 95, [UInt16])
 def_instr('storeidxg', 96, [UInt16, UInt16])
 def_instr('storeidxl', 97, [UInt16, UInt16])
 def_instr('storeref', 98)
