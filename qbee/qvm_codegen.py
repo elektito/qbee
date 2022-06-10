@@ -1442,7 +1442,7 @@ def gen_poke_stmt(node, code, codegen):
 def gen_print_stmt(node, code, codegen):
     nargs = 0
     if node.format_string:
-        code.add(('push%', 4))
+        code.add(('push%', 3))
         codegen.gen_code_for_node(node.format_string, code)
         nargs += 2
     for item in node.items:
