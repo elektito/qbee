@@ -397,13 +397,13 @@ class QvmCpu:
         # copy parameters
         for i in range(params_size):
             # popping in reverse order
-            idx = params_size - i
+            idx = params_size - i - 1
 
             value = self.pop()
             if value.type == CellType.REFERENCE:
-                frame.set_local(i, value)
+                frame.set_local(idx, value)
             else:
-                frame.set_temp_reference(i, value)
+                frame.set_temp_reference(idx, value)
 
         # push back return address
         self.push(CellType.LONG, ret_addr)
