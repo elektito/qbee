@@ -402,9 +402,9 @@ class QvmCpu:
         if a.value == b.value:
             result = 0
         elif a.value < b.value:
-            result = 1
+            result = -1
         else:
-            result = 2
+            result = 1
         self.push(CellType.INTEGER, result)
 
     def _exec_deref(self):
