@@ -372,6 +372,41 @@ class QvmCpu:
         self.push(CellType.LONG, self.pc)
         self.pc = target
 
+    def _exec_chr(self):
+        char_code = self.pop(CellType.INTEGER)
+        if char_code < 0 or char_code > 255:
+            self.trap(TrapCode.INVALID_OPERAND_VALUE)
+
+        char = bytes([char_code]).decode('cp437')
+        self.push(CellType.STRING, char)
+
+    def _exec_cmp(self):
+        b = self.pop()
+        a = self.pop()
+
+        if not a.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=a.type)
+
+        if not b.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=b.type)
+
+        if a.type != b.type:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      a.type,
+                      b.type)
+
+        if a.value == b.value:
+            result = 0
+        elif a.value < b.value:
+            result = 1
+        else:
+            result = 2
+        self.push(CellType.INTEGER, result)
+
     def _exec_deref(self):
         ref = self.pop(CellType.REFERENCE)
         derefed = ref.segment.get_local(ref.index)
@@ -427,6 +462,16 @@ class QvmCpu:
 
         # push back return address
         self.push(CellType.LONG, ret_addr)
+
+    def _exec_ge(self):
+        value = self.pop()
+
+        if not value.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=a.type)
+        result = -1 if value.value >= 0 else 0
+        self.push(CellType.INTEGER, result)
 
     def _exec_halt(self):
         self.halted = True
@@ -538,6 +583,19 @@ class QvmCpu:
                       expected_type=CellType.REFERENCE,
                       got_type=value.type)
         self.push(CellType.REFERENCE, value.value)
+
+    def _exec_readl_single(self, idx):
+        try:
+            value = self.cur_frame.get_local(idx)
+        except IndexError:
+            self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
+                      idx=idx)
+
+        if value is None:
+            value = CellValue(CellType.SINGLE, 0.0)
+            self.cur_frame.set_local(idx, value)
+        else:
+            self.push(value.type, value.value)
 
     def _exec_storel(self, idx):
         value = self.pop()
