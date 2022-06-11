@@ -482,7 +482,14 @@ class QvmCode(BaseCode):
                 if var == pname:
                     return idx
                 idx += expr.Type.get_type_size(ptype, self._user_types)
-            return idx
+            for vname, vtype in routine.local_vars.items():
+                if var == vname:
+                    return len(routine.params) + idx
+                idx += expr.Type.get_type_size(vtype, self._user_types)
+            raise InternalError(
+                f'Variable not found in routine "{routine.name}" '
+                f'while assembling: {var}'
+            )
 
         cur_offset = 0
         cur_routine = self._main_routine
