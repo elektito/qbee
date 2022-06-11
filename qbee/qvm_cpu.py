@@ -523,6 +523,9 @@ class QvmCpu:
         op_name = get_device_op_name_by_id(device_name, operation)
         device.execute(op_name)
 
+    def _exec_jmp(self, target):
+        self.pc = target
+
     def _exec_jz(self, target):
         value = self.pop(CellType.INTEGER)
         if value == 0:
