@@ -435,6 +435,11 @@ class QvmCpu:
         result = dividend.value / divisor.value
         self.push(dividend.type, result)
 
+    def _exec_dupl(self):
+        value = self.stack.pop()
+        self.push(value.type, value.value)
+        self.push(value.type, value.value)
+
     def _exec_frame(self, params_size, local_vars_size):
         logger.info(
             'Creating stack frame: params=%d locals=%d',
@@ -599,6 +604,16 @@ class QvmCpu:
             self.cur_frame.set_local(idx, value)
         else:
             self.push(value.type, value.value)
+
+    def _exec_sign(self):
+        value = self.pop()
+        if not value.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=a.type)
+        v = value.value
+        sign = 1 if v > 0 else -1 if v < 0 else 0
+        self.push(value.type, value.type.py_type(sign))
 
     def _exec_storel(self, idx):
         value = self.pop()
