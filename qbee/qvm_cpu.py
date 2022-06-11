@@ -683,10 +683,15 @@ for src, dst in itertools.product(numeric_types, numeric_types):
     if src == dst:
         continue
     def get_method(src, dst, name):
+        conv_func = dst.py_type
+        if src.py_type == float and dst.py_type == int:
+            conv_func = lambda n: int(round(n))
         def method(self):
             value = self.pop(src)
-            value = dst.py_type(value)
-            self.push(dst, value)
+            new_value = conv_func(value)
+            self.push(dst, new_value)
+            logger.info(f'Converted {src.name} {value} to '
+                        f'{dst.name} {new_value}')
         method.__name__ = attr
         return method
 
