@@ -397,6 +397,18 @@ class ScreenDevice(Device):
             print(buf, end='')
 
 
+class PcSpeakerDevice(Device):
+    name = 'pcspkr'
+
+    def _exec_play(self):
+        command = self.cpu.pop(CellType.STRING)
+        logger.info('PLAY: %s', command)
+
+
+class KeyboardDevice(Device):
+    name = 'keyboard'
+
+
 def config_logging(args):
     logging.config.dictConfig({
         'version': 1,
@@ -459,6 +471,12 @@ def main():
 
     screen_device = ScreenDevice(QVM_DEVICES['screen']['id'], cpu)
     cpu.connect_device('screen', screen_device)
+
+    speaker_device = PcSpeakerDevice(QVM_DEVICES['pcspkr']['id'], cpu)
+    cpu.connect_device('pcspkr', speaker_device)
+
+    keyboard_device = KeyboardDevice(QVM_DEVICES['keyboard']['id'], cpu)
+    cpu.connect_device('keyboard', keyboard_device)
 
     cpu.run()
 
