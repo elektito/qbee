@@ -171,6 +171,11 @@ final form which might be in the form ('push1&',).
         else:
             args = self.args
 
+        args = [
+            arg() if callable(arg) else arg
+            for arg in args
+        ]
+
         scope = ''
         if self.scope:
             scope = self.scope
@@ -757,7 +762,7 @@ def gen_program(node, code, codegen):
     code.add(('_label', '_sub_' + node.routine.name))
     code.add(('frame',
               node.routine.params_size,
-              node.routine.local_vars_size))
+              lambda: node.routine.local_vars_size))
 
     sub_routines = []
     for child in node.children:
