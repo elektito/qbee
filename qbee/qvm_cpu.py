@@ -152,6 +152,7 @@ class TrapCode(Enum):
     INVALID_LOCAL_VAR_IDX = 5
     TYPE_MISMATCH = 7
     NULL_REFERENCE = 8
+    INVALID_OPERAND_VALUE = 9
 
 
 class CallFrame:
@@ -301,9 +302,12 @@ class QvmCpu:
         elif code == TrapCode.STACK_EMPTY:
             print('Attempting to pop a value from an empty stack')
         elif code == TrapCode.INVALID_LOCAL_VAR_IDX:
+            idx = kwargs['idx']
             print(f'Attempting to access invalid local var: {idx}')
         elif code == TrapCode.TYPE_MISMATCH:
-            expected_type = kwargs['expected'].name.upper()
+            expected_type = kwargs['expected']
+            if not isinstance(expected_type, str):
+                expected_type = expected_type.name.upper()
             got_type = kwargs['got'].name.upper()
             print(f'Type mismatch: expected {expected_type}, '
                   f'got {got_type}')
@@ -346,12 +350,20 @@ class QvmCpu:
         b = self.pop()
         a = self.pop()
 
-        if not a.type.is_numeric or \
-           not b.type.is_numeric:
-            self.trap(TrapCode.TYPE_MISMATCH)
+        if a.type.is_numeric and not b.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected=a.type,
+                      got=b.type)
+
+        if a.type == CellType.STRING and b.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected=a.type,
+                      got=b.type)
 
         if a.type != b.type:
-            self.trap(TrapCode.TYPE_MISMATCH)
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected=a.type,
+                      got=b.type)
 
         result = a.value + b.value
         self.push(a.type, result)
@@ -370,12 +382,20 @@ class QvmCpu:
         divisor = self.pop()
         dividend = self.pop()
 
-        if not divisor.type.is_numeric or \
-           not dividend.type.is_numeric:
-            self.trap(TrapCode.TYPE_MISMATCH)
+        if not divisor.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=divisor.type)
+
+        if not dividend.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=dividend.type)
 
         if divisor.type != dividend.type:
-            self.trap(TrapCode.TYPE_MISMATCH)
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected=dividend.type,
+                      got=divisor.type)
 
         result = dividend.value / divisor.value
         self.push(dividend.type, result)
@@ -415,12 +435,20 @@ class QvmCpu:
         a = self.pop()
         b = self.pop()
 
-        if not a.type.is_integral or \
-           not b.type.is_integral:
-            self.trap(TrapCode.TYPE_MISMATCH)
+        if not a.type.is_integral:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=a.type)
+
+        if not b.type.is_integral:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=b.type)
 
         if a.type != b.type:
-            self.trap(TrapCode.TYPE_MISMATCH)
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected=a.type,
+                      got=b.type)
 
         result = a.value // b.value
         self.push(a.type, result)
@@ -450,16 +478,39 @@ class QvmCpu:
         op_name = get_device_op_name_by_id(device_name, operation)
         device.execute(op_name)
 
+    def _exec_jz(self, target):
+        value = self.pop(CellType.INTEGER)
+        if value == 0:
+            self.pc = target
+
+    def _exec_le(self):
+        value = self.pop()
+
+        if not value.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=a.type)
+        result = -1 if value.value <= 0 else 0
+        self.push(CellType.INTEGER, result)
+
     def _exec_mul(self):
         b = self.pop()
         a = self.pop()
 
-        if not a.type.is_numeric or \
-           not b.type.is_numeric:
-            self.trap(TrapCode.TYPE_MISMATCH)
+        if not a.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=a.type)
+
+        if not b.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=b.type)
 
         if a.type != b.type:
-            self.trap(TrapCode.TYPE_MISMATCH)
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected=a.type,
+                      got=b.type)
 
         result = a.value * b.value
         self.push(a.type, result)
@@ -504,12 +555,20 @@ class QvmCpu:
         b = self.pop()
         a = self.pop()
 
-        if not a.type.is_numeric or \
-           not b.type.is_numeric:
-            self.trap(TrapCode.TYPE_MISMATCH)
+        if not a.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=a.type)
+
+        if not b.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=b.type)
 
         if a.type != b.type:
-            self.trap(TrapCode.TYPE_MISMATCH)
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      a.type,
+                      b.type)
 
         result = a.value - b.value
         self.push(a.type, result)
