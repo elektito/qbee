@@ -176,8 +176,8 @@ class MemoryDevice(Device):
         logger.info('Setting control keys not supported.')
 
 
-class ScreenDevice(Device):
-    name = 'screen'
+class TerminalDevice(Device):
+    name = 'terminal'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -199,31 +199,150 @@ class ScreenDevice(Device):
             )
             return
 
+        self._set_mode(mode, color_switch, apage, vpage)
+
     def _exec_width(self):
         lines = self._get_arg_from_stack(CellType.INTEGER)
         columns = self._get_arg_from_stack(CellType.INTEGER)
-        if lines != 25 or columns != 80:
-            self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
-                error_msg=(
-                    'Only 80x25 text mode is supported at the moment.'
-                )
-            )
-            return
+
+        self._width(columns, lines)
 
     def _exec_color(self):
         border = self._get_arg_from_stack(CellType.INTEGER)
         bg_color = self._get_arg_from_stack(CellType.INTEGER)
         fg_color = self._get_arg_from_stack(CellType.INTEGER)
-        if self.mode != 0:
+
+        self._color(fg_color, bg_color, border)
+
+    def _exec_cls(self):
+        self._cls()
+
+    def _exec_locate(self):
+        stop = self._get_arg_from_stack(CellType.INTEGER)
+        start = self._get_arg_from_stack(CellType.INTEGER)
+        cursor = self._get_arg_from_stack(CellType.INTEGER)
+        column = self._get_arg_from_stack(CellType.INTEGER)
+        row = self._get_arg_from_stack(CellType.INTEGER)
+
+        # convert one-based values to zero-based
+        if column >= 1:
+            column -= 1
+        if row >= 1:
+            row -= 1
+
+        self._locate(row, column, cursor, start, stop)
+
+    def _exec_print(self):
+        nargs = self._get_arg_from_stack(CellType.INTEGER)
+        args = []
+        for i in range(nargs):
+            arg = self._get_arg_from_stack()
+            args.append(arg)
+        args.reverse()
+
+        i = 0
+        semicolon = object()
+        comma = object()
+        printables = []
+        format_string = None
+        while i < len(args):
+            arg = args[i].value
+            if arg == 0:
+                printables.append(args[i + 1])
+                i += 2
+            elif arg == 1:
+                printables.append(semicolon)
+                i += 1
+            elif arg == 2:
+                printables.append(comma)
+                i += 1
+            elif arg == 3:
+                if format_string is not None:
+                    self._device_error(
+                        error_code=Device.DeviceError.BAD_ARG_VALUE,
+                        error_msg=(
+                            'Invalid argument type code for PRINT '
+                            '(multiple format strings)'
+                        )
+                    )
+                format_string = args[i + 1]
+                i += 2
+            else:
+                self._device_error(
+                    error_code=Device.DeviceError.BAD_ARG_VALUE,
+                    error_msg=(
+                        f'Invalid argument type code for PRINT '
+                        f'(unknown code: {args[i]})'
+                    )
+                )
+
+        if format_string:
+            formatter = PrintUsingFormatter(format_string)
+            new_line = printables[-1] not in [comma, semicolon]
+            printables = [a for a in printables
+                          if a != semicolon and a != comma]
+            self._print(formatter.format(printables).encode('cp437'))
+            if new_line:
+                self._print('\r\n'.decode('cp437'))
+        else:
+            buf = ''
+            def print_number(n):
+                nonlocal buf
+                if n.value >= 0:
+                    buf += ' '
+                nval = n.value
+                if n.type == CellType.SINGLE:
+                    # limit it to a 32 bit float
+                    enc = struct.pack('>f', nval)
+                    nval, = struct.unpack('>f', enc)
+                nval = str(nval)
+                if nval.endswith('.0'):
+                    nval = nval[:-2]
+                if 'e' in nval and n.type == Type.DOUBLE:
+                    nval = nval.replace('e', 'D')
+                elif 'e' in nval:
+                    nval = nval.replace('e', 'E')
+                buf += nval
+            for arg in printables:
+                if arg == semicolon:
+                    pass
+                elif arg == comma:
+                    n = 14 - (len(buf) % 14)
+                    buf += n * ' '
+                elif arg.type.is_numeric:
+                    print_number(arg)
+                else:
+                    buf += arg.value
+            if printables[-1] not in [comma, semicolon]:
+                buf += '\r\n'
+            self._print(buf.encode('cp437'))
+
+    def _exec_inkey(self):
+        self._inkey()
+
+
+class DumbTerminalDevice(TerminalDevice):
+    def _set_mode(self, mode, color_switch, apage, vpage):
+        if mode != 0:
             self._device_error(
-                error_code=Device.DeviceError.OP_FAILED,
+                error_code=Device.DeviceError.BAD_ARG_VALUE,
                 error_msg=(
-                    'COLOR only supported on SCREEN 0 at the moment'
+                    'Dump terminal only supports SCREEN 0.'
                 )
             )
             return
 
+    def _width(self, columns, lines):
+        if lines != 25 or columns != 80:
+            self._device_error(
+                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_msg=(
+                    'Only 80x25 text mode is supported in dumb terminal'
+                )
+            )
+            return
+
+    def _color(self, fg_color, bg_color, border):
         if fg_color > 31:
             self._device_error(
                 error_code=Device.DeviceError.BAD_ARG_VALUE,
@@ -297,104 +416,23 @@ class ScreenDevice(Device):
         if fg_color > 0:
             print(fg_ansi_code[fg_color], end='')
 
-    def _exec_cls(self):
+    def _cls(self):
         seq =  '\033[2J'    # clear screen
         seq += '\033[1;1H'  # move cursor to screen top-left
         print(seq, end='')
 
-    def _exec_locate(self):
-        stop = self._get_arg_from_stack(CellType.INTEGER)
-        start = self._get_arg_from_stack(CellType.INTEGER)
-        cursor = self._get_arg_from_stack(CellType.INTEGER)
-        column = self._get_arg_from_stack(CellType.INTEGER)
-        row = self._get_arg_from_stack(CellType.INTEGER)
-
+    def _locate(self, row, column, cursor, start, stop):
         print(f'\033[{row};{column}H', end='')
 
-    def _exec_print(self):
-        nargs = self._get_arg_from_stack(CellType.INTEGER)
-        args = []
-        for i in range(nargs):
-            arg = self._get_arg_from_stack()
-            args.append(arg)
-        args.reverse()
+    def _print(self, text):
+        text = text.replace('\r\n', '\n')
+        print(text, end='')
 
-        i = 0
-        semicolon = object()
-        comma = object()
-        printables = []
-        format_string = None
-        while i < len(args):
-            arg = args[i].value
-            if arg == 0:
-                printables.append(args[i + 1])
-                i += 2
-            elif arg == 1:
-                printables.append(semicolon)
-                i += 1
-            elif arg == 2:
-                printables.append(comma)
-                i += 1
-            elif arg == 3:
-                if format_string is not None:
-                    self._device_error(
-                        error_code=Device.DeviceError.BAD_ARG_VALUE,
-                        error_msg=(
-                            'Invalid argument type code for PRINT '
-                            '(multiple format strings)'
-                        )
-                    )
-                format_string = args[i + 1]
-                i += 2
-            else:
-                self._device_error(
-                    error_code=Device.DeviceError.BAD_ARG_VALUE,
-                    error_msg=(
-                        f'Invalid argument type code for PRINT '
-                        f'(unknown code: {args[i]})'
-                    )
-                )
-
-        if format_string:
-            formatter = PrintUsingFormatter(format_string)
-            new_line = printables[-1] not in [comma, semicolon]
-            printables = [a for a in printables
-                          if a != semicolon and a != comma]
-            print(formatter.format(printables), end='')
-            if new_line:
-                print()
-        else:
-            buf = ''
-            def print_number(n):
-                nonlocal buf
-                if n.value >= 0:
-                    buf += ' '
-                nval = n.value
-                if n.type == CellType.SINGLE:
-                    # limit it to a 32 bit float
-                    enc = struct.pack('>f', nval)
-                    nval, = struct.unpack('>f', enc)
-                nval = str(nval)
-                if nval.endswith('.0'):
-                    nval = nval[:-2]
-                if 'e' in nval and n.type == Type.DOUBLE:
-                    nval = nval.replace('e', 'D')
-                elif 'e' in nval:
-                    nval = nval.replace('e', 'E')
-                buf += nval
-            for arg in printables:
-                if arg == semicolon:
-                    pass
-                elif arg == comma:
-                    n = 14 - (len(buf) % 14)
-                    buf += n * ' '
-                elif arg.type.is_numeric:
-                    print_number(arg)
-                else:
-                    buf += arg.value
-            if printables[-1] not in [comma, semicolon]:
-                buf += '\n'
-            print(buf, end='')
+    def _inkey(self):
+        self._device_error(
+                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_msg='INKEY not supported on dumb terminal.',
+            )
 
 
 class PcSpeakerDevice(Device):
@@ -403,10 +441,6 @@ class PcSpeakerDevice(Device):
     def _exec_play(self):
         command = self.cpu.pop(CellType.STRING)
         logger.info('PLAY: %s', command)
-
-
-class KeyboardDevice(Device):
-    name = 'keyboard'
 
 
 def config_logging(args):
@@ -469,14 +503,12 @@ def main():
     memory_device = MemoryDevice(QVM_DEVICES['memory']['id'], cpu)
     cpu.connect_device('memory', memory_device)
 
-    screen_device = ScreenDevice(QVM_DEVICES['screen']['id'], cpu)
-    cpu.connect_device('screen', screen_device)
+    terminal_device = DumbTerminalDevice(
+        QVM_DEVICES['terminal']['id'], cpu)
+    cpu.connect_device('terminal', terminal_device)
 
     speaker_device = PcSpeakerDevice(QVM_DEVICES['pcspkr']['id'], cpu)
     cpu.connect_device('pcspkr', speaker_device)
-
-    keyboard_device = KeyboardDevice(QVM_DEVICES['keyboard']['id'], cpu)
-    cpu.connect_device('keyboard', keyboard_device)
 
     cpu.run()
 

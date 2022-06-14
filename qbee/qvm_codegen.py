@@ -983,7 +983,7 @@ def gen_builtin_func_call(node, code, codegen):
             expr.Type.INTEGER, node.args[0], code, codegen)
         code.add(('chr',))
     elif node.name == 'inkey$':
-        code.add(('io', 'keyboard', 'inkey'))
+        code.add(('io', 'terminal', 'inkey'))
     elif node.name == 'int':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('int',))
@@ -1089,7 +1089,7 @@ def gen_call(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.ClsStmt)
 def gen_cls(node, code, codegen):
-    code.add(('io', 'screen', 'cls'))
+    code.add(('io', 'terminal', 'cls'))
 
 
 @QvmCodeGen.generator_for(stmt.ColorStmt)
@@ -1115,7 +1115,7 @@ def gen_color(node, code, codegen):
     else:
         code.add(('push%', -1))
 
-    code.add(('io', 'screen', 'color'))
+    code.add(('io', 'terminal', 'color'))
 
 
 @QvmCodeGen.generator_for(stmt.ConstStmt)
@@ -1373,7 +1373,7 @@ def gen_input(node, code, codegen):
     code.add(('push%', len(node.var_list)))
     for var in node.var_list:
         code.add(('push%', var.type.type_id))
-    code.add(('io', 'keyboard', 'input'))
+    code.add(('io', 'terminal', 'input'))
 
     for var in node.var_list:
         # just so we won't forget updating here when arrays are
@@ -1397,7 +1397,7 @@ def gen_locate_stmt(node, code, codegen):
         ('push%', -1),
     )
 
-    code.add(('io', 'screen', 'locate'))
+    code.add(('io', 'terminal', 'locate'))
 
 
 @QvmCodeGen.generator_for(stmt.PlayStmt)
@@ -1441,7 +1441,7 @@ def gen_print_stmt(node, code, codegen):
         else:
             assert False
     code.add(('push%', nargs))
-    code.add(('io', 'screen', 'print'))
+    code.add(('io', 'terminal', 'print'))
 
 
 @QvmCodeGen.generator_for(stmt.RandomizeStmt)
@@ -1498,7 +1498,7 @@ def gen_screen_stmt(node, code, codegen):
             expr.Type.INTEGER, node.vpage, code, codegen)
     else:
         code.add(('push%', -1))
-    code.add(('io', 'screen', 'set_mode'))
+    code.add(('io', 'terminal', 'set_mode'))
 
 
 @QvmCodeGen.generator_for(stmt.WidthStmt)
@@ -1517,7 +1517,7 @@ def gen_width_stmt(node, code, codegen):
     else:
         code.add(('push%', -1))
 
-    code.add(('io', 'screen', 'width'))
+    code.add(('io', 'terminal', 'width'))
 
 
 @QvmCodeGen.generator_for(stmt.DataStmt)
@@ -1595,7 +1595,7 @@ def gen_view_print(node, code, codegen):
         code.add(('pushm1%',))
         code.add(('pushm1%',))
 
-    code.add(('io', 'screen', 'view_print'))
+    code.add(('io', 'terminal', 'view_print'))
 
 
 @QvmCodeGen.generator_for(stmt.WhileBlock)

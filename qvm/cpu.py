@@ -7,7 +7,7 @@ from .instrs import op_code_to_instr
 logger = logging.getLogger(__name__)
 
 QVM_DEVICES = {
-    'screen': {
+    'terminal': {
         'id': 2,
         'ops': {
             'cls': 1,
@@ -17,6 +17,8 @@ QVM_DEVICES = {
             'set_mode': 5,
             'width': 6,
             'locate': 7,
+            'input': 8,
+            'inkey': 9,
         },
     },
     'pcspkr': {
@@ -24,13 +26,6 @@ QVM_DEVICES = {
         'ops': {
             'beep': 1,
             'play': 2,
-        },
-    },
-    'keyboard': {
-        'id': 4,
-        'ops': {
-            'input': 1,
-            'inkey': 2,
         },
     },
     'time': {
