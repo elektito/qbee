@@ -379,16 +379,6 @@ class QvmCpu:
         b = self.pop()
         a = self.pop()
 
-        if not a.type.is_numeric:
-            self.trap(TrapCode.TYPE_MISMATCH,
-                      expected='numeric',
-                      got=a.type)
-
-        if not b.type.is_numeric:
-            self.trap(TrapCode.TYPE_MISMATCH,
-                      expected='numeric',
-                      got=b.type)
-
         if a.type != b.type:
             self.trap(TrapCode.TYPE_MISMATCH,
                       a.type,
@@ -434,6 +424,15 @@ class QvmCpu:
         value = self.stack.pop()
         self.push(value.type, value.value)
         self.push(value.type, value.value)
+
+    def _exec_eq(self):
+        value = self.pop(CellType.INTEGER)
+
+        if value == 0:
+            result = -1
+        else:
+            result = 0
+        self.push(CellType.INTEGER, result)
 
     def _exec_frame(self, params_size, local_vars_size):
         logger.info(
@@ -562,6 +561,15 @@ class QvmCpu:
 
         result = a.value * b.value
         self.push(a.type, result)
+
+    def _exec_ne(self):
+        value = self.pop(CellType.INTEGER)
+
+        if value == 0:
+            result = 0
+        else:
+            result = -1
+        self.push(CellType.INTEGER, result)
 
     def _exec_push_string(self, value):
         self.push(CellType.STRING, value)
