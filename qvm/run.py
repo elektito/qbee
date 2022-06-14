@@ -7,6 +7,7 @@ from enum import Enum
 from .using import PrintUsingFormatter
 from .module import QModule
 from .cpu import QvmCpu, CellType, TrapCode, QVM_DEVICES
+from .terminal import Terminal
 
 
 logger = logging.getLogger(__name__)
@@ -435,6 +436,41 @@ class DumbTerminalDevice(TerminalDevice):
             )
 
 
+class SmartTerminalDevice(TerminalDevice):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.terminal = Terminal()
+
+    def _set_mode(self, mode, color_switch, apage, vpage):
+        self.mode = mode
+
+    def _width(self, columns, lines):
+        print('WIDTH NOT SUPPORTED FOR NOW')
+
+    def _color(self, fg_color, bg_color, border):
+        if border >= 0:
+            self.terminal.border_color = border
+        if fg_color >= 0:
+            self.terminal.fg_color = fg_color
+        if bg_color >= 0:
+            self.terminal.fg_color = bg_color
+
+    def _cls(self):
+        self.terminal.clear()
+
+    def _locate(self, row, col, cursor, start, stop):
+        if row >= 0:
+            self.terminal.cursor_row = row
+        if col >= 0:
+            self.terminal.cursor_col = col
+
+    def _print(self, text):
+        self.terminal.put_text(text)
+
+    def _inkey(self):
+        self.cpu.push(CellType.STRING, '')
+
+
 class PcSpeakerDevice(Device):
     name = 'pcspkr'
 
@@ -503,7 +539,7 @@ def main():
     memory_device = MemoryDevice(QVM_DEVICES['memory']['id'], cpu)
     cpu.connect_device('memory', memory_device)
 
-    terminal_device = DumbTerminalDevice(
+    terminal_device = SmartTerminalDevice(
         QVM_DEVICES['terminal']['id'], cpu)
     cpu.connect_device('terminal', terminal_device)
 
