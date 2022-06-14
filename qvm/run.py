@@ -439,7 +439,10 @@ class DumbTerminalDevice(TerminalDevice):
 class SmartTerminalDevice(TerminalDevice):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.terminal = Terminal()
+        self.terminal = Terminal(
+            caption='QVM Terminal',
+            resizable=True,
+        )
 
     def _set_mode(self, mode, color_switch, apage, vpage):
         self.mode = mode
