@@ -1,10 +1,10 @@
 import argparse
-from .qvm_module import QModule
-from .utils import eprint
+import sys
+from .module import QModule
 
 
 def perror(msg):
-    eprint(msg)
+    print(msg, file=sys.stderr)
     exit(1)
 
 

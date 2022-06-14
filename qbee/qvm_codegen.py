@@ -1,12 +1,12 @@
 import struct
 from enum import Enum, auto
 from collections import defaultdict
+from qvm.instrs import op_to_instr
+from qvm.run import QVM_DEVICES
 from .codegen import BaseCodeGen, BaseCode
 from .program import Label, LineNo, Program
 from .exceptions import InternalError
 from .compiler import Routine
-from .qvm_instrs import op_to_instr
-from .qvm_run import QVM_DEVICES
 from . import stmt, expr
 
 

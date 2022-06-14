@@ -1,7 +1,7 @@
 import logging
 import itertools
 from enum import Enum
-from .qvm_instrs import op_code_to_instr
+from .instrs import op_code_to_instr
 
 
 logger = logging.getLogger(__name__)

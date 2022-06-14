@@ -5,8 +5,8 @@ import logging.config
 from datetime import datetime
 from enum import Enum
 from .using import PrintUsingFormatter
-from .qvm_module import QModule
-from .qvm_cpu import QvmCpu, CellType, TrapCode, QVM_DEVICES
+from .module import QModule
+from .cpu import QvmCpu, CellType, TrapCode, QVM_DEVICES
 
 
 logger = logging.getLogger(__name__)

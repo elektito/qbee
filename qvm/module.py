@@ -1,5 +1,5 @@
 import struct
-from .qvm_instrs import op_code_to_instr
+from .instrs import op_code_to_instr
 
 
 def parse_consts_section(section):
