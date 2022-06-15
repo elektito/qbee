@@ -145,6 +145,7 @@ class TrapCode(Enum):
     DEVICE_ERROR = 3
     STACK_EMPTY = 4
     INVALID_LOCAL_VAR_IDX = 5
+    INVALID_GLOBAL_VAR_IDX = 5
     TYPE_MISMATCH = 7
     NULL_REFERENCE = 8
     INVALID_OPERAND_VALUE = 9
@@ -216,6 +217,9 @@ class QvmCpu:
         self.pc = 0
         self.cur_frame = None
         self.stack = []
+        self.global_vars = [
+            None for _ in range(module.n_global_cells)
+        ]
 
     def connect_device(self, device_name, device):
         logging.info('Connecting device: %s', device_name)
@@ -229,6 +233,35 @@ class QvmCpu:
 
         device_id = device_info['id']
         self.device_by_id[device_id] = device
+
+    def read_var(self, scope, idx):
+        if scope == 'local':
+            try:
+                return self.cur_frame.get_local(idx)
+            except IndexError:
+                self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
+                          idx=idx)
+        else:
+            try:
+                return self.global_vars[idx]
+            except IndexError:
+                self.trap(TrapCode.INVALID_GLOBAL_VAR_IDX,
+                          idx=idx)
+
+    def write_var(self, scope, idx, value):
+        assert isinstance(value, CellValue)
+        if scope == 'local':
+            try:
+                self.cur_frame.set_local(idx, value)
+            except IndexError:
+                self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
+                          idx=idx)
+        else:
+            try:
+                self.global_vars[idx] = value
+            except IndexError:
+                self.trap(TrapCode.INVALID_GLOBAL_VAR_IDX,
+                          idx=idx)
 
     def run(self):
         while self.pc < len(self.module.code) and not self.halted:
@@ -595,19 +628,6 @@ class QvmCpu:
                       got_type=value.type)
         self.push(CellType.REFERENCE, value.value)
 
-    def _exec_readl_single(self, idx):
-        try:
-            value = self.cur_frame.get_local(idx)
-        except IndexError:
-            self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
-                      idx=idx)
-
-        if value is None:
-            value = CellValue(CellType.SINGLE, 0.0)
-            self.cur_frame.set_local(idx, value)
-        else:
-            self.push(value.type, value.value)
-
     def _exec_sign(self):
         value = self.pop()
         if not value.type.is_numeric:
@@ -660,6 +680,7 @@ numeric_types = [
     CellType.SINGLE,
     CellType.DOUBLE
 ]
+value_types = numeric_types + [CellType.STRING]
 for _type in numeric_types:
     type_name = _type.name.lower()
     attr = f'_exec_push_{type_name}'
@@ -700,3 +721,23 @@ for src, dst in itertools.product(numeric_types, numeric_types):
 
     attr = f'_exec_conv_{src.name.lower()}_{dst.name.lower()}'
     setattr(QvmCpu, attr, get_method(src, dst, attr))
+
+
+# add exec methods for all variants of the read instruction (except
+# for the ones dealing with references)
+for scope in ['local', 'global']:
+    for _type in value_types:
+        type_name = _type.name.lower()
+        scope_char = 'l' if scope == 'local' else 'g'
+        attr = f'_exec_read{scope_char}_{type_name}'
+        def get_method(scope, _type, name):
+            default_value = 0 if _type.is_numeric else ''
+            def method(self, idx):
+                value = self.read_var(scope, idx)
+                if value is None:
+                    value = CellValue(_type, default_value)
+                    self.write_var(scope, idx, value)
+                self.push(value.type, value.value)
+            method.__name__ = attr
+            return method
+        setattr(QvmCpu, attr, get_method(scope, _type, attr))

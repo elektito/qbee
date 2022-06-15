@@ -58,7 +58,7 @@ class QModule:
     def __init__(self, consts, n_global_cells, data, code):
         self.consts = consts
         self.data = data
-        self.nglobal_cells = n_global_cells
+        self.n_global_cells = n_global_cells
         self.code = code
 
     def disassemble(self):
