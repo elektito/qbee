@@ -282,9 +282,9 @@ class TerminalDevice(Device):
             new_line = printables[-1] not in [comma, semicolon]
             printables = [a for a in printables
                           if a != semicolon and a != comma]
-            self._print(formatter.format(printables).encode('cp437'))
+            self._print(formatter.format(printables))
             if new_line:
-                self._print('\r\n'.decode('cp437'))
+                self._print('\r\n')
         else:
             buf = ''
             def print_number(n):
@@ -316,7 +316,7 @@ class TerminalDevice(Device):
                     buf += arg.value
             if printables[-1] not in [comma, semicolon]:
                 buf += '\r\n'
-            self._print(buf.encode('cp437'))
+            self._print(buf)
 
     def _exec_inkey(self):
         self._inkey()

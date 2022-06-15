@@ -67,6 +67,8 @@ class Terminal(pyglet.window.Window):
             self.text_lines * self.text_columns * 2)
 
     def put_text(self, text):
+        if isinstance(text, str):
+            text = text.encode('cp437')
         assert isinstance(text, (bytes, bytearray))
         for char in text:
             idx = self.cursor_row * self.text_columns + self.cursor_col
