@@ -344,6 +344,10 @@ class QvmCpu:
             idx = kwargs['idx']
             print(f'Attempting to read a NULL reference at {scope} '
                   f'variable {idx}.')
+        elif code == TrapCode.INVALID_OPERAND_VALUE:
+            desc = kwargs.get('desc')
+            desc = f': {desc}' if desc else ''
+            print('Invalid operand value{desc}')
         else:
             assert False
 
@@ -649,6 +653,39 @@ class QvmCpu:
     def _exec_strlen(self):
         value = self.pop(CellType.STRING)
         self.push(CellType.LONG, len(value))
+
+    def _exec_strmid(self):
+        length = self.pop()
+        start = self.pop(CellType.INTEGER)
+        string = self.pop(CellType.STRING)
+
+        if length.type == CellType.LONG:
+            # a LONG value for length indicates the sub-string should
+            # span to the end
+            length = None
+        else:
+            if length.type != CellType.INTEGER:
+                self.trap(TrapCode.TYPE_MISMATCH,
+                          expected=Type.INTEGER,
+                          got=length.type)
+            length = length.value
+
+        if start <= 0:
+            self.trap(TrapCode.INVALID_OPERAND_VALUE,
+                      desc='STRMID start index should be positive')
+
+        if length <= 0:
+            self.trap(TrapCode.INVALID_OPERAND_VALUE,
+                      desc='STRMID length should be positive')
+
+        start -= 1
+
+        if length is None:
+            result = string[start:]
+        else:
+            result = string[start:start+length]
+
+        self.push(CellType.STRING, result)
 
     def _exec_sub(self):
         b = self.pop()
