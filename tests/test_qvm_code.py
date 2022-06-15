@@ -162,3 +162,25 @@ def test_eliminate_extra_jump5():
     assert code._instrs == [
         ('ijmp',),
     ]
+
+
+def test_push_jz_zero():
+    code = QvmCode()
+    code.add(
+        ('push%', 0),
+        ('jz', 'target'),
+    )
+    code.optimize()
+    assert code._instrs == [
+        ('jmp', 'target'),
+    ]
+
+
+def test_push_jz_nonzero():
+    code = QvmCode()
+    code.add(
+        ('push%', 0),
+        ('jz', 'target'),
+    )
+    code.optimize()
+    assert code._instrs == []

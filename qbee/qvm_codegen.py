@@ -394,6 +394,20 @@ class QvmCode(BaseCode):
                 i -= 1
                 continue
 
+            # push/jz elimination
+            if cur.op == Op.JZ and prev1.op == Op.PUSH:
+                if prev1.type_char == '%':
+                    if prev1.args[0] == 0:
+                        # jump will always happen
+                        del self._instrs[i-1]
+                        self._instrs[i-1] = QvmInstr('jmp', cur.args[0])
+                        i -= 1
+                    else:
+                        # jump will never happen
+                        del self._instrs[i]
+                        del self._instrs[i-1]
+                        i -= 2
+
             i += 1
 
     def __str__(self):
