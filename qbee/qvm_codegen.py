@@ -1544,7 +1544,7 @@ def gen_sub_block(node, code, codegen):
 
     code.add(('frame',
               node.routine.params_size,
-              node.routine.local_vars_size))
+              lambda: node.routine.local_vars_size))
 
     for inner_stmt in node.block:
         codegen.gen_code_for_node(inner_stmt, code)
@@ -1559,7 +1559,7 @@ def gen_func_block(node, code, codegen):
 
     code.add(('frame',
               node.routine.params_size,
-              node.routine.local_vars_size))
+              lambda: node.routine.local_vars_size))
 
     for inner_stmt in node.block:
         codegen.gen_code_for_node(inner_stmt, code)
