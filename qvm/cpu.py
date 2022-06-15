@@ -577,6 +577,23 @@ class QvmCpu:
         result = -1 if value.value <= 0 else 0
         self.push(CellType.INTEGER, result)
 
+    def _exec_mod(self):
+        b = self.pop()
+        a = self.pop()
+
+        if a.type not in (CellType.INTEGER, CellType.LONG):
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='integral',
+                      got=a.type)
+
+        if a.type != b.type:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected=a.type,
+                      got=b.type)
+
+        result = a.value % b.value
+        self.push(a.type, result)
+
     def _exec_mul(self):
         b = self.pop()
         a = self.pop()
