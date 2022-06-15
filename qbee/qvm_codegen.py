@@ -1007,7 +1007,7 @@ def gen_builtin_func_call(node, code, codegen):
             expr.Type.INTEGER, node.args[1], code, codegen)
 
         if len(node.args) == 3:
-            codegen.gen_code_for_node(node.args[1], code)
+            codegen.gen_code_for_node(node.args[2], code)
             gen_code_for_conv(
                 expr.Type.INTEGER, node.args[2], code, codegen)
         else:
