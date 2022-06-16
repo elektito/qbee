@@ -7,7 +7,7 @@ from enum import Enum
 from .using import PrintUsingFormatter
 from .module import QModule
 from .cpu import QvmCpu, CellType, TrapCode, QVM_DEVICES
-from .terminal import Terminal
+from .subterminal import SubTerminal
 
 
 logger = logging.getLogger(__name__)
@@ -439,10 +439,8 @@ class DumbTerminalDevice(TerminalDevice):
 class SmartTerminalDevice(TerminalDevice):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.terminal = Terminal(
-            caption='QVM Terminal',
-            resizable=True,
-        )
+        self.terminal = SubTerminal()
+        self.terminal.launch()
 
     def _set_mode(self, mode, color_switch, apage, vpage):
         self.mode = mode
@@ -452,23 +450,23 @@ class SmartTerminalDevice(TerminalDevice):
 
     def _color(self, fg_color, bg_color, border):
         if border >= 0:
-            self.terminal.border_color = border
+            self.terminal.call('set', 'border_color', border)
         if fg_color >= 0:
-            self.terminal.fg_color = fg_color
+            self.terminal.call('set', 'fg_color', fg_color)
         if bg_color >= 0:
-            self.terminal.fg_color = bg_color
+            self.terminal.call('set', 'bg_color', bg_color)
 
     def _cls(self):
-        self.terminal.clear()
+        self.terminal.call('clear_screen')
 
     def _locate(self, row, col, cursor, start, stop):
         if row >= 0:
-            self.terminal.cursor_row = row
+            self.terminal.call('set', 'cursor_row', row)
         if col >= 0:
-            self.terminal.cursor_col = col
+            self.terminal.call('set', 'cursor_col', col)
 
     def _print(self, text):
-        self.terminal.put_text(text)
+        self.terminal.call('put_text', text)
 
     def _inkey(self):
         self.cpu.push(CellType.STRING, '')

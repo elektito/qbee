@@ -1,15 +1,17 @@
 import pyglet
 import numpy as np
+from queue import Empty
 from functools import lru_cache
 from PIL import Image, ImageDraw
 
 
 # Resource paths are relative to where to python module is
 pyglet.resource.path = ['..']
+pyglet.resource.reindex()
 
 
-class Terminal(pyglet.window.Window):
-    def __init__(self, *args, **kwargs):
+class TerminalWindow(pyglet.window.Window):
+    def __init__(self, request_queue, result_queue, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.char_width = 8
@@ -54,15 +56,27 @@ class Terminal(pyglet.window.Window):
         ]
 
         self.cursor_row = self.cursor_col = 0
-
-        self.fg_color = 14
-        self.put_text(b"Hello, World!\r\nfoo")
-
         self.update_text()
+        self._text_updated = False
 
-        self.on_draw()
+        self.request_queue = request_queue
+        self.result_queue = result_queue
+        pyglet.clock.schedule_interval(self.update, 1 / 160)
 
-    def clear(self):
+    def set(self, attr_name, value):
+        setattr(self, attr_name, value)
+
+    def update(self, dt):
+        try:
+            while req := self.request_queue.get_nowait():
+                method_name, args, kwargs, with_result = req
+                result = getattr(self, method_name)(*args, **kwargs)
+                if with_result:
+                    self.result_queue.put(result)
+        except Empty:
+            pass
+
+    def clear_screen(self):
         self.text_buffer = bytearray(
             self.text_lines * self.text_columns * 2)
 
@@ -109,7 +123,7 @@ class Terminal(pyglet.window.Window):
                     self.scroll()
                     self.cursor_row -= 1
 
-        self.update_text()
+        self._text_updated = True
 
     def scroll(self):
         start = self.text_columns * 2
@@ -140,7 +154,7 @@ class Terminal(pyglet.window.Window):
             self.text_img.paste(char_img, (x, y))
 
         raw_image = self.text_img.tobytes()
-        self.text_img_data = pyglet.image.ImageData(
+        text_img_data = pyglet.image.ImageData(
             self.text_width, self.text_height,
             'RGB',
             raw_image,
@@ -150,7 +164,7 @@ class Terminal(pyglet.window.Window):
             self.text_width, self.text_height,
             mag_filter = pyglet.image.GL_NEAREST,
         )
-        self.text_texture.blit_into(self.text_img_data, 0, 0, 0)
+        self.text_texture.blit_into(text_img_data, 0, 0, 0)
 
     @lru_cache(maxsize=256)
     def _get_char(self, char_code, fg_color, bg_color):
@@ -176,8 +190,10 @@ class Terminal(pyglet.window.Window):
         return char_img
 
     def on_draw(self):
+        if self._text_updated:
+            self.update_text()
+            self._text_updated = False
         self.clear()
-        self.text_img_data.blit(0, 0)
         self.text_texture.blit(
             0, 0, width=self.width, height=self.height)
 
@@ -190,8 +206,6 @@ class Terminal(pyglet.window.Window):
             self.text_buffer[100 * 2 + 0] = 0x07
             self.text_buffer[100 * 2 + 1] = symbol
             self.update_text()
-
-        self.put_text(f'foo {symbol}\r\n'.encode('cp437'))
 
 
 def main():
