@@ -42,6 +42,7 @@ ParserElement.set_default_whitespace_chars(' \t')
 and_kw = CaselessKeyword('and')
 any_kw = CaselessKeyword('any')
 as_kw = CaselessKeyword('as')
+asc_kw = CaselessKeyword('asc')
 beep_kw = CaselessKeyword('beep')
 case_kw = CaselessKeyword('case')
 call_kw = CaselessKeyword('call')
@@ -207,6 +208,7 @@ expr = Forward().set_name('expr')
 expr_list = delimited_list(expr, delim=',', min=1)
 builtin_func = Located(
     (
+        asc_kw |
         chr_dollar_kw |
         inkey_dollar_kw |
         int_kw |

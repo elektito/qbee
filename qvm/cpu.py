@@ -347,7 +347,7 @@ class QvmCpu:
         elif code == TrapCode.INVALID_OPERAND_VALUE:
             desc = kwargs.get('desc')
             desc = f': {desc}' if desc else ''
-            print('Invalid operand value{desc}')
+            print(f'Invalid operand value{desc}')
         else:
             assert False
 
@@ -399,6 +399,13 @@ class QvmCpu:
 
         result = a.value + b.value
         self.push(a.type, result)
+
+    def _exec_asc(self):
+        value = self.pop(CellType.STRING)
+        if len(value) == 0:
+            self.trap(TrapCode.INVALID_OPERAND_VALUE,
+                      desc='ASC does not accept empty strings')
+        self.push(CellType.INTEGER, ord(value[0]))
 
     def _exec_call(self, target):
         self.push(CellType.LONG, self.pc)
