@@ -58,7 +58,19 @@ class TerminalWindow(pyglet.window.Window):
             (255, 255, 255),  # bright white
         ]
 
+        self.show_cursor = False
+
+        # cursor top and bottom rows
+        self.cursor_start = self.char_height - 2
+        self.cursor_end = self.char_height
+
+        # the amount of time (in seconds) out of one second the cursor
+        # is shown before its hidden for blinking
+        self.cursor_blink_show_time = 0.8
+
+        # cursor position on the screen
         self.cursor_row = self.cursor_col = 0
+
         self.update_text()
         self._text_updated = False
 
@@ -66,12 +78,18 @@ class TerminalWindow(pyglet.window.Window):
 
         self.request_queue = request_queue
         self.result_queue = result_queue
-        pyglet.clock.schedule_interval(self.update, 1 / 160)
+        pyglet.clock.schedule_interval(self.update, 1 / 60)
+
+        self.time = 0.0
 
     def set(self, attr_name, value):
         setattr(self, attr_name, value)
 
+    def get(self, attr_name):
+        return getattr(self, attr_name)
+
     def update(self, dt):
+        self.time += dt
         try:
             while req := self.request_queue.get_nowait():
                 method_name, args, kwargs, with_result = req
@@ -202,6 +220,22 @@ class TerminalWindow(pyglet.window.Window):
         self.text_texture.blit(
             0, 0, width=self.width, height=self.height)
 
+        if 0 <= (self.time % 1.0) <= self.cursor_blink_show_time:
+            text_bottom = self.text_texture.height - 1
+            x = self.cursor_col * self.char_width
+            y = text_bottom - (self.cursor_row * self.char_height + self.cursor_start)
+            w = self.char_width
+            h = self.cursor_end - self.cursor_start
+
+            h *= self.height / self.text_texture.height
+            y *= self.height / self.text_texture.height
+            w *= self.width / self.text_texture.width
+            x *= self.width / self.text_texture.width
+
+            color = self.color_palette[self.fg_color]
+            rect = pyglet.shapes.Rectangle(x, y, w, h, color=color)
+            rect.draw()
+
     def on_key_press(self, symbol, modifiers):
         key = pyglet.window.key
 
@@ -327,7 +361,7 @@ class TerminalWindow(pyglet.window.Window):
     def _add_key_to_buffer(self, key):
         self.keyboard_buf.append(key)
         if len(self.keyboard_buf) > KEYBOARD_BUF_SIZE:
-            self.keyboard_buf = self.keyboard_buf[-KEYBOARD_BUF_SIZE]
+            self.keyboard_buf = self.keyboard_buf[-KEYBOARD_BUF_SIZE:]
 
     def get_key(self):
         if self.keyboard_buf:

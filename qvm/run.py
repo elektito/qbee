@@ -566,6 +566,31 @@ class SmartTerminalDevice(TerminalDevice):
         else:
             assert False
 
+    def _input(self, same_line):
+        string = ''
+        while True:
+            k = self.terminal.call_with_result('get_key')
+            if k == -1:
+                continue
+            if isinstance(k, tuple):
+                pass
+            elif 32 <= k <= 126:
+                self.terminal.call('put_text', chr(k))
+                string += chr(k)
+            elif k == 13:
+                break
+            elif k == 8 and string:
+                string = string[:-1]
+                col = self.terminal.call_with_result('get', 'cursor_col')
+                self.terminal.call('set', 'cursor_col', col - 1)
+                self.terminal.call('put_text', ' ')
+                self.terminal.call('set', 'cursor_col', col - 1)
+
+        if not same_line:
+            self.terminal.call('put_text', '\r\n')
+
+        return string
+
 
 class PcSpeakerDevice(Device):
     name = 'pcspkr'
