@@ -530,12 +530,12 @@ class QvmCpu:
 
         if not a.type.is_integral:
             self.trap(TrapCode.TYPE_MISMATCH,
-                      expected='numeric',
+                      expected='integral',
                       got=a.type)
 
         if not b.type.is_integral:
             self.trap(TrapCode.TYPE_MISMATCH,
-                      expected='numeric',
+                      expected='integral',
                       got=b.type)
 
         if a.type != b.type:
