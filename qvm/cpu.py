@@ -674,6 +674,11 @@ class QvmCpu:
             self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
                       idx=idx)
 
+    def _exec_strleft(self):
+        n = self.pop(CellType.INTEGER)
+        s = self.pop(CellType.STRING)
+        self.push(CellType.STRING, s[:n])
+
     def _exec_strlen(self):
         value = self.pop(CellType.STRING)
         self.push(CellType.LONG, len(value))
@@ -710,6 +715,11 @@ class QvmCpu:
             result = string[start:start+length]
 
         self.push(CellType.STRING, result)
+
+    def _exec_strright(self):
+        n = self.pop(CellType.INTEGER)
+        s = self.pop(CellType.STRING)
+        self.push(CellType.STRING, s[-n:])
 
     def _exec_sub(self):
         b = self.pop()
