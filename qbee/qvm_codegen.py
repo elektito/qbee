@@ -504,7 +504,7 @@ class QvmCode(BaseCode):
                 idx += expr.Type.get_type_size(ptype, self._user_types)
             for vname, vtype in routine.local_vars.items():
                 if var == vname:
-                    return len(routine.params) + idx
+                    return idx
                 idx += expr.Type.get_type_size(vtype, self._user_types)
             raise InternalError(
                 f'Local variable not found in routine "{routine.name}" '
