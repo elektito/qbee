@@ -5,6 +5,9 @@ from functools import lru_cache
 from PIL import Image, ImageDraw
 
 
+KEYBOARD_BUF_SIZE = 8
+
+
 # Resource paths are relative to where to python module is
 pyglet.resource.path = ['..']
 pyglet.resource.reindex()
@@ -58,6 +61,8 @@ class TerminalWindow(pyglet.window.Window):
         self.cursor_row = self.cursor_col = 0
         self.update_text()
         self._text_updated = False
+
+        self.keyboard_buf = []
 
         self.request_queue = request_queue
         self.result_queue = result_queue
@@ -198,14 +203,137 @@ class TerminalWindow(pyglet.window.Window):
             0, 0, width=self.width, height=self.height)
 
     def on_key_press(self, symbol, modifiers):
-        if 32 <= symbol <= 127:
-            if (modifiers & pyglet.window.key.LSHIFT or \
-                modifiers & pyglet.window.key.RSHIFT) and \
-                ord('a') <= symbol <= ord('z'):
-                symbol -= 32
-            self.text_buffer[100 * 2 + 0] = 0x07
-            self.text_buffer[100 * 2 + 1] = symbol
-            self.update_text()
+        key = pyglet.window.key
+
+        # don't take into account caps lock and num lock
+        modifiers &= ~key.MOD_CAPSLOCK
+        modifiers &= ~key.MOD_NUMLOCK
+
+        # convert numpad keys to normal keys
+        numpad_keys = {
+            key.NUM_HOME: key.HOME,
+            key.NUM_END: key.END,
+            key.NUM_INSERT: key.INSERT,
+            key.NUM_DELETE: key.DELETE,
+            key.NUM_DIVIDE: key.SLASH,
+            key.NUM_MULTIPLY: key.ASTERISK,
+            key.NUM_SUBTRACT: key.MINUS,
+            key.NUM_ENTER: key.ENTER,
+            key.NUM_DECIMAL: key.PERIOD,
+            key.NUM_ADD: key.PLUS,
+            key.NUM_UP: key.UP,
+            key.NUM_DOWN: key.DOWN,
+            key.NUM_LEFT: key.LEFT,
+            key.NUM_RIGHT: key.RIGHT,
+        }
+        if symbol in numpad_keys:
+            symbol = numpad_keys[symbol]
+
+        if (ord('a') <= symbol <= ord('z')) and \
+           modifiers & key.MOD_SHIFT:
+            self._add_key_to_buffer(symbol - (ord('a') - ord('A')))
+        elif symbol == key.BACKSPACE:
+            if modifiers & key.MOD_ALT:
+                self._add_key_to_buffer(127)
+            elif modifiers == 0:
+                self._add_key_to_buffer(8)
+        elif symbol == 0x1700000000:
+            # SHIFT+TAB; at least on my machine!
+            self._add_key_to_buffer((0, 15))
+        elif symbol == key.DELETE and modifiers in (0, key.MOD_SHIFT):
+            self._add_key_to_buffer((0, 83))
+        elif symbol == key.END and modifiers in (0, key.MOD_SHIFT):
+            self._add_key_to_buffer((0, 79))
+        elif symbol == key.END and modifiers == key.MOD_CTRL:
+            self._add_key_to_buffer((0, 117))
+        elif symbol == key.ENTER and modifiers == 0:
+            self._add_key_to_buffer(13)
+        elif symbol == key.ENTER and modifiers & key.MOD_CTRL:
+            self._add_key_to_buffer(10)
+        elif symbol in [key.F1, key.F2, key.F3, key.F4, key.F5, key.F6,
+                        key.F7, key.F8, key.F9, key.F10]:
+            idx = [key.F1, key.F2, key.F3, key.F4, key.F5,
+                   key.F6, key.F7, key.F8, key.F9, key.F10].index(symbol)
+            k = 59 + idx
+            if modifiers & key.MOD_SHIFT:
+                k += 84 - 59
+            elif modifiers & key.MOD_CTRL:
+                k += 94 - 59
+            elif modifiers & key.MOD_ALT:
+                k += 104 - 59
+            self._add_key_to_buffer((0, k))
+        elif symbol == key.F11:
+            if modifiers == 0:
+                self._add_key_to_buffer((0, 133))
+            elif modifiers == key.MOD_SHIFT:
+                self._add_key_to_buffer((0, 135))
+            elif modifiers == key.MOD_CTRL:
+                self._add_key_to_buffer((0, 137))
+            elif modifiers == key.MOD_ALT:
+                self._add_key_to_buffer((0, 139))
+        elif symbol == key.F12:
+            if modifiers == 0:
+                self._add_key_to_buffer((0, 134))
+            elif modifiers == key.MOD_SHIFT:
+                self._add_key_to_buffer((0, 136))
+            elif modifiers == key.MOD_CTRL:
+                self._add_key_to_buffer((0, 138))
+            elif modifiers == key.MOD_ALT:
+                self._add_key_to_buffer((0, 140))
+        elif symbol == key.HOME and modifiers in (0, key.MOD_SHIFT):
+            self._add_key_to_buffer((0, 71))
+        elif symbol == key.HOME and modifiers == key.MOD_CTRL:
+            self._add_key_to_buffer((0, 119))
+        elif symbol == key.INSERT and modifiers in (0, key.MOD_SHIFT):
+            self._add_key_to_buffer((0, 82))
+        elif symbol == key.PAGEDOWN and modifiers in (0, key.MOD_SHIFT):
+            self._add_key_to_buffer((0, 81))
+        elif symbol == key.PAGEDOWN and modifiers == key.MOD_CTRL:
+            self._add_key_to_buffer((0, 118))
+        elif symbol == key.PAGEUP and modifiers in (0, key.MOD_SHIFT):
+            self._add_key_to_buffer((0, 73))
+        elif symbol == key.PAGEUP and modifiers == key.MOD_CTRL:
+            self._add_key_to_buffer((0, 132))
+        elif symbol == key.TAB and modifiers == 0:
+            self._add_key_to_buffer(9)
+        elif symbol == key.ESCAPE:
+            self._add_key_to_buffer(27)
+        elif symbol == key.UP:
+            if modifiers == 0:
+                self._add_key_to_buffer((0, 72))
+        elif symbol == key.LEFT:
+            if modifiers & key.MOD_CTRL:
+                self._add_key_to_buffer((0, 115))
+            elif modifiers == 0:
+                self._add_key_to_buffer((0, 75))
+        elif symbol == key.DOWN:
+            if modifiers & key.MOD_CTRL:
+                self._add_key_to_buffer((0, 116))
+            elif modifiers == 0:
+                self._add_key_to_buffer((0, 80))
+        elif symbol == key.RIGHT:
+            if modifiers & key.MOD_CTRL:
+                self._add_key_to_buffer((0, 116))
+            elif modifiers == 0:
+                self._add_key_to_buffer((0, 77))
+        elif symbol <= 127:
+            self._add_key_to_buffer(symbol)
+        elif modifiers & key.MOD_CTRL:
+            symbol = {
+                key.NUM1: 1,
+            }[symbol]
+            self._add_key_to_buffer(symbol)
+
+    def _add_key_to_buffer(self, key):
+        self.keyboard_buf.append(key)
+        if len(self.keyboard_buf) > KEYBOARD_BUF_SIZE:
+            self.keyboard_buf = self.keyboard_buf[-KEYBOARD_BUF_SIZE]
+
+    def get_key(self):
+        if self.keyboard_buf:
+            return self.keyboard_buf.pop(0)
+        else:
+            return -1
 
 
 def main():

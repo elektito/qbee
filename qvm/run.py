@@ -469,7 +469,15 @@ class SmartTerminalDevice(TerminalDevice):
         self.terminal.call('put_text', text)
 
     def _inkey(self):
-        self.cpu.push(CellType.STRING, '')
+        k = self.terminal.call_with_result('get_key')
+        if k == -1:
+            self.cpu.push(CellType.STRING, '')
+        elif isinstance(k, int):
+            self.cpu.push(CellType.STRING, chr(k))
+        elif isinstance(k, tuple):
+            self.cpu.push(CellType.STRING, chr(k[0]) + chr(k[1]))
+        else:
+            assert False
 
 
 class PcSpeakerDevice(Device):
