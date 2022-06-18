@@ -640,6 +640,9 @@ def main():
         '--log-level', '-l', type=log_level_type, default='WARNING',
         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
         help='Set logging level. Defaults to %(default)s.')
+    parser.add_argument(
+        '--dumb', action='store_true',
+        help='Use dumb terminal, instead of smart terminal.')
 
     args = parser.parse_args()
 
@@ -660,7 +663,10 @@ def main():
     memory_device = MemoryDevice(QVM_DEVICES['memory']['id'], cpu)
     cpu.connect_device('memory', memory_device)
 
-    terminal_device = SmartTerminalDevice(
+    terminal_class = SmartTerminalDevice
+    if args.dumb:
+        terminal_class = DumbTerminalDevice
+    terminal_device = terminal_class(
         QVM_DEVICES['terminal']['id'], cpu)
     cpu.connect_device('terminal', terminal_device)
 
