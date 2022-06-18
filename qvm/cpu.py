@@ -637,6 +637,28 @@ class QvmCpu:
             result = -1
         self.push(CellType.INTEGER, result)
 
+    def _exec_or(self):
+        b = self.pop()
+        a = self.pop()
+
+        if not a.type.is_integral:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='integral',
+                      got=a.type)
+
+        if not b.type.is_integral:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='integral',
+                      got=b.type)
+
+        if a.type != b.type:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected=a.type,
+                      got=b.type)
+
+        result = a.value | b.value
+        self.push(a.type, result)
+
     def _exec_push_string(self, value):
         self.push(CellType.STRING, value)
 
