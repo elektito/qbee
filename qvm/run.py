@@ -4,6 +4,7 @@ import logging
 import logging.config
 from datetime import datetime
 from enum import Enum
+from qbee import expr
 from .using import PrintUsingFormatter
 from .module import QModule
 from .cpu import QvmCpu, CellType, TrapCode, QVM_DEVICES
@@ -321,6 +322,83 @@ class TerminalDevice(Device):
     def _exec_inkey(self):
         self._inkey()
 
+    def _exec_input(self):
+        def push_vars(string, var_types):
+            values = string.split(',')
+            values = [v.strip() for v in values]
+            if len(values) != len(var_types):
+                return False
+
+            for v, vtype in reversed(list(zip(values, var_types))):
+                if vtype == 1:  # INTEGER
+                    try:
+                        v = int(v)
+                    except ValueError:
+                        return False
+                    if v < -32768 or v > 32767:
+                        return False
+                    self.cpu.push(CellType.INTEGER, v)
+                elif vtype == 2:  # LONG
+                    try:
+                        v = int(v)
+                    except ValueError:
+                        return False
+                    if v < -2**31 or v >= 2**31:
+                        return False
+                    self.cpu.push(CellType.LONG, v)
+                elif vtype == 3:  # SINGLE
+                    try:
+                        v = float(v)
+                    except ValueError:
+                        return False
+                    if not expr.Type.SINGLE.can_hold(v):
+                        return False
+                    self.cpu.push(CellType.SINGLE, v)
+                elif vtype == 4:  # DOUBLE
+                    try:
+                        v = float(v)
+                    except ValueError:
+                        return False
+                    if not expr.Type.DOUBLE.can_hold(v):
+                        return False
+                    self.cpu.push(CellType.DOUBLE, v)
+                elif vtype == 5:  # STRING
+                    self.cpu.push(CellType.STRING, v)
+                else:
+                    self._device_error(
+                        error_code=Device.DeviceError.BAD_ARG_VALUE,
+                        error_msg=f'Unknown var type {vtype} for INPUT',
+                    )
+
+            return True
+
+        nvars = self.cpu.pop(CellType.INTEGER)
+        if nvars <= 0:
+            self._device_error(
+                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_msg='INPUT number of variables not positive',
+            )
+
+        var_types = []
+        for i in range(nvars):
+            var_types.append(self.cpu.pop(CellType.INTEGER))
+        var_types = list(reversed(var_types))
+
+        prompt_question = self.cpu.pop(CellType.INTEGER)
+        prompt = self.cpu.pop(CellType.STRING)
+        same_line = self.cpu.pop(CellType.INTEGER)
+
+        while True:
+            self._print(prompt)
+            if prompt_question:
+                self._print('? ')
+
+            string = self._input(same_line)
+            success = push_vars(string, var_types)
+            if success:
+                break
+            self._print('Redo from start\r\n')
+
 
 class DumbTerminalDevice(TerminalDevice):
     def _set_mode(self, mode, color_switch, apage, vpage):
@@ -434,6 +512,15 @@ class DumbTerminalDevice(TerminalDevice):
                 error_code=Device.DeviceError.BAD_ARG_VALUE,
                 error_msg='INKEY not supported on dumb terminal.',
             )
+
+    def _input(self, same_line):
+        if same_line:
+            self._device_error(
+                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_msg='Cannot stay on the same line in dumb terminal',
+            )
+
+        return input()
 
 
 class SmartTerminalDevice(TerminalDevice):

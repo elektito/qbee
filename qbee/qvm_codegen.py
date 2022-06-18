@@ -1388,9 +1388,9 @@ def gen_input(node, code, codegen):
     code.add(('push$', f'"{node.prompt.value}"'))
     code.add(('push%', prompt_question))
 
-    code.add(('push%', len(node.var_list)))
     for var in node.var_list:
         code.add(('push%', var.type.type_id))
+    code.add(('push%', len(node.var_list)))
     code.add(('io', 'terminal', 'input'))
 
     for var in node.var_list:
