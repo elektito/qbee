@@ -1,6 +1,8 @@
 import logging
 import itertools
 from enum import Enum
+from qbee import grammar
+from pyparsing.exceptions import ParseException
 from .instrs import op_code_to_instr
 
 
@@ -666,6 +668,15 @@ class QvmCpu:
                       expected_type=CellType.REFERENCE,
                       got_type=value.type)
         self.push(CellType.REFERENCE, value.value)
+
+    def _exec_sdbl(self):
+        string = self.pop(CellType.STRING)
+        try:
+            literal = grammar.numeric_literal.parse_string(string)[0]
+            value = float(literal.eval())
+        except ParseException:
+            value = 0.0
+        self.push(CellType.DOUBLE, value)
 
     def _exec_sign(self):
         value = self.pop()
