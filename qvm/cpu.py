@@ -163,6 +163,9 @@ class CallFrame:
     def get_local(self, idx):
         return self.local_vars[idx]
 
+    def get_local_ref(self, idx):
+        return Reference(segment=self, idx=idx)
+
     def set_temp_reference(self, idx, value):
         # get a non reference value, create a temporary cell for it,
         # and then store a reference to it in the given index.
@@ -635,6 +638,14 @@ class QvmCpu:
     def _exec_push_string(self, value):
         self.push(CellType.STRING, value)
 
+    def _exec_pushrefg(self):
+        ref = Reference(segment='globals', idx=idx)
+        self.push(CellType.REFERENCE, ref)
+
+    def _exec_pushrefl(self, idx):
+        ref = self.cur_frame.get_local_ref(idx)
+        self.push(CellType.REFERENCE, ref)
+
     def _exec_ret(self):
         self.cur_frame.destroy()
         self.cur_frame = self.cur_frame.prev_frame
@@ -665,6 +676,10 @@ class QvmCpu:
         v = value.value
         sign = 1 if v > 0 else -1 if v < 0 else 0
         self.push(value.type, value.type.py_type(sign))
+
+    def _exec_space(self):
+        n = self.pop(CellType.INTEGER)
+        self.push(CellType.STRING, ' ' * n)
 
     def _exec_storel(self, idx):
         value = self.pop()
