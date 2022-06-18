@@ -405,6 +405,28 @@ class QvmCpu:
         result = a.value + b.value
         self.push(a.type, result)
 
+    def _exec_and(self):
+        b = self.pop()
+        a = self.pop()
+
+        if not a.type.is_integral:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='integral',
+                      got=a.type)
+
+        if not b.type.is_integral:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='integral',
+                      got=b.type)
+
+        if a.type != b.type:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected=a.type,
+                      got=b.type)
+
+        result = a.value & b.value
+        self.push(a.type, result)
+
     def _exec_asc(self):
         value = self.pop(CellType.STRING)
         if len(value) == 0:
@@ -521,6 +543,17 @@ class QvmCpu:
         result = -1 if value.value >= 0 else 0
         self.push(CellType.INTEGER, result)
 
+    def _exec_gt(self):
+        value = self.pop()
+
+        if not value.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=a.type)
+        result = -1 if value.value > 0 else 0
+        print('GT', result, value)
+        self.push(CellType.INTEGER, result)
+
     def _exec_halt(self):
         self.halted = True
 
@@ -587,6 +620,17 @@ class QvmCpu:
                       expected='numeric',
                       got=a.type)
         result = -1 if value.value <= 0 else 0
+        self.push(CellType.INTEGER, result)
+
+    def _exec_lt(self):
+        value = self.pop()
+
+        if not value.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=a.type)
+        result = -1 if value.value < 0 else 0
+        print('LT', result, value)
         self.push(CellType.INTEGER, result)
 
     def _exec_mod(self):
@@ -721,6 +765,11 @@ class QvmCpu:
         except IndexError:
             self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
                       idx=idx)
+
+    def _exec_storeref(self):
+        ref = self.pop(CellType.REFERENCE)
+        value = self.pop()
+        ref.segment.set_local(ref.index, value)
 
     def _exec_strleft(self):
         n = self.pop(CellType.INTEGER)
