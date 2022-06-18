@@ -612,6 +612,10 @@ class QvmCpu:
         if value == 0:
             self.pc = target
 
+    def _exec_lcase(self):
+        s = self.pop(CellType.STRING)
+        self.push(CellType.STRING, s.lower())
+
     def _exec_le(self):
         value = self.pop()
 
@@ -839,6 +843,10 @@ class QvmCpu:
 
         result = a.value - b.value
         self.push(a.type, result)
+
+    def _exec_ucase(self):
+        s = self.pop(CellType.STRING)
+        self.push(CellType.STRING, s.upper())
 
 
 # add exec methods for all variants of the push instruction
