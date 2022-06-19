@@ -910,6 +910,19 @@ class QvmCpu:
                       got_type=value.type)
         self.push(CellType.REFERENCE, value.value)
 
+    def _exec_refidx(self):
+        idx = self.pop()
+        ref = self.pop(CellType.REFERENCE)
+
+        if not idx.type.is_integral:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected_type='integral',
+                      got_type=idx.type)
+
+        idx = idx.value
+        ref.index += idx
+        self.push(CellType.REFERENCE, ref)
+
     def _exec_sdbl(self):
         string = self.pop(CellType.STRING)
         try:
