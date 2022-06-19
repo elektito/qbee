@@ -327,9 +327,14 @@ class Type:
         if type.is_array:
             if not type.is_static_array:
                 return 1
+            element_size = Type.get_type_size(
+                type.array_base_type,
+                user_types,
+            )
             size = 1
             for dim in type.array_dims:
-                size *= (dim.static_ubound - dim.static_lbound + 1)
+                nrange = (dim.static_ubound - dim.static_lbound + 1)
+                size *= nrange * element_size
             header_size = 3 + len(type.array_dims) * 2
             return size + header_size
 

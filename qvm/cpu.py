@@ -222,7 +222,7 @@ class Array(MemorySegment):
 
         size = 1
         for lbound, ubound in bounds:
-            size *= ubound - lbound + 1
+            size *= (ubound - lbound + 1) * element_size
             header.extend([
                 CellValue(CellType.LONG, lbound),
                 CellValue(CellType.LONG, ubound),
@@ -232,6 +232,9 @@ class Array(MemorySegment):
 
         for i, value in enumerate(header):
             self.set_cell(i, value)
+
+    def __repr__(self):
+        return f'<Array dims={len(self.bounds)} size={self.size}>'
 
 
 class CellValue:
