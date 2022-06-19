@@ -103,6 +103,12 @@ class TerminalWindow(pyglet.window.Window):
         self.text_buffer = bytearray(
             self.text_lines * self.text_columns * 2)
 
+        # set current background and foreground color for the entire
+        # screen text buffer
+        attrs = self._get_current_text_attrs_byte()
+        for i in range(0, len(self.text_buffer), 2):
+            self.text_buffer[i] = attrs
+
     def put_text(self, text):
         if isinstance(text, str):
             text = text.encode('cp437')
@@ -127,13 +133,7 @@ class TerminalWindow(pyglet.window.Window):
 
                 continue
 
-            fg_color = self.fg_color
-            bg_color = self.bg_color
-            blink = 0x00
-            if fg_color >= 16:
-                fg_color -= 16
-                blink = 0x80
-            attrs = blink | (bg_color << 4) | fg_color
+            attrs = self._get_current_text_attrs_byte()
             self.text_buffer[idx] = attrs
             self.text_buffer[idx + 1] = char
 
@@ -211,6 +211,15 @@ class TerminalWindow(pyglet.window.Window):
         char_img = Image.fromarray(data)
 
         return char_img
+
+    def _get_current_text_attrs_byte(self):
+        fg_color = self.fg_color
+        bg_color = self.bg_color
+        blink = 0x00
+        if fg_color >= 16:
+            fg_color -= 16
+            blink = 0x80
+        return blink | (bg_color << 4) | fg_color
 
     def on_draw(self):
         if self._text_updated:
