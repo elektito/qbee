@@ -229,7 +229,8 @@ class TerminalWindow(pyglet.window.Window):
         self.text_texture.blit(
             0, 0, width=self.width, height=self.height)
 
-        if 0 <= (self.time % 1.0) <= self.cursor_blink_show_time:
+        if self.show_cursor and \
+           0 <= (self.time % 1.0) <= self.cursor_blink_show_time:
             text_bottom = self.text_texture.height - 1
             x = self.cursor_col * self.char_width
             y = text_bottom - (self.cursor_row * self.char_height + self.cursor_start)

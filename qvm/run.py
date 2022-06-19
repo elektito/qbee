@@ -582,6 +582,7 @@ class SmartTerminalDevice(TerminalDevice):
             assert False
 
     def _input(self, same_line):
+        self.terminal.call('set', 'show_cursor', True)
         string = ''
         while True:
             k = self.terminal.call_with_result('get_key')
@@ -603,6 +604,8 @@ class SmartTerminalDevice(TerminalDevice):
 
         if not same_line:
             self.terminal.call('put_text', '\r\n')
+
+        self.terminal.call('set', 'show_cursor', False)
 
         return string
 
