@@ -307,32 +307,31 @@ class QvmCpu:
 
     def read_var(self, scope, idx):
         if scope == 'local':
-            try:
-                return self.cur_frame.get_cell(idx)
-            except IndexError:
-                self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
-                          idx=idx)
+            segment = self.cur_frame
+            trap_code = TrapCode.INVALID_LOCAL_VAR_IDX
         else:
-            try:
-                return self.globals_segment.get_cell(idx)
-            except IndexError:
-                self.trap(TrapCode.INVALID_GLOBAL_VAR_IDX,
-                          idx=idx)
+            segment = self.globals_segment
+            trap_code = TrapCode.INVALID_GLOBAL_VAR_IDX
+
+        try:
+            return segment.get_cell(idx)
+        except IndexError:
+            self.trap(trap_code, idx=idx)
 
     def write_var(self, scope, idx, value):
         assert isinstance(value, CellValue)
+
         if scope == 'local':
-            try:
-                self.cur_frame.set_cell(idx, value)
-            except IndexError:
-                self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
-                          idx=idx)
+            segment = self.cur_frame
+            trap_code = TrapCode.INVALID_LOCAL_VAR_IDX
         else:
-            try:
-                self.globals_segment.set_cell(idx, value)
-            except IndexError:
-                self.trap(TrapCode.INVALID_GLOBAL_VAR_IDX,
-                          idx=idx)
+            segment = self.globals_segment
+            trap_code = TrapCode.INVALID_GLOBAL_VAR_IDX
+
+        try:
+            segment.set_cell(idx, value)
+        except IndexError:
+            self.trap(trap_code, idx=idx)
 
     def run(self):
         while self.pc < len(self.module.code) and not self.halted:
