@@ -76,7 +76,8 @@ class Type:
             elif self._type == BuiltinType.SINGLE:
                 return (
                     (-3.40282347e+38 <= value <= -1.17549435e-38) or
-                    (1.17549435e-38 <= value <= 3.40282347e+38)
+                    (1.17549435e-38 <= value <= 3.40282347e+38) or
+                    (value == 0.0)
                 )
             else:
                 return True
