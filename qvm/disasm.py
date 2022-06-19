@@ -13,14 +13,25 @@ def main():
         description='Disassemble QVM code')
 
     parser.add_argument('input', help='File to read code from')
+    parser.add_argument(
+        '--headers', '-H', action='store_true',
+        help='Only print header info')
     args = parser.parse_args()
 
     with open(args.input, 'rb') as f:
         bcode = f.read()
 
     module = QModule.parse(bcode)
-    result = module.disassemble()
-    print(result)
+
+    if args.headers:
+        print('consts:', len(module.consts))
+        print('n_global_cells:', module.n_global_cells)
+        data_parts = len(module.data)
+        data_items = sum(len(i) for i in module.data)
+        print('data parts:', data_parts, '  data items:', data_items)
+    else:
+        result = module.disassemble()
+        print(result)
 
 
 if __name__ == '__main__':
