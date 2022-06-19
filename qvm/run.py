@@ -400,6 +400,11 @@ class TerminalDevice(Device):
                 break
             self._print('Redo from start\r\n')
 
+    def _exec_view_print(self):
+        bottom_line = self.cpu.pop(CellType.INTEGER)
+        top_line = self.cpu.pop(CellType.INTEGER)
+        self._view_print(top_line, bottom_line)
+
 
 class DumbTerminalDevice(TerminalDevice):
     def _set_mode(self, mode, color_switch, apage, vpage):
@@ -510,9 +515,9 @@ class DumbTerminalDevice(TerminalDevice):
 
     def _inkey(self):
         self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
-                error_msg='INKEY not supported on dumb terminal.',
-            )
+            error_code=Device.DeviceError.BAD_ARG_VALUE,
+            error_msg='INKEY not supported on dumb terminal.',
+        )
 
     def _input(self, same_line):
         if same_line:
@@ -522,6 +527,15 @@ class DumbTerminalDevice(TerminalDevice):
             )
 
         return input()
+
+    def _view_print(self, top_line, bottom_line):
+        if bottom_line >= 0 or top_line >= 0:
+            self._device_error(
+                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_msg='VIEW PRINT with arguments not supported',
+            )
+
+        # no need to do anything for view print without arguments
 
 
 class SmartTerminalDevice(TerminalDevice):
@@ -591,6 +605,16 @@ class SmartTerminalDevice(TerminalDevice):
             self.terminal.call('put_text', '\r\n')
 
         return string
+
+    def _view_print(self, top_line, bottom_line):
+        if bottom_line >= 0 or top_line >= 0:
+            self._device_error(
+                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_msg='VIEW PRINT with arguments not supported',
+            )
+
+        # no need to do anything for view print without arguments
+        # right now
 
 
 class PcSpeakerDevice(Device):
