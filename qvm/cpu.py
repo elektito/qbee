@@ -177,6 +177,9 @@ class MemorySegment:
         self.cells.append(value)
         self.size += 1
 
+    def __repr__(self):
+        return f'<MemorySegment size={self.size}>'
+
 
 class CallFrame(MemorySegment):
     def __init__(self, size, prev_frame):
