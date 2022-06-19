@@ -35,7 +35,8 @@ class CanonicalOp(Enum):
     IDIV = auto()
     IJMP = auto()
     IMP = auto()
-    INITARR = auto()
+    INITARRG = auto()
+    INITARRL = auto()
     INT = auto()
     IO = auto()
     JMP = auto()
@@ -560,10 +561,17 @@ class QvmCode(BaseCode):
                 assert len(args) == 2
                 params_size, vars_size = args
                 bargs = struct.pack('>HH', params_size, vars_size)
-            elif op == 'initarr':
+            elif op == 'initarrl':
                 assert len(args) == 3
                 var, n_dims, element_size = args
                 var_idx = get_local_var_idx(cur_routine, var)
+                bargs = struct.pack(
+                    '>HBi', var_idx, n_dims, element_size)
+            elif op == 'initarrg':
+                assert len(args) == 3
+                var, n_dims, element_size = args
+                var = cur_routine.get_variable(var).full_name
+                var_idx = get_global_var_idx(var)
                 bargs = struct.pack(
                     '>HBi', var_idx, n_dims, element_size)
             elif op == 'io':
@@ -1178,6 +1186,10 @@ def gen_dim(node, code, codegen):
     for decl in node.children:
         element_size = expr.Type.get_type_size(
             decl.type.array_base_type, codegen.compilation.user_types)
+        if decl.var.is_global:
+            scope = 'g'  # global
+        else:
+            scope = 'l'  # local
 
         for dim_range in decl.array_dims:
             codegen.gen_code_for_node(dim_range.lbound, code)
@@ -1191,17 +1203,12 @@ def gen_dim(node, code, codegen):
         if decl.array_dims_are_const:
             # static array
             code.add(
-                ('initarr',
+                (f'initarr{scope}',
                  decl.name, len(decl.array_dims), element_size),
             )
         else:
             # dynamic array
             code.add(('allocarr', len(decl.array_dims), element_size))
-
-            if decl.var.is_global:
-                scope = 'g'  # global
-            else:
-                scope = 'l'  # local
             code.add((f'store{scope}', decl.name))
 
 

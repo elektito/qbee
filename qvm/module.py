@@ -51,7 +51,7 @@ def parse_globals_section(section):
     if len(section) != 4:
         perror('consts section is not exactly 4 bytes')
 
-    n_global_cells, = struct.unpack('<I', section)
+    n_global_cells, = struct.unpack('>I', section)
 
     return n_global_cells
 
@@ -101,7 +101,7 @@ class QModule:
                     '>HH', bcode[idx:idx+4])
                 idx += 4
                 args = [psize, vsize]
-            elif op == 'initarr':
+            elif op in ('initarrl', 'initarrg'):
                 var_idx, n_dims, element_size = struct.unpack(
                     '>HBi', bcode[idx:idx+7])
                 idx += 7

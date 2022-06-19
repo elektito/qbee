@@ -161,14 +161,14 @@ class MemorySegment:
         self.size = size
         self.cells = [None] * size
 
-    def get_local(self, idx):
+    def get_cell(self, idx):
         return self.cells[idx]
 
-    def set_local(self, idx, value):
+    def set_cell(self, idx, value):
         assert value is None or isinstance(value, CellValue)
         self.cells[idx] = value
 
-    def get_local_ref(self, idx):
+    def get_cell_ref(self, idx):
         return Reference(segment=self, index=idx)
 
     def append_local(self, value):
@@ -190,8 +190,8 @@ class CallFrame(MemorySegment):
         self.append_local(CellValue(value.type, value.value))
         ref = CellValue(CellType.REFERENCE,
                         Reference(segment=self,
-                                  index=len(self.local_vars) - 1))
-        self.set_local(idx, ref)
+                                  index=len(self.cells) - 1))
+        self.set_cell(idx, ref)
 
     def destroy(self):
         # dynamic arrays will be automatically destroyed by python GC
@@ -231,7 +231,7 @@ class Array(MemorySegment):
         super().__init__(len(header) + size)
 
         for i, value in enumerate(header):
-            self.set_local(i, value)
+            self.set_cell(i, value)
 
 
 class CellValue:
@@ -283,13 +283,11 @@ class QvmCpu:
         self.devices = {}
         self.device_by_id = {}
 
+        self.globals_segment = MemorySegment(self.module.n_global_cells)
         self.halted = False
         self.pc = 0
         self.cur_frame = None
         self.stack = []
-        self.global_vars = [
-            None for _ in range(module.n_global_cells)
-        ]
 
     def connect_device(self, device_name, device):
         logging.info('Connecting device: %s', device_name)
@@ -307,13 +305,13 @@ class QvmCpu:
     def read_var(self, scope, idx):
         if scope == 'local':
             try:
-                return self.cur_frame.get_local(idx)
+                return self.cur_frame.get_cell(idx)
             except IndexError:
                 self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
                           idx=idx)
         else:
             try:
-                return self.global_vars[idx]
+                return self.globals_segment.get_cell(idx)
             except IndexError:
                 self.trap(TrapCode.INVALID_GLOBAL_VAR_IDX,
                           idx=idx)
@@ -322,13 +320,13 @@ class QvmCpu:
         assert isinstance(value, CellValue)
         if scope == 'local':
             try:
-                self.cur_frame.set_local(idx, value)
+                self.cur_frame.set_cell(idx, value)
             except IndexError:
                 self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
                           idx=idx)
         else:
             try:
-                self.global_vars[idx] = value
+                self.globals_segment.set_cell(idx, value)
             except IndexError:
                 self.trap(TrapCode.INVALID_GLOBAL_VAR_IDX,
                           idx=idx)
@@ -528,20 +526,20 @@ class QvmCpu:
 
         base_idx = array_ref.index
 
-        array_n_dims = array_ref.segment.get_local(base_idx + 1).value
+        array_n_dims = array_ref.segment.get_cell(base_idx + 1).value
         if array_n_dims != n_indices:
             self.trap(TrapCode.INVALID_DIMENSIONS,
                       expected=array_n_dims,
                       got=n_indices)
 
-        element_size = array_ref.segment.get_local(base_idx + 2).value
+        element_size = array_ref.segment.get_cell(base_idx + 2).value
 
         base_idx += 3
         dim_sizes = []
         bounds = []
         for idx in reversed(indices):
-            lbound = array_ref.segment.get_local(base_idx + 0).value
-            ubound = array_ref.segment.get_local(base_idx + 1).value
+            lbound = array_ref.segment.get_cell(base_idx + 0).value
+            ubound = array_ref.segment.get_cell(base_idx + 1).value
             if idx < lbound or idx > ubound:
                 self.trap(TrapCode.INDEX_OUT_OF_RANGE,
                           idx=idx,
@@ -562,7 +560,7 @@ class QvmCpu:
             prev_dims_size = mul(dim_sizes[n+1:])
             idx += prev_dims_size * (cur_idx - lbound)
 
-        ref = array_ref.segment.get_local_ref(idx)
+        ref = array_ref.segment.get_cell_ref(idx)
         self.push(CellType.REFERENCE, ref)
 
     def _exec_asc(self):
@@ -658,7 +656,7 @@ class QvmCpu:
 
             value = self.pop()
             if value.type == CellType.REFERENCE:
-                frame.set_local(idx, value)
+                frame.set_cell(idx, value)
             else:
                 frame.set_temp_reference(idx, value)
 
@@ -714,7 +712,7 @@ class QvmCpu:
         target = self.pop(CellType.LONG)
         self.pc = target
 
-    def _exec_initarr(self, idx, n_dims, element_size):
+    def _exec_initarrl(self, idx, n_dims, element_size):
         bounds = []
         for i in range(n_dims):
             ubound = self.pop(CellType.LONG)
@@ -723,15 +721,36 @@ class QvmCpu:
 
         bounds.reverse()
 
-        self.cur_frame.set_local(
+        self.cur_frame.set_cell(
             idx + 1, CellValue(CellType.LONG, n_dims))
-        self.cur_frame.set_local(
+        self.cur_frame.set_cell(
             idx + 2, CellValue(CellType.LONG, element_size))
         for i, (lbound, ubound) in enumerate(bounds):
-            self.cur_frame.set_local(idx + 3 + 2 * i + 0,
+            self.cur_frame.set_cell(idx + 3 + 2 * i + 0,
                                      CellValue(CellType.LONG, lbound))
-            self.cur_frame.set_local(idx + 3 + 2 * i + 1,
+            self.cur_frame.set_cell(idx + 3 + 2 * i + 1,
                                      CellValue(CellType.LONG, ubound))
+
+    def _exec_initarrg(self, idx, n_dims, element_size):
+        bounds = []
+        for i in range(n_dims):
+            ubound = self.pop(CellType.LONG)
+            lbound = self.pop(CellType.LONG)
+            bounds.append((lbound, ubound))
+
+        bounds.reverse()
+
+        self.globals_segment.set_cell(
+            idx + 1, CellValue(CellType.LONG, n_dims))
+        self.globals_segment.set_cell(
+            idx + 2, CellValue(CellType.LONG, element_size))
+        for i, (lbound, ubound) in enumerate(bounds):
+            self.globals_segment.set_cell(
+                idx + 3 + 2 * i + 0,
+                CellValue(CellType.LONG, lbound))
+            self.globals_segment.set_cell(
+                idx + 3 + 2 * i + 1,
+                CellValue(CellType.LONG, ubound))
 
     def _exec_io(self, device_id, operation):
         device_name = get_device_name_by_id(device_id)
@@ -860,11 +879,11 @@ class QvmCpu:
         self.push(CellType.STRING, value)
 
     def _exec_pushrefg(self, idx):
-        ref = Reference(segment='globals', index=idx)
+        ref = Reference(segment=self.globals_segment, index=idx)
         self.push(CellType.REFERENCE, ref)
 
     def _exec_pushrefl(self, idx):
-        ref = self.cur_frame.get_local_ref(idx)
+        ref = self.cur_frame.get_cell_ref(idx)
         self.push(CellType.REFERENCE, ref)
 
     def _exec_ret(self):
@@ -875,7 +894,7 @@ class QvmCpu:
 
     def _exec_readl_reference(self, idx):
         try:
-            value = self.cur_frame.get_local(idx)
+            value = self.cur_frame.get_cell(idx)
         except IndexError:
             self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
                       idx=idx)
@@ -914,7 +933,7 @@ class QvmCpu:
     def _exec_storel(self, idx):
         value = self.pop()
         try:
-            self.cur_frame.set_local(idx, value)
+            self.cur_frame.set_cell(idx, value)
         except IndexError:
             self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
                       idx=idx)
@@ -922,7 +941,7 @@ class QvmCpu:
     def _exec_storeref(self):
         ref = self.pop(CellType.REFERENCE)
         value = self.pop()
-        ref.segment.set_local(ref.index, value)
+        ref.segment.set_cell(ref.index, value)
 
     def _exec_strleft(self):
         n = self.pop(CellType.INTEGER)
@@ -1077,11 +1096,11 @@ for _type in value_types:
         default_value = 0 if _type.is_numeric else ''
         def method(self):
             ref = self.pop(CellType.REFERENCE)
-            derefed = ref.segment.get_local(ref.index)
+            derefed = ref.segment.get_cell(ref.index)
             if derefed is None:
                 derefed = CellValue(
                     _type, _type.py_type(default_value))
-                ref.segment.set_local(ref.index, derefed)
+                ref.segment.set_cell(ref.index, derefed)
             logger.info(f'Derefed {ref} to {derefed}')
             self.push(derefed.type, derefed.value)
         method.__name__ = attr
