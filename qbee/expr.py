@@ -325,7 +325,13 @@ class Type:
     @staticmethod
     def get_type_size(type, user_types):
         if type.is_array:
-            return 1
+            if not type.is_static_array:
+                return 1
+            size = 1
+            for dim in type.array_dims:
+                size *= (dim.static_ubound - dim.static_lbound + 1)
+            header_size = 3 + len(type.array_dims) * 2
+            return size + header_size
 
         from .stmt import TypeBlock
         assert all(
@@ -843,7 +849,7 @@ class Lvalue(Expr):
     def base_is_ref(self):
         return (
             self.base_var in self.parent_routine.params or
-            self.type.is_dynamic_array
+            self.base_type.is_dynamic_array
         )
 
     def get_base_variable(self):

@@ -35,6 +35,7 @@ class CanonicalOp(Enum):
     IDIV = auto()
     IJMP = auto()
     IMP = auto()
+    INITARR = auto()
     INT = auto()
     IO = auto()
     JMP = auto()
@@ -542,9 +543,10 @@ class QvmCode(BaseCode):
 
             bargs = b''
             if op == 'allocarr':
-                assert len(args) == 1
+                assert len(args) == 2
                 n_indices = args[0]
-                bargs = struct.pack('>B', n_indices)
+                element_size = args[1]
+                bargs = struct.pack('>Bi', n_indices, element_size)
             elif op == 'arridx':
                 assert len(args) == 1
                 n_indices = args[0]
@@ -558,6 +560,12 @@ class QvmCode(BaseCode):
                 assert len(args) == 2
                 params_size, vars_size = args
                 bargs = struct.pack('>HH', params_size, vars_size)
+            elif op == 'initarr':
+                assert len(args) == 3
+                var, n_dims, element_size = args
+                var_idx = get_local_var_idx(cur_routine, var)
+                bargs = struct.pack(
+                    '>HBi', var_idx, n_dims, element_size)
             elif op == 'io':
                 assert len(args) == 2
                 device, device_op = args
@@ -863,8 +871,9 @@ def gen_lvalue(node, code, codegen):
         scope = 'l'  # local
 
     if node.base_is_ref or base_var.type.is_array:
+        type_char = node.type.type_char
         gen_lvalue_ref(node, code, codegen)
-        code.add(('deref',))
+        code.add((f'deref{type_char}',))
     else:
         idx = get_lvalue_dotted_index(node, codegen)
         if idx == 0:
@@ -1167,9 +1176,9 @@ def gen_def_type(node, code, codegen):
 @QvmCodeGen.generator_for(stmt.DimStmt)
 def gen_dim(node, code, codegen):
     for decl in node.children:
-        if decl.array_dims_are_const:
-            # nothing to do for static arrays
-            continue
+        element_size = expr.Type.get_type_size(
+            decl.type.array_base_type, codegen.compilation.user_types)
+
         for dim_range in decl.array_dims:
             codegen.gen_code_for_node(dim_range.lbound, code)
             gen_code_for_conv(
@@ -1178,13 +1187,22 @@ def gen_dim(node, code, codegen):
             codegen.gen_code_for_node(dim_range.ubound, code)
             gen_code_for_conv(
                 expr.Type.LONG, dim_range.ubound, code, codegen)
-        code.add(('allocarr', len(decl.array_dims)))
 
-        if decl.var.is_global:
-            scope = 'g'  # global
+        if decl.array_dims_are_const:
+            # static array
+            code.add(
+                ('initarr',
+                 decl.name, len(decl.array_dims), element_size),
+            )
         else:
-            scope = 'l'  # local
-        code.add((f'read{scope}@', decl.name))
+            # dynamic array
+            code.add(('allocarr', len(decl.array_dims), element_size))
+
+            if decl.var.is_global:
+                scope = 'g'  # global
+            else:
+                scope = 'l'  # local
+            code.add((f'store{scope}', decl.name))
 
 
 @QvmCodeGen.generator_for(stmt.LoopBlock)

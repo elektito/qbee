@@ -1,5 +1,11 @@
 import struct
+import sys
 from .instrs import op_code_to_instr
+
+
+def perror(msg):
+    print(msg, file=sys.stderr)
+    exit(1)
 
 
 def parse_consts_section(section):
@@ -77,7 +83,12 @@ class QModule:
                 op = instr.op
             except KeyError:
                 perror(f'Unknown op code: {op_code}')
-            if op in ('allocarr', 'arridx'):
+            if op == 'allocarr':
+                n_indices, element_size = struct.unpack(
+                    '>Bi', bcode[idx:idx+5])
+                idx += 5
+                args = [n_indices, element_size]
+            elif op in ('allocarr', 'arridx'):
                 n_indices, = struct.unpack('>B', bcode[idx:idx+1])
                 idx += 1
                 args = [n_indices]
@@ -90,6 +101,11 @@ class QModule:
                     '>HH', bcode[idx:idx+4])
                 idx += 4
                 args = [psize, vsize]
+            elif op == 'initarr':
+                var_idx, n_dims, element_size = struct.unpack(
+                    '>HBi', bcode[idx:idx+7])
+                idx += 7
+                args = [var_idx, n_dims, element_size]
             elif op == 'io':
                 device, device_op = struct.unpack(
                     '>BB', bcode[idx:idx+2])

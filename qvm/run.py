@@ -315,7 +315,8 @@ class TerminalDevice(Device):
                     print_number(arg)
                 else:
                     buf += arg.value
-            if printables[-1] not in [comma, semicolon]:
+            if len(printables) == 0 or \
+               printables[-1] not in [comma, semicolon]:
                 buf += '\r\n'
             self._print(buf)
 
