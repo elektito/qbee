@@ -1,7 +1,7 @@
 import logging
 import itertools
 from enum import Enum
-from qbee import grammar
+from qbee import grammar, expr
 from pyparsing.exceptions import ParseException
 from .instrs import op_code_to_instr
 
@@ -151,6 +151,7 @@ class TrapCode(Enum):
     TYPE_MISMATCH = 7
     NULL_REFERENCE = 8
     INVALID_OPERAND_VALUE = 9
+    INVALID_CELL_VALUE = 10
 
 
 class CallFrame:
@@ -192,6 +193,23 @@ class CellValue:
         assert isinstance(value, type.py_type)
         self.type = type
         self.value = value
+
+        expr_type = {
+            CellType.INTEGER: expr.Type.INTEGER,
+            CellType.LONG: expr.Type.LONG,
+            CellType.SINGLE: expr.Type.SINGLE,
+            CellType.DOUBLE: expr.Type.DOUBLE,
+            CellType.STRING: expr.Type.STRING,
+        }.get(self.type)
+        if expr_type is not None:
+            if not expr_type.can_hold(value):
+                raise Trapped(
+                    trap_code=TrapCode.INVALID_CELL_VALUE,
+                    trap_kwargs={
+                        'type': self.type,
+                        'value': value,
+                    }
+                )
 
     def __repr__(self):
         value = self.value
@@ -353,6 +371,10 @@ class QvmCpu:
             desc = kwargs.get('desc')
             desc = f': {desc}' if desc else ''
             print(f'Invalid operand value{desc}')
+        elif code == TrapCode.INVALID_CELL_VALUE:
+            cell_type = kwargs.get('type')
+            value = kwargs.get('value')
+            print(f'A cell of type {cell_type} cannot hold: {value}')
         else:
             assert False
 
