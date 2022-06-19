@@ -732,7 +732,7 @@ class QvmCpu:
     def _exec_push_string(self, value):
         self.push(CellType.STRING, value)
 
-    def _exec_pushrefg(self):
+    def _exec_pushrefg(self, idx):
         ref = Reference(segment='globals', idx=idx)
         self.push(CellType.REFERENCE, ref)
 
