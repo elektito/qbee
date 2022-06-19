@@ -600,6 +600,54 @@ class PcSpeakerDevice(Device):
         logger.info('PLAY: %s', command)
 
 
+class DataDevice(Device):
+    name = 'data'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.data_part = 0
+        self.data_idx = 0
+
+    def _exec_read(self):
+        data_type = self.cpu.pop(CellType.INTEGER)
+        try:
+            s = self.cpu.module.data[self.data_part][self.data_idx]
+        except IndexError:
+            self._device_error(
+                error_code=Device.DeviceError.OP_FAILED,
+                error_msg='Out of data',
+            )
+
+        try:
+            if data_type == 1:
+                self.cpu.push(CellType.INTEGER, int(s))
+            elif data_type == 2:
+                self.cpu.push(CellType.LONG, int(s))
+            elif data_type == 3:
+                self.cpu.push(CellType.SINGLE, float(s))
+            elif data_type == 4:
+                self.cpu.push(CellType.DOUBLE, float(s))
+            elif data_type == 5:
+                self.cpu.push(CellType.STRING, s)
+            else:
+                assert False
+        except (ValueError, TypeError) as e:
+            self._device_error(
+                error_code=Device.DeviceError.BAD_ARG_TYPE,
+                error_msg='Cannot READ data as requested type',
+            )
+
+        self.data_idx += 1
+        if self.data_idx >= len(self.cpu.module.data[self.data_part]):
+            self.data_idx = 0
+            self.data_part += 1
+
+    def _exec_restore(self):
+        part_idx = self.cpu.pop(CellType.INTEGER)
+        self.data_part = part_idx
+        self.data_idx = 0
+
+
 def config_logging(args):
     logging.config.dictConfig({
         'version': 1,
@@ -672,6 +720,9 @@ def main():
 
     speaker_device = PcSpeakerDevice(QVM_DEVICES['pcspkr']['id'], cpu)
     cpu.connect_device('pcspkr', speaker_device)
+
+    data_device = DataDevice(QVM_DEVICES['data']['id'], cpu)
+    cpu.connect_device('data', data_device)
 
     cpu.run()
 
