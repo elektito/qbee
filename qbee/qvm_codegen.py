@@ -1184,6 +1184,9 @@ def gen_def_type(node, code, codegen):
 @QvmCodeGen.generator_for(stmt.DimStmt)
 def gen_dim(node, code, codegen):
     for decl in node.children:
+        if not decl.type.is_array:
+            continue
+
         element_size = expr.Type.get_type_size(
             decl.type.array_base_type, codegen.compilation.user_types)
         if decl.var.is_global:
