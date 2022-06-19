@@ -179,7 +179,7 @@ def test_push_jz_zero():
 def test_push_jz_nonzero():
     code = QvmCode()
     code.add(
-        ('push%', 0),
+        ('push%', -1),
         ('jz', 'target'),
     )
     code.optimize()
