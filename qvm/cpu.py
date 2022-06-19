@@ -1,5 +1,6 @@
 import logging
 import itertools
+import math
 from enum import Enum
 from qbee import grammar, expr
 from pyparsing.exceptions import ParseException
@@ -753,6 +754,17 @@ class QvmCpu:
             self.globals_segment.set_cell(
                 idx + 3 + 2 * i + 1,
                 CellValue(CellType.LONG, ubound))
+
+    def _exec_int(self):
+        value = self.pop()
+
+        if not value.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=value.type)
+
+        int_value = math.floor(value.value)
+        self.push(CellType.LONG, int_value)
 
     def _exec_io(self, device_id, operation):
         device_name = get_device_name_by_id(device_id)
