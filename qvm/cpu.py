@@ -892,6 +892,9 @@ class QvmCpu:
         result = a.value | b.value
         self.push(a.type, result)
 
+    def _exec_pop(self):
+        self.pop()
+
     def _exec_push_string(self, value):
         self.push(CellType.STRING, value)
 
@@ -959,6 +962,14 @@ class QvmCpu:
     def _exec_space(self):
         n = self.pop(CellType.INTEGER)
         self.push(CellType.STRING, ' ' * n)
+
+    def _exec_storeg(self, idx):
+        value = self.pop()
+        try:
+            self.globals_segment.set_cell(idx, value)
+        except IndexError:
+            self.trap(TrapCode.INVALID_GLOBAL_VAR_IDX,
+                      idx=idx)
 
     def _exec_storel(self, idx):
         value = self.pop()
