@@ -334,7 +334,8 @@ class Type:
             size = 1
             for dim in type.array_dims:
                 nrange = (dim.static_ubound - dim.static_lbound + 1)
-                size *= nrange * element_size
+                size *= nrange
+            size *= element_size
             header_size = 3 + len(type.array_dims) * 2
             return size + header_size
 
