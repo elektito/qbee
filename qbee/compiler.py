@@ -569,6 +569,23 @@ class Pass2(CompilePass):
         self._check_function_args(node, nargs, arg_types)
 
     def process_lvalue_pre(self, node):
+        const = self.compilation.consts.get(node.base_var)
+        if const is not None:
+            if node.array_indices or node.dotted_vars:
+                raise CompileError(
+                    EC.INVALID_IDENTIFIER,
+                    'Invalid use of CONST value (this might be valid '
+                    'QBASIC, but we are not accepting it for now)',
+                    node=node,
+                )
+
+            const = const.clone()
+            const.loc_start = node.loc_start
+            const.loc_end = node.loc_end
+            node.parent.replace_child(node, const)
+
+            return
+
         func = self.compilation.get_routine(node.base_var, 'function')
         if func is not None:
             if node.dotted_vars:

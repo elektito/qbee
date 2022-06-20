@@ -8,6 +8,8 @@ class Node(ABC):
     def __new__(cls, *args, **kwargs):
         obj = super().__new__(cls)
         obj.parent = None
+        obj._init_args = args
+        obj._init_kwargs = kwargs
         obj.__init__(*args, **kwargs)
         for child in obj.children:
             child.parent = obj
@@ -125,3 +127,26 @@ class Node(ABC):
         new_child.loc_end = old_child.loc_end
         new_child.parent = self
         new_child.bind(self.compilation)
+
+    def clone(self):
+        def copy_arg(arg):
+            if not isinstance(arg, Node):
+                return arg
+            new_arg = arg.clone()
+            new_arg.loc_start = getattr(arg, 'loc_start', None)
+            new_arg.loc_end = getattr(arg, 'loc_end', None)
+            new_arg.parent = arg.parent
+            if hasattr(arg, '_compilation'):
+                new_arg._compilation = arg._compilation
+            if hasattr(arg, '_parent_routine'):
+                new_arg._parent_routine = arg._parent_routine
+            return new_arg
+
+        cls = self.__class__
+        init_args = [copy_arg(arg) for arg in self._init_args]
+        init_kwargs = {
+            name: copy_arg(value)
+            for name, value in self._init_kwargs.items()
+        }
+        result = cls.__new__(cls, *init_args, **init_kwargs)
+        return result
