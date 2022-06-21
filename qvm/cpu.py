@@ -339,45 +339,65 @@ class QvmCpu:
 
     def run(self):
         while self.pc < len(self.module.code) and not self.halted:
-            op_code = self.module.code[self.pc]
-            self.pc += 1
+            self.tick()
 
-            instr = op_code_to_instr.get(op_code)
-            if instr is None:
-                self._trap(TrapCode.INVALID_OP_CODE, op_code=op_code)
-                continue
+    def tick(self):
+        instr, operands, size = self.get_current_instruction()
+        self.pc += size
+        if instr is None:
+            return
 
-            operands = []
-            for operand in instr.operands:
-                operand = operand(
-                    self.module.consts, self.module.data, {})
-                bvalue = self.module.code[self.pc:self.pc+operand.size]
-                value = operand.decode(bvalue)
-                self.pc += operand.size
-                operands.append(value)
+        op_name = instr.op
+        op_name = op_name.replace('%', '_integer')
+        op_name = op_name.replace('&', '_long')
+        op_name = op_name.replace('!', '_single')
+        op_name = op_name.replace('#', '_double')
+        op_name = op_name.replace('$', '_string')
+        op_name = op_name.replace('@', '_reference')
+        func = getattr(self, f'_exec_{op_name}', None)
+        if func is None:
+            print(f'No exec function for op: {instr.op} '
+                  f'({instr.op_code})')
+            exit(1)
 
-            op_name = instr.op
-            op_name = op_name.replace('%', '_integer')
-            op_name = op_name.replace('&', '_long')
-            op_name = op_name.replace('!', '_single')
-            op_name = op_name.replace('#', '_double')
-            op_name = op_name.replace('$', '_string')
-            op_name = op_name.replace('@', '_reference')
-            func = getattr(self, f'_exec_{op_name}', None)
-            if func is None:
-                print(f'No exec function for op: {instr.op} '
-                      f'({instr.op_code})')
-                exit(1)
+        operands_list = ''
+        if operands:
+            operands_list = ' ' + \
+                ', '.join(str(i) for i in operands)
+        logger.info(f'INSTR: {instr.op}{operands_list}')
+        try:
+            func(*operands)
+        except Trapped as e:
+            self._trap(e.trap_code, **e.trap_kwargs)
 
-            operands_list = ''
-            if operands:
-                operands_list = ' ' + \
-                    ', '.join(str(i) for i in operands)
-            logger.info(f'INSTR: {instr.op}{operands_list}')
-            try:
-                func(*operands)
-            except Trapped as e:
-                self._trap(e.trap_code, **e.trap_kwargs)
+        if self.pc >= len(self.module.code):
+            logger.info(
+                'Halting because execution reached end of module')
+            self.halted = True
+
+    def get_current_instruction(self):
+        return self.get_instruction_at(self.pc)
+
+    def get_instruction_at(self, addr):
+        idx = addr
+        op_code = self.module.code[idx]
+        idx += 1
+
+        instr = op_code_to_instr.get(op_code)
+        if instr is None:
+            self._trap(TrapCode.INVALID_OP_CODE, op_code=op_code)
+            return None, [], 1
+
+        operands = []
+        for operand in instr.operands:
+            operand = operand(
+                self.module.consts, self.module.data, {})
+            bvalue = self.module.code[idx:idx+operand.size]
+            value = operand.decode(bvalue)
+            idx += operand.size
+            operands.append(value)
+
+        return instr, operands, idx - addr
 
     def trap(self, code, **kwargs):
         raise Trapped(trap_code=code, trap_kwargs=kwargs)

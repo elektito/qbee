@@ -9,7 +9,7 @@ class CodeGen:
     # maps names of codegens to codegen classes
     codegens = {}
 
-    def __init__(self, codegen_name, compilation):
+    def __init__(self, codegen_name, compilation, debug_info=False):
         self.compilation = compilation
         self.codegen_name = codegen_name
 
@@ -18,10 +18,13 @@ class CodeGen:
                 f'Unknown code generator: {self.codegen_name}')
 
         impl_class = CodeGen.codegens[codegen_name]
-        self._impl = impl_class(compilation)
+        self._impl = impl_class(compilation, debug_info=debug_info)
 
     def gen_code(self, program):
         return self._impl.gen_code(program)
+
+    def set_source_code(self, source_code):
+        self._impl.set_source_code(source_code)
 
 
 class CodeGenMetaclass(type):
@@ -85,6 +88,10 @@ The following attributes are added to classes:
 class BaseCodeGen(metaclass=CodeGenMetaclass):
     "Base class for all code generator classes."
 
+    def __init__(self, debug_info):
+        self.debug_info_enabled = debug_info
+        self.dbg_info_stack = []
+
     @classmethod
     def generator_for(cls, node_class):
         def decorator(func):
@@ -113,8 +120,36 @@ other codegen functions.
 
         """
 
+        self.start_dbg_info(node, code)
+
         gen = self.generator_funcs.get(type(node))
         if not gen:
             raise InternalError(
                 f'Cannot generate code for node: {node}')
         gen(node, code, self)
+
+        self.end_dbg_info(node, code)
+
+    def start_dbg_info(self, node, code):
+        if not self.debug_info_enabled:
+            return
+        if not hasattr(node, 'loc_start'):
+            return
+        if node.loc_start is None:
+            return
+
+        self.dbg_info_stack.append(node)
+        code.add(('_dbg_info_start', node))
+
+    def end_dbg_info(self, node, code):
+        if not self.debug_info_enabled:
+            return
+        if not hasattr(node, 'loc_start'):
+            return
+        if node.loc_start is None:
+            return
+
+        start_node = self.dbg_info_stack.pop()
+        assert start_node == node, 'Something is wrong with debug info'
+
+        code.add(('_dbg_info_end', node))

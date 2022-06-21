@@ -989,13 +989,20 @@ class Pass3(CompilePass):
 
 
 class Compiler:
-    def __init__(self, codegen_name, optimization_level=0):
+    def __init__(self, codegen_name, optimization_level=0,
+                 debug_info=False):
         self.optimization_level = optimization_level
 
         self._compilation = CompilationUnit()
-        self._codegen = CodeGen(codegen_name, self._compilation)
+        self._debug_info_enabled = debug_info
+        self._codegen = CodeGen(
+            codegen_name, self._compilation,
+            debug_info=debug_info)
 
     def compile(self, input_string):
+        if self._debug_info_enabled:
+            self._codegen.set_source_code(input_string)
+
         logger.info('Parsing...')
         tree = parse_string(input_string)
         tree.bind(self._compilation)

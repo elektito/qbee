@@ -1,6 +1,7 @@
 import struct
 import sys
 from .instrs import op_code_to_instr
+from .debug_info import DebugInfo
 
 
 def perror(msg):
@@ -60,12 +61,17 @@ def parse_code_section(section):
     return section
 
 
+def parse_debug_info(section):
+    return DebugInfo.deserialize(section)
+
+
 class QModule:
-    def __init__(self, consts, n_global_cells, data, code):
+    def __init__(self, consts, n_global_cells, data, code, debug_info):
         self.consts = consts
         self.data = data
         self.n_global_cells = n_global_cells
         self.code = code
+        self.debug_info = debug_info
 
     def disassemble(self):
         bcode = self.code
@@ -173,6 +179,7 @@ class QModule:
         consts = []
         data_parts = []
         code = ''
+        debug_info = None
 
         encountered_sections = set()
 
@@ -180,7 +187,8 @@ class QModule:
         while idx < len(bcode):
             section_type = bcode[idx]
             if section_type in encountered_sections:
-                perror('Multiple segments of the same type not supported')
+                perror('Multiple segments of the same type not '
+                       'supported')
             encountered_sections.add(section_type)
             idx += 1
 
@@ -200,11 +208,15 @@ class QModule:
                 n_global_cells = parse_globals_section(section)
             elif section_type == 0x04:  # code section
                 code = parse_code_section(section)
+            elif section_type == 0x05:  # debug info
+                debug_info = parse_debug_info(section)
             else:
                 perror(f'Unknown section id: {section_type}')
 
         if idx != len(bcode):
             remaining = len(bcode) - idx
-            perror(f'Extra data at the end: {remaining} byte(s) remaining')
+            perror(f'Extra data at the end: {remaining} byte(s) '
+                   f'remaining')
 
-        return cls(consts, n_global_cells, data_parts, code)
+        return cls(consts, n_global_cells, data_parts, code,
+                   debug_info)

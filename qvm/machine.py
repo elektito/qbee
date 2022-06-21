@@ -706,3 +706,10 @@ class QvmMachine:
     def run(self):
         self.cpu.run()
 
+    def tick(self):
+        self.cpu.tick()
+
+    @property
+    def halted(self):
+        return self.cpu.halted
+

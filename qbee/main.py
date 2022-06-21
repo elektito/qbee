@@ -64,6 +64,10 @@ def main():
         help='Set verbosity level. Can be used multiple times for '
         'increasing verbosity.')
 
+    parser.add_argument(
+        '--debug-info', '-g', action='store_true',
+        help='Enable debug info in the output binary.')
+
     args = parser.parse_args()
 
     log_level = logging.WARNING
@@ -85,6 +89,7 @@ def main():
     compiler = Compiler(
         codegen_name='qvm',
         optimization_level=args.optimize,
+        debug_info=args.debug_info,
     )
 
     try:

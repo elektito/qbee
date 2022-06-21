@@ -15,6 +15,9 @@ class Node(ABC):
             child.parent = obj
         return obj
 
+    def __getnewargs_ex__(self):
+        return self._init_args, self._init_kwargs
+
     def bind(self, compilation):
         self._compilation = compilation
         for child in self.children:
@@ -150,3 +153,4 @@ class Node(ABC):
         }
         result = cls.__new__(cls, *init_args, **init_kwargs)
         return result
+

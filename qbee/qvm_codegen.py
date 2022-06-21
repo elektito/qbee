@@ -2,7 +2,8 @@ import struct
 from enum import Enum, auto
 from collections import defaultdict
 from qvm.instrs import op_to_instr
-from qvm.run import QVM_DEVICES
+from qvm.cpu import QVM_DEVICES
+from qvm.debug_info import DebugInfoCollector
 from .codegen import BaseCodeGen, BaseCode
 from .program import Label, LineNo, Program
 from .exceptions import InternalError
@@ -78,6 +79,8 @@ class CanonicalOp(Enum):
     XOR = auto()
 
     _LABEL = 10000
+    _DBG_INFO_START = 10001
+    _DBG_INFO_END = 10002
 
     def __eq__(self, other):
         if not isinstance(other, CanonicalOp):
@@ -206,7 +209,7 @@ final form which might be in the form ('push1&',).
 
 
 class QvmCode(BaseCode):
-    def __init__(self):
+    def __init__(self, debug_info=False):
         self._instrs = []
         self._data = defaultdict(list)
         self._user_types = {}
@@ -214,9 +217,14 @@ class QvmCode(BaseCode):
         self._main_routine = None
         self._consts = []
         self._globals = {}
+        self._debug_info_enabled = debug_info
+        self._source_code = None
 
     def __repr__(self):
         return f'<QvmCode {self._instrs}>'
+
+    def set_source_code(self, source_code):
+        self._source_code = source_code
 
     def add(self, *instrs):
         if not all(isinstance(i, tuple) for i in instrs):
@@ -473,6 +481,8 @@ class QvmCode(BaseCode):
             if op == '_label':
                 label, = args
                 s += f'{label}:\n'
+            elif op.startswith('_dbg_'):
+                pass
             else:
                 line = f'{op: <12}{", ".join(str(i) for i in args)}'
                 s += f'    {line.strip()}\n'
@@ -528,6 +538,7 @@ class QvmCode(BaseCode):
         labels = {}
         patch_positions = {}
         code = bytearray()
+        dbg_collector = DebugInfoCollector(self._source_code)
         for instr in self._instrs:
             op, *args = instr.final
             if op == '_label':
@@ -540,6 +551,14 @@ class QvmCode(BaseCode):
                 elif name.startswith('_func_'):
                     cur_routine = name[len('_func_'):]
                     cur_routine = self._routines[cur_routine]
+                continue
+
+            if op == '_dbg_info_start':
+                dbg_collector.start_node(args[0], cur_offset)
+                continue
+
+            if op == '_dbg_info_end':
+                dbg_collector.end_node(args[0], cur_offset)
                 continue
 
             bargs = b''
@@ -640,7 +659,7 @@ class QvmCode(BaseCode):
             addr = labels[label]
             code[pos:pos+4] = struct.pack('>I', addr)
 
-        return bytes(code)
+        return bytes(code), dbg_collector.get_debug_info()
 
     def __bytes__(self):
         sections = []
@@ -666,8 +685,11 @@ class QvmCode(BaseCode):
         global_section = struct.pack('>I', n_global_cells)
         sections.append((3, global_section))
 
-        code_section = self.assembled
+        code_section, dbg_info = self.assembled
         sections.append((4, code_section))
+
+        if self._debug_info_enabled:
+            sections.append((5, dbg_info.serialize()))
 
         return b''.join(
             bytes([section_id]) +
@@ -678,10 +700,14 @@ class QvmCode(BaseCode):
 
 
 class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
-    def __init__(self, compilation):
+    def __init__(self, compilation, debug_info=False):
+        super().__init__(debug_info=debug_info)
         self.compilation = compilation
         self.last_label = None
         self.label_counter = 1
+
+    def set_source_code(self, source_code):
+        self.source_code = source_code
 
     def get_label(self, name):
         label = f'_{name}_{self.label_counter}'
@@ -696,6 +722,10 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
             if data_label is None:
                 data_label = '_toplevel_data'
             code.add_data(data_label, data_items)
+
+        code._debug_info_enabled = self.debug_info_enabled
+        if self.debug_info_enabled:
+            code.set_source_code(self.source_code)
 
 
 # Shared code

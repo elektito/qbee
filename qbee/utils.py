@@ -128,3 +128,27 @@ is split into ['Exit', 'Sub', 'Stmt']."""
     if cur:
         parts.append(cur)
     return parts
+
+
+def convert_index_to_line_col(text, offset):
+    """
+Convert an index into a text to a (line, column) pair. The returned
+values are 1-based.
+    """
+
+    line = 1
+    col = 0
+    for idx, char in enumerate(text):
+        if idx == offset:
+            break
+
+        if char == '\n':
+            line += 1
+            col = 1
+            continue
+
+        col += 1
+    else:
+        return None, None
+
+    return line, col
