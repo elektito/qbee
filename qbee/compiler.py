@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from .stmt import (
     Stmt, IfBlock, VarDeclClause, ArrayDimRange, CallStmt,
@@ -9,6 +10,9 @@ from .program import Label, LineNo
 from .codegen import CodeGen
 from .exceptions import ErrorCode as EC, InternalError, CompileError
 from .parser import parse_string
+
+
+logger = logging.getLogger(__name__)
 
 
 class Variable:
@@ -992,24 +996,33 @@ class Compiler:
         self._codegen = CodeGen(codegen_name, self._compilation)
 
     def compile(self, input_string):
+        logger.info('Parsing...')
         tree = parse_string(input_string)
         tree.bind(self._compilation)
 
+        logger.info('Pass 1...')
         pass1 = Pass1(self._compilation)
         pass1.process_tree(tree)
 
+        logger.info('Pass 2...')
         pass2 = Pass2(self._compilation)
         pass2.process_tree(tree)
 
+        logger.info('Pass 3...')
         pass3 = Pass3(self._compilation)
         pass3.process_tree(tree)
 
         if self.optimization_level > 0:
+            logger.info('Optimizing AST...')
             tree.fold()
 
+        logger.info('Generating code...')
         code = self._codegen.gen_code(tree)
 
         if self.optimization_level > 1:
+            logger.info('Optimizing code...')
             code.optimize()
+
+        logger.info('Done')
 
         return code

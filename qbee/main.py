@@ -1,4 +1,6 @@
 import argparse
+import logging
+import logging.config
 import sys
 from .compiler import Compiler
 from .exceptions import SyntaxError, CompileError
@@ -8,6 +10,32 @@ from .utils import display_with_context
 # Import codegen implementations to enable them (this is needed even
 # though we don't directly use the imported module)
 from . import qvm_codegen  # noqa
+
+
+def config_logging(log_level):
+    logging.config.dictConfig({
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'standard': {
+                'format': '%(message)s',
+            }
+        },
+        'handlers': {
+            'default': {
+                'level': log_level,
+                'class': 'logging.StreamHandler',
+                'formatter': 'standard',
+            }
+        },
+        'loggers': {
+            '': {
+                'handlers': ['default'],
+                'level': log_level,
+                'propagate': True,
+            },
+        }
+    })
 
 
 def main():
@@ -31,7 +59,19 @@ def main():
         '--asm', '-S', action='store_true',
         help='Output assembly text, instead of assembled code.')
 
+    parser.add_argument(
+        '--verbose', '-v', action='count', default=0,
+        help='Set verbosity level. Can be used multiple times for '
+        'increasing verbosity.')
+
     args = parser.parse_args()
+
+    log_level = logging.WARNING
+    if args.verbose == 1:
+        log_level = logging.INFO
+    elif args.verbose >= 2:
+        log_level = logging.DEBUG
+    config_logging(log_level)
 
     if args.output is None:
         if args.asm:
