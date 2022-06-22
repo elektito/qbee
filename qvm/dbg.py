@@ -136,18 +136,21 @@ Type help or ? to list commands.
         return stop
 
     def do_continue(self, arg):
+        'Continue until the machine is halted or we hit a breakpoint.'
         self.continue_until(None)
 
     def do_curi(self, arg):
-        'Show current instruction and a few before/after it'
+        'Show current instruction and a few before/after it.'
         self.show_instruction_with_context(self.cpu.pc)
 
     @unhalted
     def do_stepi(self, arg):
+        'Execute one machine instruction.'
         self.machine.tick()
 
     @unhalted
     def do_nexti(self, arg):
+        'Execute one machine instruction, skipping over calls.'
         instr, operands, size = \
             self.cpu.get_current_instruction()
         if instr.op == 'call':
@@ -191,6 +194,7 @@ name to break at.
         return True
 
     def do_EOF(self, arg):
+        'Exit debugger'
         return True
 
 
