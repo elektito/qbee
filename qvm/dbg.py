@@ -116,6 +116,16 @@ Type help or ? to list commands.
             print(
                 f'{prefix}{i_addr:08x}: {instr.op: <12}{operands_list}')
 
+    def continue_until(self, until_addr):
+        while not self.machine.halted:
+            self.machine.tick()
+            if any(bp.exact_match(self.cpu.pc)
+                   for bp in self.breakpoints):
+                print(f'Hit breakpoint')
+                break
+            if until_addr is not None and self.cpu.pc == until_addr:
+                break
+
     def postcmd(self, stop, line):
         if not stop:
             if not self.machine.halted:
@@ -126,12 +136,7 @@ Type help or ? to list commands.
         return stop
 
     def do_continue(self, arg):
-        while not self.machine.halted:
-            self.machine.tick()
-            if any(bp.exact_match(self.cpu.pc)
-                   for bp in self.breakpoints):
-                print(f'Hit breakpoint')
-                return
+        self.continue_until(None)
 
     def do_curi(self, arg):
         'Show current instruction and a few before/after it'
@@ -143,7 +148,12 @@ Type help or ? to list commands.
 
     @unhalted
     def do_nexti(self, arg):
-        pass
+        instr, operands, size = \
+            self.cpu.get_current_instruction()
+        if instr.op == 'call':
+            self.continue_until(self.cpu.pc + size)
+        else:
+            self.machine.tick()
 
     @unhalted
     def do_step(self, arg):
