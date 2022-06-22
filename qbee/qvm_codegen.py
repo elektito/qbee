@@ -1408,6 +1408,7 @@ def gen_if_block(node, code, codegen):
     for cond, body in node.if_blocks:
         else_label = codegen.get_label('else')
         codegen.gen_code_for_node(cond, code)
+        gen_code_for_conv(expr.Type.INTEGER, cond, code, codegen)
         code.add(('jz', else_label))
         for inner_stmt in body:
             codegen.gen_code_for_node(inner_stmt, code)
