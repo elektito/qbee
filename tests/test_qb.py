@@ -1,6 +1,7 @@
 import re
 from glob import glob
 from collections import namedtuple
+from itertools import product
 from pytest import mark, raises, fixture
 from qbee.exceptions import ErrorCode, SyntaxError, CompileError
 from qbee.compiler import Compiler
@@ -19,12 +20,13 @@ QTestCase = namedtuple('QTestCase', ['text',
 all_cases = []
 
 
-@fixture(params=[0, 1, 2])
+@fixture(params=product([0, 1, 2], [True, False]))
 def compiler(request):
-    optimization_level = request.param
+    optimization_level, debug_info = request.param
     compiler = Compiler(
         codegen_name='qvm',
         optimization_level=optimization_level,
+        debug_info=debug_info,
     )
     yield compiler
 
