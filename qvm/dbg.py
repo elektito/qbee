@@ -1,5 +1,6 @@
 import argparse
 import cmd
+from functools import wraps
 from .module import QModule
 from .machine import QvmMachine
 from .debug_info import DebugInfo
@@ -23,6 +24,16 @@ class Breakpoint:
             return (
                 f'range 0x{self.start_addr:08x}-0x{self.end_addr:08x}'
             )
+
+
+def unhalted(func):
+    @wraps(func)
+    def wrapped(self, *args, **kwargs):
+        if self.machine.halted:
+            print('Machine is halted.')
+            return
+        return func(self, *args, **kwargs)
+    return wrapped
 
 
 class Cmd(cmd.Cmd):
@@ -107,9 +118,7 @@ Type help or ? to list commands.
 
     def postcmd(self, stop, line):
         if not stop:
-            if self.machine.halted:
-                print('Machine is halted.')
-            else:
+            if not self.machine.halted:
                 self.print_next()
         else:
             print('Goodbye!')
@@ -128,22 +137,21 @@ Type help or ? to list commands.
         'Show current instruction and a few before/after it'
         self.show_instruction_with_context(self.cpu.pc)
 
+    @unhalted
     def do_stepi(self, arg):
-        if self.machine.halted:
-            return
         self.machine.tick()
 
+    @unhalted
     def do_nexti(self, arg):
-        if self.machine.halted:
-            return
+        pass
 
+    @unhalted
     def do_step(self, arg):
-        if self.machine.halted:
-            return
+        pass
 
+    @unhalted
     def do_next(self, arg):
-        if self.machine.halted:
-            return
+        pass
 
     def do_break(self, arg):
         """
