@@ -191,7 +191,10 @@ Type help or ? to list commands.
 
     def parse_breakpoint_spec(self, spec):
         if spec.startswith('0x'):
-            addr = int(spec, base=16)
+            try:
+                addr = int(spec, base=16)
+            except (ValueError, TypeError):
+                return None, 'Invalid address'
             return Breakpoint(start_addr=addr), None
         elif spec.isnumeric():
             line_no = int(spec)
