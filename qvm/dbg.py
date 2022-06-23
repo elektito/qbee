@@ -377,7 +377,18 @@ name to break at.
 
     def do_delbr(self, arg):
         'Delete breakpoint'
-        pass
+        bp, err = self.parse_breakpoint_spec(arg)
+        if bp is None:
+            print(f'Error: {err}')
+            return
+
+        for existing_bp in self.cpu.breakpoints:
+            if bp == existing_bp:
+                print(f'Deleting breakpoint at {existing_bp}')
+                self.cpu.del_breakpoint(existing_bp)
+                break
+        else:
+            print('No such breakpoint')
 
     def do_quit(self, arg):
         'Exit debugger'
