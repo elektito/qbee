@@ -1,3 +1,4 @@
+import signal
 import pyglet
 import numpy as np
 from queue import Empty
@@ -14,8 +15,12 @@ pyglet.resource.reindex()
 
 
 class TerminalWindow(pyglet.window.Window):
-    def __init__(self, request_queue, result_queue, *args, **kwargs):
+    def __init__(self, request_queue, result_queue,
+                 ignore_keyboard_interrupt=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        if ignore_keyboard_interrupt:
+            signal.signal(signal.SIGINT, lambda a, b: None)
 
         self.char_width = 8
         self.char_height = 16
