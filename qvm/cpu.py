@@ -451,7 +451,7 @@ class QvmCpu:
         operands = []
         for operand in instr.operands:
             operand = operand(
-                self.module.consts, self.module.data, {})
+                self.module.literals, self.module.data, {})
             bvalue = self.module.code[idx:idx+operand.size]
             value = operand.decode(bvalue)
             idx += operand.size

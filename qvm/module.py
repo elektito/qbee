@@ -9,20 +9,20 @@ def perror(msg):
     exit(1)
 
 
-def parse_consts_section(section):
-    consts = []
+def parse_literals_section(section):
+    literals = []
     idx = 0
     while idx < len(section):
         size, = struct.unpack('>H', section[idx:idx+2])
         idx += 2
-        const_value = section[idx:idx+size]
+        literal_value = section[idx:idx+size]
         idx += size
-        consts.append(const_value.decode('cp437'))
+        literals.append(literal_value.decode('cp437'))
 
     if idx != len(section):
-        perror('Extra data at the end of consts section')
+        perror('Extra data at the end of literals section')
 
-    return consts
+    return literals
 
 
 def parse_data_section(section):
@@ -50,7 +50,7 @@ def parse_data_section(section):
 
 def parse_globals_section(section):
     if len(section) != 4:
-        perror('consts section is not exactly 4 bytes')
+        perror('globals section is not exactly 4 bytes')
 
     n_global_cells, = struct.unpack('>I', section)
 
@@ -66,8 +66,9 @@ def parse_debug_info(section):
 
 
 class QModule:
-    def __init__(self, consts, n_global_cells, data, code, debug_info):
-        self.consts = consts
+    def __init__(self, literals, n_global_cells, data, code,
+                 debug_info):
+        self.literals = literals
         self.data = data
         self.n_global_cells = n_global_cells
         self.code = code
@@ -139,7 +140,7 @@ class QModule:
                     value, = struct.unpack(
                         '>H', bcode[idx:idx+2])
                     idx += 2
-                    comments = f'"{self.consts[value]}"'
+                    comments = f'"{self.literals[value]}"'
                 args = [value]
             elif op in ('pushrefg', 'pushrefl'):
                 var_idx, = struct.unpack('>H', bcode[idx:idx+2])
@@ -176,7 +177,7 @@ class QModule:
 
     @classmethod
     def parse(cls, bcode: bytes):
-        consts = []
+        literals = []
         data_parts = []
         code = ''
         debug_info = None
@@ -200,8 +201,8 @@ class QModule:
                 perror('Invalid input module')
             idx += section_len
 
-            if section_type == 0x01:  # const section
-                consts = parse_consts_section(section)
+            if section_type == 0x01:  # literals section
+                literals = parse_literals_section(section)
             elif section_type == 0x02:  # data section
                 data_parts = parse_data_section(section)
             elif section_type == 0x03:  # globals section
@@ -218,5 +219,5 @@ class QModule:
             perror(f'Extra data at the end: {remaining} byte(s) '
                    f'remaining')
 
-        return cls(consts, n_global_cells, data_parts, code,
+        return cls(literals, n_global_cells, data_parts, code,
                    debug_info)

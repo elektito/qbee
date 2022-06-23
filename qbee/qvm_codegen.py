@@ -216,7 +216,7 @@ class QvmCode(BaseCode):
         self._user_types = {}
         self._routines = {}
         self._main_routine = None
-        self._consts = []
+        self._string_literals = []
         self._globals = None
         self._debug_info_enabled = False
         self._source_code = None
@@ -247,9 +247,9 @@ class QvmCode(BaseCode):
         assert isinstance(routine, Routine)
         self._routines[routine.name] = routine
 
-    def add_const(self, value):
-        if value not in self._consts:
-            self._consts.append(value)
+    def add_string_literal(self, value):
+        if value not in self._string_literals:
+            self._string_literals.append(value)
 
     def optimize(self):
         i = 0
@@ -445,10 +445,10 @@ class QvmCode(BaseCode):
                     s += f'    {field_type.name} {field_name}\n'
             s += '\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
 
-        if self._consts:
-            s += '.consts\n'
-            for i, const in enumerate(self._consts):
-                s += f'    {i} string "{const}"\n'
+        if self._string_literals:
+            s += '.literals\n'
+            for i, string_literal in enumerate(self._string_literals):
+                s += f'    {i} string "{string_literal}"\n'
             s += '\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
 
         if self._data:
@@ -496,7 +496,7 @@ class QvmCode(BaseCode):
             value_type = expr.Type.from_type_char(type_char)
             if type_char == '$':
                 assert value.startswith('"') and value.endswith('"')
-                value = get_const_idx(value[1:-1])
+                value = get_string_literal_idx(value[1:-1])
             else:
                 value = value_type.py_type(value)
             return {
@@ -507,8 +507,8 @@ class QvmCode(BaseCode):
                 '$': lambda v: struct.pack('>H', v)
             }[type_char](value)
 
-        def get_const_idx(value):
-            return self._consts.index(value)
+        def get_string_literal_idx(value):
+            return self._string_literals.index(value)
 
         cur_offset = 0
         cur_routine = self._main_routine
@@ -646,11 +646,11 @@ class QvmCode(BaseCode):
     def __bytes__(self):
         sections = []
 
-        const_section = b''
-        for const in self._consts:
-            const_section += struct.pack('>H', len(const))
-            const_section += const.encode('cp437')
-        sections.append((1, const_section))
+        literals_section = b''
+        for literal in self._string_literals:
+            literals_section += struct.pack('>H', len(literal))
+            literals_section += literal.encode('cp437')
+        sections.append((1, literals_section))
 
         data_section = struct.pack('>H', len(self._data))
         for data_part in self._data.values():
@@ -862,7 +862,7 @@ def gen_program(node, code, codegen):
 
 @QvmCodeGen.generator_for(expr.StringLiteral)
 def gen_str_literal(node, code, codegen):
-    code.add_const(node.value)
+    code.add_string_literal(node.value)
     code.add(('push$', f'"{node.value}"'))
 
 
@@ -1441,7 +1441,7 @@ def gen_if_stmt(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.InputStmt)
 def gen_input(node, code, codegen):
-    code.add_const(node.prompt.value)
+    code.add_string_literal(node.prompt.value)
 
     same_line = -1 if node.same_line else 0
     prompt_question = -1 if node.prompt_question else 0

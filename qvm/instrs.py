@@ -7,8 +7,8 @@ class DisassemblerError(Exception):
 
 
 class Operand:
-    def __init__(self, consts, data, labels):
-        self.consts = consts
+    def __init__(self, literals, data, labels):
+        self.literals = literals
         self.data = data
         self.labels = labels
 
@@ -112,11 +112,11 @@ class StringLiteral(Operand):
 
     def _decode(self, data):
         idx = struct.unpack('>h', data)[0]
-        value = self.consts[idx]
+        value = self.literals[idx]
         return value
 
     def _encode(self, value):
-        idx = self.consts.index(value)
+        idx = self.literals.index(value)
         return struct.pack('>H', idx)
 
 

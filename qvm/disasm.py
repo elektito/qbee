@@ -24,7 +24,7 @@ def main():
     module = QModule.parse(bcode)
 
     if args.headers:
-        print('consts:', len(module.consts))
+        print('literals:', len(module.literals))
         print('n_global_cells:', module.n_global_cells)
         data_parts = len(module.data)
         data_items = sum(len(i) for i in module.data)
