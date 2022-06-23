@@ -295,6 +295,8 @@ class QvmCpu:
         self.pc = 0
         self.cur_frame = None
         self.stack = []
+        self.breakpoints = []
+        self.last_breakpoint = None
 
     def connect_device(self, device_name, device):
         logging.info('Connecting device: %s', device_name)
@@ -338,8 +340,20 @@ class QvmCpu:
             self.trap(trap_code, idx=idx)
 
     def run(self):
+        """Run the cup until either halted, or a breakpoint is hit.
+        Returns a boolean, indicating the reason execution stopped.
+        If stopped due to a breakpoint, False is returned, otherwise
+        True is returned."""
+
+        self.last_breakpoint = None
         while self.pc < len(self.module.code) and not self.halted:
+            for bp in self.breakpoints:
+                if bp(self):
+                    self.last_breakpoint = bp
+                    return False
             self.tick()
+
+        return True
 
     def tick(self):
         instr, operands, size = self.get_current_instruction()
@@ -372,6 +386,36 @@ class QvmCpu:
             logger.info(
                 'Halting because execution reached end of module')
             self.halted = True
+
+    def next(self):
+        """Similar to tick, except if current instruction is 'call',
+        execution continues until the instruction after 'call', or if
+        the machine is halted or a breakpoint is hit.
+
+        Return value has the same meaning as the 'run' method."""
+
+        instr, operands, size = self.get_current_instruction()
+        if instr.op == 'call':
+            prev_pc = self.pc
+            bp = lambda cpu: (cpu.pc == prev_pc + size)
+            self.add_breakpoint(bp)
+            try:
+                ret = self.run()
+                if self.last_breakpoint == bp:
+                    return False
+                else:
+                    return ret
+            finally:
+                self.del_breakpoint(bp)
+        else:
+            self.tick()
+            return True
+
+    def add_breakpoint(self, bp):
+        self.breakpoints.append(bp)
+
+    def del_breakpoint(self, bp):
+        self.breakpoints.remove(bp)
 
     def get_current_instruction(self):
         return self.get_instruction_at(self.pc)

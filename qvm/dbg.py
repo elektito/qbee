@@ -216,30 +216,6 @@ Type help or ? to list commands.
             else:
                 print(f'   {line}')
 
-    def continue_until(self, *, target=None, inside_range=None,
-                       outside_range=None):
-        try:
-            while not self.machine.halted:
-                self.machine.tick()
-                if any(bp.exact_match(self.cpu.pc)
-                       for bp in self.breakpoints):
-                    print(f'Hit breakpoint')
-                    break
-                if target is not None and self.cpu.pc == target:
-                    break
-                if inside_range:
-                    start, end = inside_range
-                    if start <= self.cpu.pc < end:
-                        break
-                if outside_range:
-                    start, end = outside_range
-                    if self.cpu.pc < start or self.cpu.pc >= end:
-                        break
-        except KeyboardInterrupt:
-            while not self.machine.halted and \
-                  self.find_stmt(self.cpu.pc) is None:
-                self.machine.tick()
-
     def show_auto_status(self):
         if self.auto_status_enabled:
             self.do_cur('')
@@ -269,7 +245,8 @@ Type help or ? to list commands.
     @unhalted
     def do_continue(self, arg):
         'Continue until the machine is halted or we hit a breakpoint.'
-        self.continue_until()
+        if not self.cpu.run():
+            print('Hit breakpoint')
 
         self.show_auto_status()
 
@@ -287,12 +264,8 @@ Type help or ? to list commands.
     @unhalted
     def do_nexti(self, arg):
         'Execute one machine instruction, skipping over calls.'
-        instr, operands, size = \
-            self.cpu.get_current_instruction()
-        if instr.op == 'call':
-            self.continue_until(target=self.cpu.pc + size)
-        else:
-            self.machine.tick()
+        if not self.cpu.next():
+            print('Hit breakpoint')
 
         self.show_auto_status()
 
@@ -308,19 +281,35 @@ Type help or ? to list commands.
     @unhalted
     def do_step(self, arg):
         'Execute one source statement'
-        stmt = self.find_nonempty_stmt(self.cpu.pc)
-        self.continue_until(
-            outside_range=(stmt.start_offset, stmt.end_offset))
 
-        # continue until we actually reach another statement (or halt)
-        while not self.cpu.halted and \
-              self.find_nonempty_stmt(self.cpu.pc) is None:
-            self.cpu.tick()
+        stmt = self.find_nonempty_stmt(self.cpu.pc)
+
+        def step_breakpoint(cpu):
+            next_stmt = self.find_nonempty_stmt(cpu.pc)
+            if next_stmt and next_stmt != stmt:
+                return True
+            return False
+
+        self.cpu.add_breakpoint(step_breakpoint)
+        try:
+            if not self.cpu.run():
+                print('Hit breakpoint')
+        finally:
+            self.cpu.del_breakpoint(step_breakpoint)
 
         self.show_auto_status()
 
     @unhalted
     def do_next(self, arg):
+        stmt = self.find_nonempty_stmt(self.cpu.pc)
+        while not self.cpu.halted:
+            if not self.cpu.next():
+                print('Hit breakpoint')
+                break
+            next_stmt = self.find_nonempty_stmt(self.cpu.pc)
+            if next_stmt and next_stmt != stmt:
+                break
+
         self.show_auto_status()
 
     def do_break(self, arg):
