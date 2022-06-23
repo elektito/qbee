@@ -374,7 +374,11 @@ name to break at.
 
         """
         if not arg:
-            print('Need an argument')
+            for bp in self.cpu.breakpoints:
+                print('Breakpoint at:', bp)
+            if not self.cpu.breakpoints:
+                print('No breakpoints')
+            return
 
         bp, err = self.parse_breakpoint_spec(arg)
         if bp is None:
