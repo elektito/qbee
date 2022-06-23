@@ -357,7 +357,7 @@ class QvmCpu:
             self.trap(trap_code, idx=idx)
 
     def run(self):
-        """Run the cup until either halted, or a breakpoint is hit.
+        """Run the cpu until either halted, or a breakpoint is hit.
         Returns a boolean, indicating the reason execution stopped.
         If stopped due to a breakpoint, False is returned, otherwise
         True is returned."""
