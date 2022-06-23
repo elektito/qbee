@@ -216,7 +216,6 @@ Type help or ? to list commands.
             else:
                 print(f'   {line}')
 
-    @unhalted
     def continue_until(self, *, target=None, inside_range=None,
                        outside_range=None):
         try:
@@ -267,6 +266,7 @@ Type help or ? to list commands.
         else:
             print('Invalid argument.')
 
+    @unhalted
     def do_continue(self, arg):
         'Continue until the machine is halted or we hit a breakpoint.'
         self.continue_until()
