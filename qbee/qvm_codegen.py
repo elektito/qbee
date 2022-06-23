@@ -1274,6 +1274,7 @@ def gen_loop(node, code, codegen):
     code.add(('_label', do_label))
     if node.kind.startswith('do_'):
         codegen.gen_code_for_node(node.cond, code)
+        gen_code_for_conv(expr.Type.INTEGER, node.cond, code, codegen)
         if node.kind == 'do_until':
             code.add(('not',))
         code.add(('jz', loop_label))
@@ -1453,6 +1454,7 @@ def gen_if_stmt(node, code, codegen):
     endif_label = codegen.get_label('endif')
 
     codegen.gen_code_for_node(node.cond, code)
+    gen_code_for_conv(expr.Type.INTEGER, node.cond, code, codegen)
     code.add(('jz', else_label))
     gen_code_for_block(node.then_stmts, code, codegen)
     code.add(('jmp', endif_label))
