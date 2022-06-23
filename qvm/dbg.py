@@ -485,6 +485,15 @@ name to break at.
         except KeyError:
             pass
 
+        try:
+            value_type, value = self.debug_info.consts[var]
+            print(f'Constant: {var}')
+            print('  type:', value_type.name.upper())
+            print('  value:', value)
+            return
+        except KeyError:
+            pass
+
         print('Variable not found')
 
     def do_quit(self, arg):

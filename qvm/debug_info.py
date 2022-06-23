@@ -41,11 +41,12 @@ class DebugRoutineRecord(DebugNodeRecord):
 
 
 class DebugInfo:
-    def __init__(self, source_code, empty_blocks, compilation):
+    def __init__(self, source_code, empty_blocks, compilation, consts):
         self.source_code = source_code
         self.empty_blocks = empty_blocks
         self.main_routine = compilation.routines['_main']
         self.global_vars = compilation.global_vars
+        self.consts = consts
         self.routines = {}
         self.blocks = []
         self.stmts = []
@@ -198,9 +199,10 @@ class DebugInfo:
 
 
 class DebugInfoCollector:
-    def __init__(self, source_code, compilation):
+    def __init__(self, source_code, compilation, consts):
         self._source_code = source_code
         self._compilation = compilation
+        self._consts = consts
         self._stack = []
         self._nodes = []
         self._empty_blocks = []
@@ -217,9 +219,14 @@ class DebugInfoCollector:
         self._empty_blocks.append(code_offset)
 
     def get_debug_info(self):
+        consts = {
+            name: (const.type, const.eval())
+            for name, const in self._consts.items()
+        }
         dbg_info = DebugInfo(self._source_code,
                              self._empty_blocks,
-                             self._compilation)
+                             self._compilation,
+                             consts)
 
         for node, start_offset, end_offset in self._nodes:
             dbg_info.add_node(node, start_offset, end_offset)
