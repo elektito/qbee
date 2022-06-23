@@ -177,6 +177,12 @@ Type help or ? to list commands.
 
         return stmt
 
+    def find_routine(self, addr):
+        for routine in self.debug_info.routines.values():
+            if routine.start_offset <= addr < routine.end_offset:
+                return routine
+        return None
+
     def start_debugging(self):
         # run module code until we reach a statement
         assert self.cpu.pc == 0
@@ -392,6 +398,47 @@ name to break at.
                 break
         else:
             print('No such breakpoint')
+
+    def do_bt(self, arg):
+        'Print backtrace'
+        frames = []
+
+        frame = self.cpu.cur_frame
+        while frame:
+            routine_record = self.find_routine(frame.code_start)
+            if routine_record is None:
+                routine_node = self.debug_info.main_routine
+            else:
+                routine_node = routine_record.node
+
+            frames.append((frame, routine_record, routine_node))
+            frame = frame.prev_frame
+
+        frames.reverse()
+
+        for i, (frame, routine_record, routine_node) in enumerate(frames):
+            fidx = len(frames) - i
+
+            if routine_record:
+                stmt = self.find_stmt(frame.caller_addr)
+                caller_line_no = stmt.source_start_line
+                print(f'line {caller_line_no} ')
+                print('   ',
+                      self.source_lines[caller_line_no - 1].strip())
+
+                print(f'[{fidx}] {routine_record.type.name} '
+                      f'{routine_node.name} ', end='')
+            else:
+                print(f'[{fidx}] {routine_node.name} ', end='')
+
+        stmt = self.find_stmt(self.cpu.pc)
+        line_no = stmt.source_start_line
+        print(f'line {line_no} ')
+        print('   ', self.source_lines[line_no - 1].strip())
+
+    def do_print(self, arg):
+        'Print the value of a variable'
+        pass
 
     def do_quit(self, arg):
         'Exit debugger'

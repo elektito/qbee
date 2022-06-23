@@ -182,10 +182,17 @@ class MemorySegment:
 
 
 class CallFrame(MemorySegment):
-    def __init__(self, size, prev_frame):
+    def __init__(self, size, prev_frame, code_start, ret_addr):
         super().__init__(size)
         self.original_size = size
         self.prev_frame = prev_frame
+
+        # this should point to the first instruction after the FRAME
+        # instruction and can be used by debuggers to identify frames
+        self.code_start = code_start
+
+        # also for debugging purposes
+        self.ret_addr = ret_addr
 
     def set_temp_reference(self, idx, value):
         # get a non reference value, create a temporary cell for it,
@@ -204,6 +211,13 @@ class CallFrame(MemorySegment):
     def __repr__(self):
         ntemps = self.size - self.original_size
         return f'<CallFrame size={self.size} temps={ntemps}>'
+
+    @property
+    def caller_addr(self):
+        # we should return the address of the instruction right before
+        # the return address. the size of a call instruction is five
+        # bytes, so we subtract five.
+        return self.ret_addr - 5
 
 
 class Array(MemorySegment):
@@ -708,14 +722,16 @@ class QvmCpu:
             'Creating stack frame: params=%d locals=%d',
             params_size, local_vars_size)
 
+        # read return address
+        ret_addr = self.pop(CellType.LONG)
+
         frame = CallFrame(
             size=params_size + local_vars_size,
             prev_frame=self.cur_frame,
+            code_start=self.pc,
+            ret_addr=ret_addr,
         )
         self.cur_frame = frame
-
-        # read return address
-        ret_addr = self.pop(CellType.LONG)
 
         # copy parameters
         for i in range(params_size):

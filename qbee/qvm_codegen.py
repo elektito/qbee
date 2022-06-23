@@ -210,7 +210,7 @@ final form which might be in the form ('push1&',).
 
 
 class QvmCode(BaseCode):
-    def __init__(self, debug_info=False):
+    def __init__(self):
         self._instrs = []
         self._data = defaultdict(list)
         self._user_types = {}
@@ -218,14 +218,16 @@ class QvmCode(BaseCode):
         self._main_routine = None
         self._consts = []
         self._globals = {}
-        self._debug_info_enabled = debug_info
+        self._debug_info_enabled = False
         self._source_code = None
+        self._compilation = None
 
     def __repr__(self):
         return f'<QvmCode {self._instrs}>'
 
-    def set_source_code(self, source_code):
+    def enable_debug_info(self, source_code, compilation):
         self._source_code = source_code
+        self._compilation = compilation
 
     def add(self, *instrs):
         if not all(isinstance(i, tuple) for i in instrs):
@@ -541,7 +543,8 @@ class QvmCode(BaseCode):
         labels = {}
         patch_positions = {}
         code = bytearray()
-        dbg_collector = DebugInfoCollector(self._source_code)
+        dbg_collector = DebugInfoCollector(self._source_code,
+                                           self._compilation)
         for instr in self._instrs:
             op, *args = instr.final
             if op == '_label':
@@ -732,7 +735,7 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
 
         code._debug_info_enabled = self.debug_info_enabled
         if self.debug_info_enabled:
-            code.set_source_code(self.source_code)
+            code.enable_debug_info(self.source_code, self.compilation)
 
 
 # Shared code
