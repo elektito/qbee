@@ -205,7 +205,15 @@ Type help or ? to list commands.
             return Breakpoint(start_addr=addr), None
         elif spec.isnumeric():
             line_no = int(spec)
-            for stmt in self.debug_info.stmts:
+
+            # statements are sorted by address; re-sort them by source
+            # location
+            stmts = sorted(
+                self.debug_info.stmts,
+                key=lambda r: r.source_start_offset
+            )
+
+            for stmt in stmts:
                 if stmt.source_start_line >= line_no:
                     bp = Breakpoint(
                         start_addr=stmt.start_offset,
