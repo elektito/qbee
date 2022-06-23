@@ -54,7 +54,6 @@ Type help or ? to list commands.
         self.debug_info = self.module.debug_info
         self.machine = machine
         self.cpu = machine.cpu
-        self.breakpoints = []
         self.auto_status_enabled = True
 
         self.instrs = []
@@ -164,15 +163,22 @@ Type help or ? to list commands.
             return Breakpoint(start_addr=addr, end_addr=addr+1), None
         elif spec.isnumeric():
             line_no = int(spec)
-            print('NOT SUPPORTED YET')
+            for stmt in self.debug_info.stmts:
+                if stmt.source_start_line >= line_no:
+                    addr = stmt.start_offset
+                    bp = lambda cpu: cpu.pc == addr
+                    if stmt.source_start_line > line_no:
+                        print(f'Could not set a breakpoint at that '
+                              f'precise line; set at line '
+                              f'{stmt.source_start_line}')
+                    return bp, None
         else:
             routine_name = spec
             routine = self.debug_info.routines.get(routine_name)
             if routine:
-                return Breakpoint(
-                    start_addr=routine.start_offset,
-                    end_addr=routine.end_offset
-                ), None
+                addr = routine.start_offset
+                bp = lambda cpu: cpu.pc >= addr
+                return bp, None
             return None, 'no such routine'
 
     def show_instruction_with_context(self, addr, context_size=4):
@@ -328,8 +334,8 @@ name to break at.
             print(f'Cannot set breakpoint: {err}')
             return
 
-        print(f'Setting a breakpoint at: {bp}')
-        self.breakpoints.append(bp)
+        print(f'Setting a breakpoint.')
+        self.cpu.add_breakpoint(bp)
 
     def do_delbr(self, arg):
         'Delete breakpoint'
