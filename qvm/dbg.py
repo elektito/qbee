@@ -8,23 +8,37 @@ from .debug_info import DebugInfo
 
 
 class Breakpoint:
-    def __init__(self, start_addr, end_addr=None, *, exact=True):
+    def __init__(self, start_addr, end_addr=None, *, exact=True,
+                 line=None, routine=None):
         self.start_addr = start_addr
         self.end_addr = end_addr
         self.exact = exact
+        self.line = line
+        self.routine = routine
 
     def __str__(self):
+        main_desc = None
+        if self.line:
+            main_desc = f'line {self.line}'
+        elif self.routine:
+            main_desc = f'routine {self.routine}'
+
         exact = ' UNEXACT' if not self.exact else ''
         if self.end_addr:
             if self.end_addr - self.start_addr == 1:
-                return f'address 0x{self.start_addr:08x}{exact}'
+                addr_desc = f'address 0x{self.start_addr:08x}{exact}'
             else:
-                return (
+                addr_desc = (
                     f'range 0x{self.start_addr:08x}-'
                     f'0x{self.end_addr:08x}{exact}'
                 )
         else:
-            return f'address 0x{self.start_addr:08x}{exact}'
+            addr_desc = f'address 0x{self.start_addr:08x}{exact}'
+
+        if main_desc:
+            return f'{main_desc} ({addr_desc})'
+        else:
+            return addr_desc
 
     def __eq__(self, other):
         if not isinstance(other, Breakpoint):
@@ -183,7 +197,10 @@ Type help or ? to list commands.
             line_no = int(spec)
             for stmt in self.debug_info.stmts:
                 if stmt.source_start_line >= line_no:
-                    bp = Breakpoint(start_addr=stmt.start_offset)
+                    bp = Breakpoint(
+                        start_addr=stmt.start_offset,
+                        line=stmt.source_start_line
+                    )
                     if stmt.source_start_line > line_no:
                         print(f'Could not set a breakpoint at that '
                               f'precise line; set at line '
@@ -197,6 +214,7 @@ Type help or ? to list commands.
                 bp = Breakpoint(
                     start_addr=routine.start_offset,
                     end_addr=routine.end_offset,
+                    routine=routine.name,
                 )
                 return bp, None
             return None, 'no such routine'
@@ -354,7 +372,7 @@ name to break at.
             print(f'Cannot set breakpoint: {err}')
             return
 
-        print(f'Setting a breakpoint.')
+        print(f'Setting a breakpoint at {bp}')
         self.cpu.add_breakpoint(bp)
 
     def do_delbr(self, arg):
