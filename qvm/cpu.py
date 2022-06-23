@@ -100,6 +100,9 @@ class Reference:
             self.segment = segment
             self.index = index
 
+    def derefed(self):
+        return self.segment.get_cell(self.index)
+
     def __repr__(self):
         return f'<REF seg={self.segment} idx={self.index}>'
 

@@ -122,6 +122,22 @@ class Routine:
             name in self.compilation.global_vars
         )
 
+    def get_local_var_idx(self, var):
+        idx = 0
+        for pname, ptype in self.params.items():
+            if var == pname:
+                return idx
+            idx += Type.get_type_size(
+                ptype, self.compilation.user_types)
+        for vname, vtype in self.local_vars.items():
+            if var == vname:
+                return idx
+            idx += Type.get_type_size(
+                vtype, self.compilation.user_types)
+        raise KeyError(
+            f'Local variable not found in routine "{self.name}": {var}'
+        )
+
     @property
     def params_size(self):
         # the number of cells in a call frame the parameters to this

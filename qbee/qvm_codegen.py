@@ -513,21 +513,6 @@ class QvmCode(BaseCode):
         def get_const_idx(value):
             return self._consts.index(value)
 
-        def get_local_var_idx(routine, var):
-            idx = 0
-            for pname, ptype in routine.params.items():
-                if var == pname:
-                    return idx
-                idx += expr.Type.get_type_size(ptype, self._user_types)
-            for vname, vtype in routine.local_vars.items():
-                if var == vname:
-                    return idx
-                idx += expr.Type.get_type_size(vtype, self._user_types)
-            raise InternalError(
-                f'Local variable not found in routine "{routine.name}" '
-                f'while assembling: {var}'
-            )
-
         def get_global_var_idx(var):
             idx = 0
             for vname, vtype in self._globals.items():
@@ -593,7 +578,7 @@ class QvmCode(BaseCode):
             elif op == 'initarrl':
                 assert len(args) == 3
                 var, n_dims, element_size = args
-                var_idx = get_local_var_idx(cur_routine, var)
+                var_idx = cur_routine.get_local_var_idx(var)
                 bargs = struct.pack(
                     '>HBi', var_idx, n_dims, element_size)
             elif op == 'initarrg':
@@ -627,7 +612,7 @@ class QvmCode(BaseCode):
             elif op[:-1] == 'readl' or op == 'storel':
                 assert len(args) == 1
                 var = args[0]
-                var_idx = get_local_var_idx(cur_routine, var)
+                var_idx = cur_routine.get_local_var_idx(var)
                 bargs = struct.pack('>H', var_idx)
             elif op[:-1] == 'readg' or op == 'storeg':
                 assert len(args) == 1
@@ -638,7 +623,7 @@ class QvmCode(BaseCode):
             elif op[:-1] == 'readidxl' or op == 'storeidxl':
                 assert len(args) == 2
                 var, idx = args
-                var_idx = get_local_var_idx(cur_routine, var)
+                var_idx = cur_routine.get_local_var_idx(var)
                 bargs = struct.pack('>HH', var_idx, idx)
             elif op[:-1] == 'readidxg' or op == 'storeidxg':
                 assert len(args) == 2
@@ -649,7 +634,7 @@ class QvmCode(BaseCode):
             elif op == 'pushrefl':
                 assert len(args) == 1
                 var = args[0]
-                var_idx = get_local_var_idx(cur_routine, var)
+                var_idx = cur_routine.get_local_var_idx(var)
                 bargs = struct.pack('>H', var_idx)
             elif op == 'pushrefg':
                 assert len(args) == 1

@@ -5,6 +5,7 @@ from qbee.stmt import Block
 from .module import QModule
 from .machine import QvmMachine
 from .debug_info import DebugInfo
+from .cpu import CellType
 
 
 class Breakpoint:
@@ -442,7 +443,27 @@ name to break at.
 
     def do_print(self, arg):
         'Print the value of a variable'
-        pass
+        var = arg
+        frame = self.cpu.cur_frame
+        routine_record = self.find_routine(frame.code_start)
+        if routine_record:
+            routine = routine_record.node.routine
+        else:
+            routine = self.debug_info.main_routine
+
+        try:
+            var_idx = routine.get_local_var_idx(var)
+            value = frame.get_cell(var_idx)
+            if value is None:
+                print('No value set yet.')
+            else:
+                print(f'Local variable:', var)
+                if value.type == CellType.REFERENCE:
+                    value = value.value.derefed()
+                print('  type:', value.type.name)
+                print('  value:', value.value)
+        except KeyError:
+            print('No local variable found with that name')
 
     def do_quit(self, arg):
         'Exit debugger'
