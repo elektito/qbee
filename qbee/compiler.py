@@ -162,6 +162,20 @@ class Routine:
         return self.params_size + self.local_vars_size
 
 
+class GlobalsContainer(dict):
+    def __init__(self, user_types):
+        self.user_types = user_types
+        super().__init__()
+
+    def get_var_idx(self, var):
+        idx = 0
+        for vname, vtype in self.items():
+            if var == vname:
+                return idx
+            idx += Type.get_type_size(vtype, self.user_types)
+        raise KeyError(f'Global variable not found: {var}')
+
+
 class CompilationUnit:
     def __init__(self):
         self.main_routine = Routine(
@@ -171,7 +185,7 @@ class CompilationUnit:
         self.routines = {'_main': self.main_routine}
         self.user_types = {}
         self.consts = {}
-        self.global_vars = {}
+        self.global_vars = GlobalsContainer(self.user_types)
         self.def_letter_types = {}  # maps a single letter to a type
 
         # Maps labels to all data values after it. The DATA statements

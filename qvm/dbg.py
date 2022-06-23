@@ -282,6 +282,16 @@ Type help or ? to list commands.
         if self.auto_status_enabled:
             self.do_cur('')
 
+    def print_cell_value(self, value, name, kind):
+        if value is None:
+            print(f'{kind} {name}: No value set')
+        else:
+            print(f'{kind} {name}: {name}')
+            if value.type == CellType.REFERENCE:
+                value = value.value.derefed()
+            print('  type:', value.type.name)
+            print('  value:', value.value)
+
     def postcmd(self, stop, line):
         if stop:
             print('Goodbye!')
@@ -462,16 +472,20 @@ name to break at.
         try:
             var_idx = routine.get_local_var_idx(var)
             value = frame.get_cell(var_idx)
-            if value is None:
-                print('No value set yet.')
-            else:
-                print(f'Local variable:', var)
-                if value.type == CellType.REFERENCE:
-                    value = value.value.derefed()
-                print('  type:', value.type.name)
-                print('  value:', value.value)
+            self.print_cell_value(value, var, 'Local variable')
+            return
         except KeyError:
-            print('No local variable found with that name')
+            pass
+
+        try:
+            var_idx = self.debug_info.global_vars.get_var_idx(var)
+            value = self.cpu.globals_segment.get_cell(var_idx)
+            self.print_cell_value(value, var, 'Global variable')
+            return
+        except KeyError:
+            pass
+
+        print('Variable not found')
 
     def do_quit(self, arg):
         'Exit debugger'

@@ -217,7 +217,7 @@ class QvmCode(BaseCode):
         self._routines = {}
         self._main_routine = None
         self._consts = []
-        self._globals = {}
+        self._globals = None
         self._debug_info_enabled = False
         self._source_code = None
         self._compilation = None
@@ -250,9 +250,6 @@ class QvmCode(BaseCode):
     def add_const(self, value):
         if value not in self._consts:
             self._consts.append(value)
-
-    def add_global(self, var_name, var_type):
-        self._globals[var_name] = var_type
 
     def optimize(self):
         i = 0
@@ -513,16 +510,6 @@ class QvmCode(BaseCode):
         def get_const_idx(value):
             return self._consts.index(value)
 
-        def get_global_var_idx(var):
-            idx = 0
-            for vname, vtype in self._globals.items():
-                if var == vname:
-                    return idx
-                idx += expr.Type.get_type_size(vtype, self._user_types)
-            raise InternalError(
-                f'Global variable not found while assembling: {var}'
-            )
-
         cur_offset = 0
         cur_routine = self._main_routine
         labels = {}
@@ -585,7 +572,7 @@ class QvmCode(BaseCode):
                 assert len(args) == 3
                 var, n_dims, element_size = args
                 var = cur_routine.get_variable(var).full_name
-                var_idx = get_global_var_idx(var)
+                var_idx = self._globals.get_var_idx(var)
                 bargs = struct.pack(
                     '>HBi', var_idx, n_dims, element_size)
             elif op == 'io':
@@ -618,7 +605,7 @@ class QvmCode(BaseCode):
                 assert len(args) == 1
                 var = args[0]
                 var = cur_routine.get_variable(var).full_name
-                var_idx = get_global_var_idx(var)
+                var_idx = self._globals.get_var_idx(var)
                 bargs = struct.pack('>H', var_idx)
             elif op[:-1] == 'readidxl' or op == 'storeidxl':
                 assert len(args) == 2
@@ -629,7 +616,7 @@ class QvmCode(BaseCode):
                 assert len(args) == 2
                 var, idx = args
                 var = cur_routine.get_variable(var).full_name
-                var_idx = get_global_var_idx(var)
+                var_idx = self._globals.get_var_idx(var)
                 bargs = struct.pack('>HH', var_idx, idx)
             elif op == 'pushrefl':
                 assert len(args) == 1
@@ -640,7 +627,7 @@ class QvmCode(BaseCode):
                 assert len(args) == 1
                 var = args[0]
                 var = cur_routine.get_variable(var).full_name
-                var_idx = get_global_var_idx(var)
+                var_idx = self._globals.get_var_idx(var)
                 bargs = struct.pack('>H', var_idx)
             else:
                 assert len(args) == 0
@@ -717,6 +704,13 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
             if data_label is None:
                 data_label = '_toplevel_data'
             code.add_data(data_label, data_items)
+
+        code._globals = self.compilation.global_vars
+        for routine in self.compilation.routines.values():
+            code._globals.update({
+                routine.get_variable(svar).full_name: stype
+                for svar, stype in routine.static_vars.items()
+            })
 
         code._debug_info_enabled = self.debug_info_enabled
         if self.debug_info_enabled:
@@ -845,13 +839,6 @@ def gen_code_for_block(node_list, code, codegen):
 def gen_program(node, code, codegen):
     code._main_routine = node.routine
     code.add_routine(node.routine)
-
-    code._globals = codegen.compilation.global_vars
-    for routine in codegen.compilation.routines.values():
-        code._globals.update({
-            routine.get_variable(svar).full_name: stype
-            for svar, stype in routine.static_vars.items()
-        })
 
     code.add(('call', '_sub__main'),
              ('halt',))
