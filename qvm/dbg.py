@@ -451,7 +451,7 @@ name to break at.
 
     def do_print(self, arg):
         'Print the value of a variable'
-        var = arg
+        var = arg.lower()
         frame = self.cpu.cur_frame
         routine_record = self.find_routine(frame.code_start)
         if routine_record:
