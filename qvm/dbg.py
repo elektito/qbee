@@ -55,6 +55,7 @@ Type help or ? to list commands.
         self.machine = machine
         self.cpu = machine.cpu
         self.breakpoints = []
+        self.auto_status_enabled = True
 
         self.instrs = []
         self.load_instructions()
@@ -154,15 +155,6 @@ Type help or ? to list commands.
         if self.cpu.halted:
             print('Empty program finished running already.')
 
-    def print_next(self):
-        instr, operands, size = \
-            self.cpu.get_current_instruction()
-        operands_list = ''
-        if operands:
-            operands_list = ' ' + \
-                ', '.join(str(i) for i in operands)
-        print(f'NEXT INSTR: {instr.op}{operands_list}')
-
     def set_prompt(self):
         self.prompt = f'(qdb PC={self.cpu.pc:08x}) '
 
@@ -249,18 +241,37 @@ Type help or ? to list commands.
                   self.find_stmt(self.cpu.pc) is None:
                 self.machine.tick()
 
+    def show_auto_status(self):
+        if self.auto_status_enabled:
+            self.do_cur('')
+
     def postcmd(self, stop, line):
-        if not stop:
-            if not self.machine.halted:
-                self.print_next()
-        else:
+        if stop:
             print('Goodbye!')
-        self.set_prompt()
+        else:
+            self.set_prompt()
         return stop
+
+    def do_autostatus(self, arg):
+        """Change/show auto-status. If auto-status is on, the debugger
+        would print some status information after each operation that
+        progresses the debuggee."""
+        arg = arg.strip().upper()
+        if arg == '':
+            status = 'ON' if self.auto_status_enabled else 'OFF'
+            print(f'Auto-status is {status}')
+        elif arg == 'ON':
+            self.auto_status_enabled = True
+        elif arg == 'OFF':
+            self.auto_status_enabled = False
+        else:
+            print('Invalid argument.')
 
     def do_continue(self, arg):
         'Continue until the machine is halted or we hit a breakpoint.'
         self.continue_until()
+
+        self.show_auto_status()
 
     def do_curi(self, arg):
         'Show current instruction and a few before/after it.'
@@ -271,6 +282,8 @@ Type help or ? to list commands.
         'Execute one machine instruction.'
         self.machine.tick()
 
+        self.show_auto_status()
+
     @unhalted
     def do_nexti(self, arg):
         'Execute one machine instruction, skipping over calls.'
@@ -280,6 +293,8 @@ Type help or ? to list commands.
             self.continue_until(target=self.cpu.pc + size)
         else:
             self.machine.tick()
+
+        self.show_auto_status()
 
     def do_cur(self, arg):
         'Show current statement'
@@ -302,11 +317,11 @@ Type help or ? to list commands.
               self.find_nonempty_stmt(self.cpu.pc) is None:
             self.cpu.tick()
 
-        self.do_cur(arg)
+        self.show_auto_status()
 
     @unhalted
     def do_next(self, arg):
-        pass
+        self.show_auto_status()
 
     def do_break(self, arg):
         """
