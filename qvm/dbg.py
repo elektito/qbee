@@ -8,23 +8,41 @@ from .debug_info import DebugInfo
 
 
 class Breakpoint:
-    def __init__(self, start_addr, end_addr):
+    def __init__(self, start_addr, end_addr=None, *, exact=True):
         self.start_addr = start_addr
         self.end_addr = end_addr
-
-    def match(self, addr):
-        return self.start_addr <= addr < self.end_addr
-
-    def exact_match(self, addr):
-        return addr == self.start_addr
+        self.exact = exact
 
     def __str__(self):
-        if self.end_addr - self.start_addr == 1:
-            return f'address 0x{self.start_addr:08x}'
+        exact = ' UNEXACT' if not self.exact else ''
+        if self.end_addr:
+            if self.end_addr - self.start_addr == 1:
+                return f'address 0x{self.start_addr:08x}{exact}'
+            else:
+                return (
+                    f'range 0x{self.start_addr:08x}-'
+                    f'0x{self.end_addr:08x}{exact}'
+                )
         else:
-            return (
-                f'range 0x{self.start_addr:08x}-0x{self.end_addr:08x}'
-            )
+            return f'address 0x{self.start_addr:08x}{exact}'
+
+    def __eq__(self, other):
+        if not isinstance(other, Breakpoint):
+            return False
+        return (
+            self.start_addr == other.start_addr and
+            self.end_addr == other.end_addr and
+            self.exact == other.exact
+        )
+
+    def __call__(self, cpu):
+        if self.end_addr:
+            return self.start_addr <= cpu.pc < self.end_addr
+        else:
+            if self.exact:
+                return cpu.pc == self.start_addr
+            else:
+                return cpu.pc >= self.start_addr
 
 
 def unhalted(func):
@@ -160,13 +178,12 @@ Type help or ? to list commands.
     def parse_breakpoint_spec(self, spec):
         if spec.startswith('0x'):
             addr = int(spec, base=16)
-            return Breakpoint(start_addr=addr, end_addr=addr+1), None
+            return Breakpoint(start_addr=addr), None
         elif spec.isnumeric():
             line_no = int(spec)
             for stmt in self.debug_info.stmts:
                 if stmt.source_start_line >= line_no:
-                    addr = stmt.start_offset
-                    bp = lambda cpu: cpu.pc == addr
+                    bp = Breakpoint(start_addr=stmt.start_offset)
                     if stmt.source_start_line > line_no:
                         print(f'Could not set a breakpoint at that '
                               f'precise line; set at line '
@@ -177,7 +194,10 @@ Type help or ? to list commands.
             routine = self.debug_info.routines.get(routine_name)
             if routine:
                 addr = routine.start_offset
-                bp = lambda cpu: cpu.pc >= addr
+                bp = Breakpoint(
+                    start_addr=routine.start_offset,
+                    end_addr=routine.end_offset,
+                )
                 return bp, None
             return None, 'no such routine'
 
