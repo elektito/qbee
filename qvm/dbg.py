@@ -207,7 +207,7 @@ Type help or ? to list commands.
                               f'{stmt.source_start_line}')
                     return bp, None
         else:
-            routine_name = spec
+            routine_name = spec.lower()
             routine = self.debug_info.routines.get(routine_name)
             if routine:
                 addr = routine.start_offset
