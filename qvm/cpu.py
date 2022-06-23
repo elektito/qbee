@@ -355,10 +355,8 @@ class QvmCpu:
         op_name = op_name.replace('$', '_string')
         op_name = op_name.replace('@', '_reference')
         func = getattr(self, f'_exec_{op_name}', None)
-        if func is None:
-            print(f'No exec function for op: {instr.op} '
-                  f'({instr.op_code})')
-            exit(1)
+        assert func is not None, \
+            f'No exec function for op: {instr.op} ({instr.op_code})'
 
         operands_list = ''
         if operands:
