@@ -869,6 +869,8 @@ themselves in this class method.
             )
 
         block = block_type.create_block(start_stmt, end_stmt, body)
+        block.start_stmt = start_stmt
+        block.end_stmt = end_stmt
         block.loc_start = start_stmt.loc_start
         block.loc_end = end_stmt.loc_end
         return block
@@ -908,14 +910,22 @@ class IfBlock(Block, start=IfBeginStmt, end=EndIfStmt):
             else_desc = 'with no else'
         return f'<IfBlock {then_desc} {else_desc}>'
 
+    def get_elseif_for_cond(self, cond):
+        for elseif_stmt in self.elseif_stmts:
+            if elseif_stmt.cond == cond:
+                return elseif_stmt
+        return None
+
     @classmethod
     def create_block(cls, if_stmt, end_if_stmt, body):
         cur_if_cond = if_stmt.cond
         cur_if_body = []
         if_blocks = []
         else_body = []
+        elseif_stmts = []
         for stmt in body:
             if isinstance(stmt, ElseIfStmt):
+                elseif_stmts.append(stmt)
                 if_blocks.append((cur_if_cond, cur_if_body))
                 cur_if_body = stmt.then_stmts
                 cur_if_cond = stmt.cond
@@ -930,7 +940,9 @@ class IfBlock(Block, start=IfBeginStmt, end=EndIfStmt):
         if cur_if_cond:
             if_blocks.append((cur_if_cond, cur_if_body))
 
-        return cls(if_blocks, else_body)
+        block = cls(if_blocks, else_body)
+        block.elseif_stmts = elseif_stmts
+        return block
 
     @property
     def child_fields(self):

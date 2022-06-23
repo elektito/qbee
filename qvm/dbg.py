@@ -1,6 +1,7 @@
 import argparse
 import cmd
 from functools import wraps
+from qbee.stmt import Block
 from .module import QModule
 from .machine import QvmMachine
 from .debug_info import DebugInfo
@@ -44,8 +45,13 @@ Type help or ? to list commands.
     prompt = '(qdb) '
 
     def __init__(self, machine, module):
+        if not module.debug_info:
+            print('Debug info not available')
+            exit(1)
+
         super().__init__()
         self.module = module
+        self.debug_info = self.module.debug_info
         self.machine = machine
         self.cpu = machine.cpu
         self.breakpoints = []
@@ -53,7 +59,11 @@ Type help or ? to list commands.
         self.instrs = []
         self.load_instructions()
 
+        self.source_lines = self.debug_info.source_code.split('\n')
+
         self.set_prompt()
+
+        self.start_debugging()
 
     def load_instructions(self):
         addr = 0
@@ -61,6 +71,88 @@ Type help or ? to list commands.
             instr, operands, size = self.cpu.get_instruction_at(addr)
             self.instrs.append((addr, instr, operands))
             addr += size
+
+    def find_stmt(self, addr):
+        # if we're at the beginning of the module code, there should
+        # be a call instruction telling us where the actual beginning
+        # of the module code is. we'll use that to find the first
+        # statement.
+        if addr == 0:
+            instr, operands, _ = self.cpu.get_instruction_at(0)
+            if instr.op != 'call':
+                return None
+            return self.find_stmt(operands[0])
+
+        # if the address falls within the range of some statement,
+        # return the one with the smallest range, excluding any
+        # blocks.
+        matching = []
+        for stmt in self.debug_info.stmts:
+            if stmt.start_offset <= addr < stmt.end_offset:
+                matching.append(stmt)
+
+        blocks = [stmt for stmt in matching if isinstance(stmt, Block)]
+        non_blocks = [
+            stmt for stmt in matching
+            if not isinstance(stmt, Block)]
+
+        non_blocks.sort(key=lambda r: r.end_offset - r.start_offset)
+        if non_blocks:
+            return non_blocks[0]
+
+        # if not however...
+
+        if blocks:
+            blocks.sort(key=lambda r: r.end_offset - r.start_offset)
+
+            # if it falls between the start of a block, and the start
+            # of the first statement inside that block, it's
+            # considered part of the "state statement" of that block
+            first_inner_stmt = first_stmt_in_block(block)
+            if first_inner_stmt:
+                first_inner_offset = first_inner_stmt.start_offset
+            else:
+                first_inner_offset = block.end_stmt.start_offset
+            if block.start_offset <= addr < first_inner_offset:
+                return block.start_stmt
+
+            # if it falls between the end of the last statement inside
+            # a block and the end of the block, it's considered part
+            # of the "end statement" of that block.
+            last_inner_stmt = last_stmt_in_block(block)
+            if last_inner_stmt:
+                last_inner_offset = last_inner_stmt.end_offset
+            else:
+                last_inner_offset = block.start_stmt.end_offset
+            if last_inner_offset <= addr < block.end_offset:
+                return block.end_stmt
+
+        return None
+
+    def find_nonempty_stmt(self, addr):
+        stmt = self.find_stmt(addr)
+        if stmt is None:
+            return None
+
+        idx = self.debug_info.stmts.index(stmt)
+        while stmt.end_offset - stmt.start_offset == 0:
+            idx += 1
+            if idx >= len(self.debug_info.stmts):
+                break
+            stmt = self.debug_info.stmts[idx]
+            if stmt is None:
+                break
+
+        return stmt
+
+    def start_debugging(self):
+        # run module code until we reach a statement
+        assert self.cpu.pc == 0
+        while not self.cpu.halted and not self.find_stmt(self.cpu.pc):
+            self.cpu.tick()
+
+        if self.cpu.halted:
+            print('Empty program finished running already.')
 
     def print_next(self):
         instr, operands, size = \
@@ -83,7 +175,7 @@ Type help or ? to list commands.
             print('NOT SUPPORTED YET')
         else:
             routine_name = spec
-            routine = self.module.debug_info.routines.get(routine_name)
+            routine = self.debug_info.routines.get(routine_name)
             if routine:
                 return Breakpoint(
                     start_addr=routine.start_offset,
@@ -116,15 +208,46 @@ Type help or ? to list commands.
             print(
                 f'{prefix}{i_addr:08x}: {instr.op: <12}{operands_list}')
 
-    def continue_until(self, until_addr):
-        while not self.machine.halted:
-            self.machine.tick()
-            if any(bp.exact_match(self.cpu.pc)
-                   for bp in self.breakpoints):
-                print(f'Hit breakpoint')
-                break
-            if until_addr is not None and self.cpu.pc == until_addr:
-                break
+    def show_statement_with_context(self, stmt, context_size=3):
+        start_line = stmt.source_start_line - context_size
+        if start_line < 1:
+            start_line = 1
+
+        end_line = stmt.source_end_line + context_size
+        if end_line > len(self.source_lines):
+            end_line = len(self.source_lines)
+
+        for i in range(start_line, end_line + 1):
+            line = self.source_lines[i - 1]
+            if i == stmt.source_start_line:
+                print(f' > {line}')
+            else:
+                print(f'   {line}')
+
+    @unhalted
+    def continue_until(self, *, target=None, inside_range=None,
+                       outside_range=None):
+        try:
+            while not self.machine.halted:
+                self.machine.tick()
+                if any(bp.exact_match(self.cpu.pc)
+                       for bp in self.breakpoints):
+                    print(f'Hit breakpoint')
+                    break
+                if target is not None and self.cpu.pc == target:
+                    break
+                if inside_range:
+                    start, end = inside_range
+                    if start <= self.cpu.pc < end:
+                        break
+                if outside_range:
+                    start, end = outside_range
+                    if self.cpu.pc < start or self.cpu.pc >= end:
+                        break
+        except KeyboardInterrupt:
+            while not self.machine.halted and \
+                  self.find_stmt(self.cpu.pc) is None:
+                self.machine.tick()
 
     def postcmd(self, stop, line):
         if not stop:
@@ -137,7 +260,7 @@ Type help or ? to list commands.
 
     def do_continue(self, arg):
         'Continue until the machine is halted or we hit a breakpoint.'
-        self.continue_until(None)
+        self.continue_until()
 
     def do_curi(self, arg):
         'Show current instruction and a few before/after it.'
@@ -154,13 +277,32 @@ Type help or ? to list commands.
         instr, operands, size = \
             self.cpu.get_current_instruction()
         if instr.op == 'call':
-            self.continue_until(self.cpu.pc + size)
+            self.continue_until(target=self.cpu.pc + size)
         else:
             self.machine.tick()
 
+    def do_cur(self, arg):
+        'Show current statement'
+        stmt = self.find_nonempty_stmt(self.cpu.pc)
+        if stmt is None:
+            assert self.cpu.halted
+            print('Program is finished')
+            return
+        self.show_statement_with_context(stmt)
+
     @unhalted
     def do_step(self, arg):
-        pass
+        'Execute one source statement'
+        stmt = self.find_nonempty_stmt(self.cpu.pc)
+        self.continue_until(
+            outside_range=(stmt.start_offset, stmt.end_offset))
+
+        # continue until we actually reach another statement (or halt)
+        while not self.cpu.halted and \
+              self.find_nonempty_stmt(self.cpu.pc) is None:
+            self.cpu.tick()
+
+        self.do_cur(arg)
 
     @unhalted
     def do_next(self, arg):

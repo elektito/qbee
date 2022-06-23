@@ -81,6 +81,7 @@ class CanonicalOp(Enum):
     _LABEL = 10000
     _DBG_INFO_START = 10001
     _DBG_INFO_END = 10002
+    _EMPTY_BLOCK = 10003
 
     def __eq__(self, other):
         if not isinstance(other, CanonicalOp):
@@ -483,6 +484,8 @@ class QvmCode(BaseCode):
                 s += f'{label}:\n'
             elif op.startswith('_dbg_'):
                 pass
+            elif op == '_empty_block':
+                pass
             else:
                 line = f'{op: <12}{", ".join(str(i) for i in args)}'
                 s += f'    {line.strip()}\n'
@@ -559,6 +562,10 @@ class QvmCode(BaseCode):
 
             if op == '_dbg_info_end':
                 dbg_collector.end_node(args[0], cur_offset)
+                continue
+
+            if op == '_empty_block':
+                dbg_collector.mark_empty_block(cur_offset)
                 continue
 
             bargs = b''
@@ -827,6 +834,20 @@ def gen_code_for_args(args, param_types, code, codegen):
         else:
             codegen.gen_code_for_node(arg, code)
             gen_code_for_conv(param_type, arg, code, codegen)
+
+
+def gen_code_for_block(node_list, code, codegen):
+    assert isinstance(node_list, list)
+
+    if not node_list:
+        # add a dummy statement in the middle so we can differentiate
+        # code from the start of block and code from the end of the
+        # block when generating debug info.
+        code.add(('_empty_block',))
+        return
+
+    for inner_stmt in node_list:
+        codegen.gen_code_for_node(inner_stmt, code)
 
 
 # Code generators for expressions
@@ -1257,8 +1278,7 @@ def gen_loop(node, code, codegen):
             code.add(('not',))
         code.add(('jz', loop_label))
 
-    for inner_stmt in node.body:
-        codegen.gen_code_for_node(inner_stmt, code)
+    gen_code_for_block(node.body, code, codegen)
 
     if node.kind.startswith('loop_'):
         codegen.gen_code_for_node(node.cond, code)
@@ -1357,8 +1377,7 @@ def gen_for_block(node, code, codegen):
     )
 
     code.add(('_label', body_label))
-    for inner_stmt in node.body:
-        codegen.gen_code_for_node(inner_stmt, code)
+    gen_code_for_block(node.body, code, codegen)
 
     code.add(
         ('_label', next_label),
@@ -1407,16 +1426,24 @@ def gen_if_block(node, code, codegen):
 
     for cond, body in node.if_blocks:
         else_label = codegen.get_label('else')
+
+        elseif_stmt = node.get_elseif_for_cond(cond)
+        if elseif_stmt:
+            code.add(('_dbg_info_start', elseif_stmt))
+
         codegen.gen_code_for_node(cond, code)
         gen_code_for_conv(expr.Type.INTEGER, cond, code, codegen)
         code.add(('jz', else_label))
-        for inner_stmt in body:
-            codegen.gen_code_for_node(inner_stmt, code)
+
+        if elseif_stmt:
+            code.add(('_dbg_info_end', elseif_stmt))
+
+        gen_code_for_block(body, code, codegen)
+
         code.add(('jmp', endif_label))
         code.add(('_label', else_label))
 
-    for inner_stmt in node.else_body:
-        codegen.gen_code_for_node(inner_stmt, code)
+    gen_code_for_block(node.else_body, code, codegen)
     code.add(('_label', endif_label))
 
 
@@ -1427,13 +1454,11 @@ def gen_if_stmt(node, code, codegen):
 
     codegen.gen_code_for_node(node.cond, code)
     code.add(('jz', else_label))
-    for inner_stmt in node.then_stmts:
-        codegen.gen_code_for_node(inner_stmt, code)
+    gen_code_for_block(node.then_stmts, code, codegen)
     code.add(('jmp', endif_label))
     code.add(('_label', else_label))
     if node.else_clause:
-        for inner_stmt in node.else_clause.stmts:
-            codegen.gen_code_for_node(inner_stmt, code)
+        gen_code_for_block(node.else_clause.stmts, code, codegen)
     code.add(('_label', endif_label))
 
 
@@ -1623,8 +1648,7 @@ def gen_sub_block(node, code, codegen):
               node.routine.params_size,
               lambda: node.routine.local_vars_size))
 
-    for inner_stmt in node.block:
-        codegen.gen_code_for_node(inner_stmt, code)
+    gen_code_for_block(node.block, code, codegen)
     code.add(('ret',))
 
 
@@ -1638,8 +1662,7 @@ def gen_func_block(node, code, codegen):
               node.routine.params_size,
               lambda: node.routine.local_vars_size))
 
-    for inner_stmt in node.block:
-        codegen.gen_code_for_node(inner_stmt, code)
+    gen_code_for_block(node.block, code, codegen)
 
     type_char = node.routine.return_type.type_char
     code.add((f'readl{type_char}', '_retval'))
