@@ -3,6 +3,7 @@ from itertools import product
 from qbee import grammar
 from qbee.evalctx import EvaluationContext, Routine, EvalError
 from .memlayout import get_global_var_idx, get_local_var_idx
+from .cpu import CellType
 
 
 class QArray:
@@ -73,6 +74,11 @@ class QvmEval(EvaluationContext):
 
         base_type = lvalue.base_type
         segment, base_idx = self.eval_var(lvalue.base_var)
+
+        cell_value = segment.get_cell(base_idx)
+        if cell_value.type == CellType.REFERENCE:
+            segment = cell_value.value.segment
+            base_idx = cell_value.value.index
 
         if not base_type.is_array and not base_type.is_user_defined:
             result = segment.get_cell(base_idx)
