@@ -1060,6 +1060,4 @@ class Compiler:
             logger.info('Optimizing code...')
             code.optimize()
 
-        logger.info('Done')
-
         return code

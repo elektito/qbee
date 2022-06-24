@@ -12,6 +12,9 @@ from .utils import display_with_context
 from . import qvm_codegen  # noqa
 
 
+logger = logging.getLogger(__name__)
+
+
 def config_logging(log_level):
     logging.config.dictConfig({
         'version': 1,
@@ -100,8 +103,10 @@ def main():
         exit(1)
 
     if args.asm:
+        logger.info('Generating assembly code...')
         output = str(code)
     else:
+        logger.info('Assembling...')
         output = bytes(code)
 
     if args.output == '-':
@@ -113,6 +118,8 @@ def main():
         flags = 'wb' if isinstance(output, bytes) else 'w'
         with open(args.output, flags) as f:
             f.write(output)
+
+    logger.info('Done.')
 
 
 if __name__ == '__main__':
