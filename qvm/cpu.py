@@ -365,11 +365,11 @@ class QvmCpu:
         self.last_breakpoint = None
         self.halted = False
         while self.pc < len(self.module.code) and not self.halted:
+            self.tick()
             for bp in self.breakpoints:
                 if bp(self):
                     self.last_breakpoint = bp
                     return False
-            self.tick()
 
         return True
 
