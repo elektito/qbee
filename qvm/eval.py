@@ -49,8 +49,9 @@ class QArray:
         lines.append(f'Bounds: {self.bounds}')
         for indices in all_indices:
             if len(indices) == 1:
-                indices = indices[0]
-            lines.append(f'{indices}: {self.at(*indices)}')
+                lines.append(f'{indices[0]}: {self.at(*indices)}')
+            else:
+                lines.append(f'{indices}: {self.at(*indices)}')
         return '\n'.join(lines)
 
 
