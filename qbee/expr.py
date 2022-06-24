@@ -3,7 +3,9 @@ from enum import Enum
 from abc import abstractmethod
 from dataclasses import dataclass, replace as dataclass_replace
 from typing import ClassVar
-from .exceptions import ErrorCode as EC, InternalError, CompileError
+from .exceptions import (
+    ErrorCode as EC, InternalError, CompileError, EvalError
+)
 from .node import Node
 from .utils import split_camel
 
@@ -322,39 +324,6 @@ class Type:
             '$': Type.STRING,
         }[type_char]
 
-    @staticmethod
-    def get_type_size(type, user_types):
-        if type.is_array:
-            if not type.is_static_array:
-                return 1
-            element_size = Type.get_type_size(
-                type.array_base_type,
-                user_types,
-            )
-            size = 1
-            for dim in type.array_dims:
-                nrange = (dim.static_ubound - dim.static_lbound + 1)
-                size *= nrange
-            size *= element_size
-            header_size = 3 + len(type.array_dims) * 2
-            return size + header_size
-
-        from .stmt import TypeBlock
-        assert all(
-            isinstance(k, str) and isinstance(v, TypeBlock)
-            for k, v in user_types.items()
-        )
-
-        builtin_types = [t.name for t in Type.builtin_types]
-        if type.name in builtin_types:
-            return 1
-        else:
-            struct = user_types[type.name]
-            return sum(
-                Type.get_type_size(ftype, user_types)
-                for ftype in struct.fields.values()
-            )
-
 
 class Operator(Enum):
     ADD = 1
@@ -475,10 +444,6 @@ class Expr(Node):
         pass
 
     def eval(self):
-        if not self.is_const:
-            raise ValueError(
-                'Attempting to evaluate non-const expression')
-
         raise InternalError(
             f'eval method not implemented for type '
             f'"{type(self).__name__}".')
@@ -650,17 +615,20 @@ class BinaryOp(Expr):
         return Type.STRING
 
     def eval(self):
-        if not self.is_const:
-            raise InternalError(
-                'Attempting to evaluate non-const expression')
-
         if self.left.type.is_numeric and self.right.type.is_numeric:
             return self._eval_numeric()
         elif (self.left.type == Type.STRING and
               self.right.type == Type.STRING):
             return self._eval_string()
+        elif ((self.left.type.is_numeric and
+               self.right.type == Type.STRING) or
+              (self.left.type == Type.STRING and
+               self.right.type.is_numeric)):
+            raise EvalError(
+                'Attempting to evaluate binary operation on '
+                'string and numeric values')
         else:
-            raise InternalError(
+            raise EvalError(
                 'Attempting to evaluate binary operation on '
                 'non-primitive values')
 
@@ -698,10 +666,6 @@ class BinaryOp(Expr):
         return result
 
     def _eval_string(self):
-        if self.op != Operator.ADD:
-            raise InternalError(
-                'Attempting to evaluate invalid operation on strings')
-
         return self.left.eval() + self.right.eval()
 
     def _qb_mod(self, a, b):
@@ -740,9 +704,8 @@ class UnaryOp(Expr):
             return self.arg.type
 
     def eval(self):
-        if not self.is_const:
-            raise InternalError(
-                'Attempting to evaluate non-const expression')
+        if not self.arg.type.is_numeric:
+            raise EvalError('Invalid operand for unary operator')
 
         value = self.arg.eval()
         if self.op == Operator.NOT:
@@ -814,7 +777,7 @@ class Lvalue(Expr):
         if self.array_indices or self.dotted_vars:
             return False
 
-        return self.compilation.is_const(self.base_var)
+        return self.context.is_const(self.base_var)
 
     @property
     def type(self):
@@ -830,7 +793,7 @@ class Lvalue(Expr):
                     'Identifier cannot include period',
                     node=self)
 
-            struct = self.compilation.user_types.get(
+            struct = self.context.user_types.get(
                 var_type.user_type_name)
             if struct is None:
                 raise CompileError(
@@ -862,11 +825,7 @@ class Lvalue(Expr):
         return self.parent_routine.get_variable(self.base_var)
 
     def eval(self):
-        if not self.is_const:
-            raise InternalError(
-                'Attempting to evaluate non-const expression')
-
-        return self.compilation.consts[self.base_var].eval()
+        return self.context.eval_lvalue(self)
 
 
 class StringLiteral(Expr):

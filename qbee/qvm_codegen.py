@@ -4,10 +4,14 @@ from collections import defaultdict
 from qvm.instrs import op_to_instr
 from qvm.cpu import QVM_DEVICES
 from qvm.debug_info import DebugInfoCollector
+from qvm.memlayout import (
+    get_type_size, get_local_var_idx, get_global_var_idx,
+    get_params_size, get_local_vars_size,
+)
 from .codegen import BaseCodeGen, BaseCode
 from .program import Label, LineNo, Program
 from .exceptions import InternalError
-from .compiler import Routine
+from .evalctx import Routine
 from . import stmt, expr
 
 
@@ -570,14 +574,14 @@ class QvmCode(BaseCode):
             elif op == 'initarrl':
                 assert len(args) == 3
                 var, n_dims, element_size = args
-                var_idx = cur_routine.get_local_var_idx(var)
+                var_idx = get_local_var_idx(cur_routine, var)
                 bargs = struct.pack(
                     '>HBi', var_idx, n_dims, element_size)
             elif op == 'initarrg':
                 assert len(args) == 3
                 var, n_dims, element_size = args
                 var = cur_routine.get_variable(var).full_name
-                var_idx = self._globals.get_var_idx(var)
+                var_idx = get_global_var_idx(self.compilation, var)
                 bargs = struct.pack(
                     '>HBi', var_idx, n_dims, element_size)
             elif op == 'io':
@@ -604,35 +608,35 @@ class QvmCode(BaseCode):
             elif op[:-1] == 'readl' or op == 'storel':
                 assert len(args) == 1
                 var = args[0]
-                var_idx = cur_routine.get_local_var_idx(var)
+                var_idx = get_local_var_idx(cur_routine, var)
                 bargs = struct.pack('>H', var_idx)
             elif op[:-1] == 'readg' or op == 'storeg':
                 assert len(args) == 1
                 var = args[0]
                 var = cur_routine.get_variable(var).full_name
-                var_idx = self._globals.get_var_idx(var)
+                var_idx = get_global_var_idx(self.compilation, var)
                 bargs = struct.pack('>H', var_idx)
             elif op[:-1] == 'readidxl' or op == 'storeidxl':
                 assert len(args) == 2
                 var, idx = args
-                var_idx = cur_routine.get_local_var_idx(var)
+                var_idx = get_local_var_idx(cur_routine, var)
                 bargs = struct.pack('>HH', var_idx, idx)
             elif op[:-1] == 'readidxg' or op == 'storeidxg':
                 assert len(args) == 2
                 var, idx = args
                 var = cur_routine.get_variable(var).full_name
-                var_idx = self._globals.get_var_idx(var)
+                var_idx = get_global_var_idx(self.compilation, var)
                 bargs = struct.pack('>HH', var_idx, idx)
             elif op == 'pushrefl':
                 assert len(args) == 1
                 var = args[0]
-                var_idx = cur_routine.get_local_var_idx(var)
+                var_idx = get_local_var_idx(cur_routine, var)
                 bargs = struct.pack('>H', var_idx)
             elif op == 'pushrefg':
                 assert len(args) == 1
                 var = args[0]
                 var = cur_routine.get_variable(var).full_name
-                var_idx = self._globals.get_var_idx(var)
+                var_idx = get_global_var_idx(self.compilation, var)
                 bargs = struct.pack('>H', var_idx)
             else:
                 assert len(args) == 0
@@ -670,7 +674,7 @@ class QvmCode(BaseCode):
         sections.append((2, data_section))
 
         n_global_cells = sum(
-            expr.Type.get_type_size(vtype, self._user_types)
+            get_type_size(self.compilation, vtype)
             for _, vtype in self._globals.items()
         )
         global_section = struct.pack('>I', n_global_cells)
@@ -706,6 +710,8 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
         return label
 
     def init_code(self, code):
+        code.compilation = self.compilation
+
         for user_type in self.compilation.user_types.values():
             code.add_user_type(user_type)
 
@@ -846,15 +852,16 @@ def gen_code_for_block(node_list, code, codegen):
 
 @QvmCodeGen.generator_for(Program)
 def gen_program(node, code, codegen):
-    code._main_routine = node.routine
-    code.add_routine(node.routine)
+    main_routine = codegen.compilation.main_routine
+    code._main_routine = main_routine
+    code.add_routine(main_routine)
 
     code.add(('call', '_sub__main'),
              ('halt',))
-    code.add(('_label', '_sub_' + node.routine.name))
+    code.add(('_label', '_sub_' + main_routine.name))
     code.add(('frame',
-              node.routine.params_size,
-              lambda: node.routine.local_vars_size))
+              get_params_size(main_routine),
+              lambda: get_local_vars_size(main_routine)))
 
     sub_routines = []
     for child in node.children:
@@ -1222,8 +1229,8 @@ def gen_dim(node, code, codegen):
         if not decl.type.is_array:
             continue
 
-        element_size = expr.Type.get_type_size(
-            decl.type.array_base_type, codegen.compilation.user_types)
+        element_size = get_type_size(
+            codegen.compilation, decl.type.array_base_type)
         if decl.var.is_global:
             scope = 'g'  # global
         else:
@@ -1627,8 +1634,8 @@ def gen_sub_block(node, code, codegen):
     code.add(('_label', '_sub_' + node.name))
 
     code.add(('frame',
-              node.routine.params_size,
-              lambda: node.routine.local_vars_size))
+              get_params_size(node.routine),
+              lambda: get_local_vars_size(node.routine)))
 
     gen_code_for_block(node.block, code, codegen)
     code.add(('ret',))
@@ -1641,8 +1648,8 @@ def gen_func_block(node, code, codegen):
     code.add(('_label', '_func_' + node.name))
 
     code.add(('frame',
-              node.routine.params_size,
-              lambda: node.routine.local_vars_size))
+              get_params_size(node.routine),
+              lambda: get_local_vars_size(node.routine)))
 
     gen_code_for_block(node.block, code, codegen)
 

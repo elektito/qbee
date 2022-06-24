@@ -10,182 +10,22 @@ from .program import Label, LineNo
 from .codegen import CodeGen
 from .exceptions import ErrorCode as EC, InternalError, CompileError
 from .parser import parse_string
+from .evalctx import EvaluationContext, Routine
 
 
 logger = logging.getLogger(__name__)
 
 
-class Variable:
-    def __init__(self, name, type, scope, routine):
-        assert isinstance(name, str)
-        assert isinstance(type, Type)
-        assert scope in ['param', 'local', 'global', 'static']
-        assert isinstance(routine, Routine)
-
-        self.name = name
-        self.type = type
-        self.scope = scope
-        self.routine = routine
-
-    def __repr__(self):
-        return f'<Var {self.name} {self.scope}>'
-
-    @property
-    def full_name(self):
-        if self.scope == 'static':
-            return f'_static_{self.routine.name}_{self.name}'
-        else:
-            return self.name
-
-    @property
-    def is_global(self):
-        return self.scope in ('global', 'static')
-
-    @property
-    def is_local(self):
-        return self.scope in ('local', 'param')
-
-
-class Routine:
-    "Represents a SUB or a FUNCTION"
-
-    def __init__(self, name, kind, compilation, params, is_static=False,
-                 return_type=None):
-        kind = kind.lower()
-        assert kind in ('sub', 'function', 'toplevel')
-
-        assert all(
-            isinstance(pname, str) and isinstance(ptype, Type)
-            for pname, ptype in params
-        )
-        assert return_type is None or isinstance(return_type, Type)
-        assert isinstance(compilation, CompilationUnit)
-
-        self.compilation = compilation
-        self.name = name
-        self.kind = kind
-        self.is_static = is_static
-        self.return_type = return_type
-        self.params: dict[str, Type] = dict(params)
-        self.local_vars: dict[str, Type] = {}
-        self.static_vars: dict[str, Type] = {}
-        self.labels = set()
-
-    def __repr__(self):
-        static = ' STATIC' if self.is_static else ''
-        return f'<Routine {self.kind} {self.name}{static}>'
-
-    def get_identifier_type(self, identifier: str):
-        if Type.is_type_char(identifier[-1]):
-            return Type.from_type_char(identifier[-1])
-        else:
-            if identifier in self.compilation.global_vars:
-                return self.compilation.global_vars[identifier]
-
-            def_type = self.compilation.def_letter_types.get(
-                identifier[0].lower())
-            if def_type:
-                return def_type
-
-            # No matching DEF* statement, so use the default type
-            return Type.SINGLE
-
-    def get_variable(self, name: str):
-        assert isinstance(name, str)
-
-        if name in self.params:
-            var_type = self.params[name]
-            scope = 'param'
-        elif name in self.local_vars:
-            var_type = self.local_vars[name]
-            scope = 'local'
-        elif name in self.static_vars:
-            var_type = self.static_vars[name]
-            scope = 'static'
-        elif name in self.compilation.global_vars:
-            var_type = self.compilation.global_vars[name]
-            scope = 'global'
-        else:
-            var_type = self.get_identifier_type(name)
-            scope = 'local'
-
-        return Variable(name,
-                        type=var_type,
-                        scope=scope,
-                        routine=self)
-
-    def has_variable(self, name: str):
-        return (
-            name in self.local_vars or
-            name in self.params or
-            name in self.static_vars or
-            name in self.compilation.global_vars
-        )
-
-    def get_local_var_idx(self, var):
-        idx = 0
-        for pname, ptype in self.params.items():
-            if var == pname:
-                return idx
-            idx += Type.get_type_size(
-                ptype, self.compilation.user_types)
-        for vname, vtype in self.local_vars.items():
-            if var == vname:
-                return idx
-            idx += Type.get_type_size(
-                vtype, self.compilation.user_types)
-        raise KeyError(
-            f'Local variable not found in routine "{self.name}": {var}'
-        )
-
-    @property
-    def params_size(self):
-        # the number of cells in a call frame the parameters to this
-        # routine need
-        return sum(
-            self.compilation.get_type_size(ptype)
-            for ptype in self.params.values()
-        )
-
-    @property
-    def local_vars_size(self):
-        # the number of cells in a call frame the local variables of
-        # this routine need
-        return sum(
-            self.compilation.get_type_size(vtype)
-            for vtype in self.local_vars.values()
-        )
-
-    @property
-    def frame_size(self):
-        # the total number of cells a call frame for this routine needs
-        return self.params_size + self.local_vars_size
-
-
-class GlobalsContainer(dict):
-    def __init__(self, user_types):
-        self.user_types = user_types
+class CompilationUnit(EvaluationContext):
+    def __init__(self):
         super().__init__()
 
-    def get_var_idx(self, var):
-        idx = 0
-        for vname, vtype in self.items():
-            if var == vname:
-                return idx
-            idx += Type.get_type_size(vtype, self.user_types)
-        raise KeyError(f'Global variable not found: {var}')
-
-
-class CompilationUnit:
-    def __init__(self):
         self.main_routine = Routine(
             '_main', 'toplevel', self, params=[])
 
         self.all_labels = set()
         self.routines = {'_main': self.main_routine}
-        self.user_types = {}
-        self.consts = {}
-        self.global_vars = GlobalsContainer(self.user_types)
+        self.global_vars = {}
         self.def_letter_types = {}  # maps a single letter to a type
 
         # Maps labels to all data values after it. The DATA statements
@@ -193,12 +33,13 @@ class CompilationUnit:
         # key.
         self.data = defaultdict(list)
 
-    def is_const(self, name):
-        "Return whether the given name is a const or not"
-        return name in self.consts
-
-    def get_type_size(self, type):
-        return Type.get_type_size(type, self.user_types)
+    def eval_lvalue(self, lvalue):
+        if lvalue.base_var not in self.consts or \
+           lvalue.array_indices or \
+           lvalue.dotted_vars:
+            raise InternalError(
+                'Attempting to evaluate non-const expression')
+        return self.consts[lvalue.base_var].eval()
 
     def get_routine(self, name: str, kind=None):
         assert kind is None or kind in ('sub', 'function')
@@ -314,11 +155,6 @@ class CompilePass:
                     f'Cannot find a node for compile function: '
                     f'{member}')
 
-    def _set_parent_routine(self, node, routine):
-        node.parent_routine = routine
-        for child in node.children:
-            self._set_parent_routine(child, routine)
-
     def process_tree(self, tree):
         # This function recursively processes the given node. Before
         # recursing the children, a "pre" function for the node is
@@ -372,11 +208,6 @@ class Pass1(CompilePass):
     def __init__(self, compilation):
         super().__init__(compilation)
         self._last_label = None
-
-    def process_program_pre(self, node):
-        node.routine = self.compilation.routines['_main']
-        self._set_parent_routine(
-            node, self.compilation.routines['_main'])
 
     def process_label_pre(self, node):
         if node.name in self.compilation.all_labels:
@@ -433,12 +264,6 @@ class Pass1(CompilePass):
         routine = Routine(node.name, 'sub', self.compilation, params,
                           is_static=node.is_static)
         self.compilation.routines[node.name] = routine
-        node.parent_routine = routine
-        node.routine = routine
-
-        node.parent_routine = self.compilation.main_routine
-        for inner_stmt in node.block:
-            self._set_parent_routine(inner_stmt, routine)
 
     def process_function_block_pre(self, node):
         if node.parent_routine.name != '_main':
@@ -472,14 +297,8 @@ class Pass1(CompilePass):
                           is_static=node.is_static,
                           return_type=node.type)
         self.compilation.routines[node.name] = routine
-        node.parent_routine = routine
-        node.routine = routine
 
         routine.local_vars['_retval'] = node.type
-
-        node.parent_routine = self.compilation.main_routine
-        for inner_stmt in node.block:
-            self._set_parent_routine(inner_stmt, routine)
 
     def process_exit_sub_pre(self, node):
         if node.parent_routine.name == '_main' or \
@@ -654,7 +473,6 @@ class Pass2(CompilePass):
            node.base_var not in self.compilation.consts:
             # Implicitly defined variable
             decl = VarDeclClause(node.base_var, None)
-            decl.parent_routine = node.parent_routine
             if node.array_indices:
                 # It's an array; implicit arrays have a range of 0 to
                 # 10 for all their dimensions.

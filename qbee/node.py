@@ -18,34 +18,23 @@ class Node(ABC):
     def __getnewargs_ex__(self):
         return self._init_args, self._init_kwargs
 
-    def bind(self, compilation):
-        self._compilation = compilation
+    def bind(self, context):
+        self._context = context
         for child in self.children:
             child.parent = self
-            child.bind(compilation)
+            child.bind(context)
 
     @property
-    def compilation(self):
-        if not hasattr(self, '_compilation') or \
-           self._compilation is None:
+    def context(self):
+        if not hasattr(self, '_context') or \
+           self._context is None:
             raise InternalError(
-                f'Node {self} not bound to a compilation unit')
-        return self._compilation
+                f'Node {self} not bound to an evaluation context')
+        return self._context
 
     @property
     def parent_routine(self):
-        node = self
-        while node:
-            try:
-                return self._parent_routine
-            except AttributeError:
-                node = node.parent
-
-        return None
-
-    @parent_routine.setter
-    def parent_routine(self, node):
-        self._parent_routine = node
+        return self.context.get_node_routine(self)
 
     @classmethod
     @abstractmethod
@@ -129,7 +118,7 @@ class Node(ABC):
         new_child.loc_start = old_child.loc_start
         new_child.loc_end = old_child.loc_end
         new_child.parent = self
-        new_child.bind(self.compilation)
+        new_child.bind(self.context)
 
     def clone(self):
         def copy_arg(arg):
@@ -139,8 +128,8 @@ class Node(ABC):
             new_arg.loc_start = getattr(arg, 'loc_start', None)
             new_arg.loc_end = getattr(arg, 'loc_end', None)
             new_arg.parent = arg.parent
-            if hasattr(arg, '_compilation'):
-                new_arg._compilation = arg._compilation
+            if hasattr(arg, '_context'):
+                new_arg._context = arg._context
             if hasattr(arg, '_parent_routine'):
                 new_arg._parent_routine = arg._parent_routine
             return new_arg

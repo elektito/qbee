@@ -1,6 +1,10 @@
 from enum import Enum
 
 
+class EvalError(Exception):
+    pass
+
+
 class InternalError(Exception):
     """Errors of this type are considered bugs in the compiler. Ideally,
 this should never be raised. If it is, there is a bug that needs to be

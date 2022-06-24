@@ -1,11 +1,15 @@
 import argparse
 import cmd
 from functools import wraps
+from pyparsing.exceptions import ParseException
 from qbee.stmt import Block
+from qbee.exceptions import InternalError, SyntaxError
+from qbee import grammar
 from .module import QModule
 from .machine import QvmMachine
 from .debug_info import DebugInfo
 from .cpu import CellType
+from .eval import QvmEval, EvalError
 
 
 class Breakpoint:
@@ -94,6 +98,14 @@ Type help or ? to list commands.
 
         self.source_lines = self.debug_info.source_code.split('\n')
 
+        self.eval_context = QvmEval(
+            self.cpu,
+            self.debug_info.main_routine,
+            self.find_routine)
+        for routine in self.debug_info.routines:
+            routine.context = self.eval_context
+        self.debug_info.main_routine.context = self.eval_context
+
         self.set_prompt()
 
         self.start_debugging()
@@ -181,8 +193,12 @@ Type help or ? to list commands.
     def find_routine(self, addr):
         for routine in self.debug_info.routines.values():
             if routine.start_offset <= addr < routine.end_offset:
+                if routine_record:
+                    routine = routine_record.node.routine
+                else:
+                    routine = self.debug_info.main_routine
                 return routine
-        return None
+        return self.debug_info.main_routine
 
     def start_debugging(self):
         # run module code until we reach a statement
@@ -428,31 +444,26 @@ name to break at.
 
         frame = self.cpu.cur_frame
         while frame:
-            routine_record = self.find_routine(frame.code_start)
-            if routine_record is None:
-                routine_node = self.debug_info.main_routine
-            else:
-                routine_node = routine_record.node
-
-            frames.append((frame, routine_record, routine_node))
+            routine = self.find_routine(frame.code_start)
+            frames.append((frame, routine))
             frame = frame.prev_frame
 
         frames.reverse()
 
-        for i, (frame, routine_record, routine_node) in enumerate(frames):
+        for i, (frame, routine) in enumerate(frames):
             fidx = len(frames) - i
 
-            if routine_record:
+            if routine is not None:
                 stmt = self.find_stmt(frame.caller_addr)
                 caller_line_no = stmt.source_start_line
                 print(f'line {caller_line_no} ')
                 print('   ',
                       self.source_lines[caller_line_no - 1].strip())
 
-                print(f'[{fidx}] {routine_record.type.name} '
-                      f'{routine_node.name} ', end='')
+                print(f'[{fidx}] {routine.kind.upper()} '
+                      f'{routine.name} ', end='')
             else:
-                print(f'[{fidx}] {routine_node.name} ', end='')
+                print(f'[{fidx}] _main ', end='')
 
         stmt = self.find_stmt(self.cpu.pc)
         line_no = stmt.source_start_line
@@ -461,40 +472,21 @@ name to break at.
 
     def do_print(self, arg):
         'Print the value of a variable'
-        var = arg.lower()
-        frame = self.cpu.cur_frame
-        routine_record = self.find_routine(frame.code_start)
-        if routine_record:
-            routine = routine_record.node.routine
-        else:
-            routine = self.debug_info.main_routine
-
         try:
-            var_idx = routine.get_local_var_idx(var)
-            value = frame.get_cell(var_idx)
-            self.print_cell_value(value, var, 'Local variable')
+            tree = grammar.expr.parse_string(arg, parse_all=True)
+            tree = tree[0]
+        except (ParseException, InternalError, SyntaxError) as e:
+            print('Error parsing expression:', e)
             return
-        except KeyError:
-            pass
 
+        tree.bind(self.eval_context)
         try:
-            var_idx = self.debug_info.global_vars.get_var_idx(var)
-            value = self.cpu.globals_segment.get_cell(var_idx)
-            self.print_cell_value(value, var, 'Global variable')
+            value = tree.eval()
+        except EvalError as e:
+            print('Eval error:', e)
             return
-        except KeyError:
-            pass
 
-        try:
-            value_type, value = self.debug_info.consts[var]
-            print(f'Constant: {var}')
-            print('  type:', value_type.name.upper())
-            print('  value:', value)
-            return
-        except KeyError:
-            pass
-
-        print('Variable not found')
+        print(value)
 
     def do_quit(self, arg):
         'Exit debugger'

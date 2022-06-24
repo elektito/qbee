@@ -81,7 +81,14 @@ class VarDeclClause(Stmt):
         if self.var_type_name:
             _type = Type.from_name(self.var_type_name)
         else:
-            _type = self.parent_routine.get_variable(self.name).type
+            if isinstance(self.parent, (SubBlock, FunctionBlock)):
+                # when parent is a SUB/FUNCTION, this is for a
+                # parameter, and we use the main routine to get its
+                # type
+                routine = self.context.main_routine
+            else:
+                routine = self.parent_routine
+            _type = routine.get_variable(self.name).type
 
         if self.array_dims or self.is_nodim_array:
             _type = _type.modified(is_array=True,
@@ -986,14 +993,15 @@ class SubBlock(Block, start=SubStmt, end=EndSubStmt):
         self.is_static = is_static
         self.block = block
 
-        # This will be set by the compiler later to a Routine object
-        self.routine = None
-
     def __repr__(self):
         return (
             f'<SubBlock "{self.name}" with {len(self.params)} arg(s) '
             f'and {len(self.block)} statement(s)>'
         )
+
+    @property
+    def routine(self):
+        return self.context.routines[self.name]
 
     @classmethod
     def create_block(cls, sub_stmt, end_sub_stmt, body):
@@ -1009,9 +1017,6 @@ class FunctionBlock(Block, start=FunctionStmt, end=EndFunctionStmt):
         self.params = params
         self.is_static = is_static
         self.block = block
-
-        # This will be set by the compiler later to a Routine object
-        self.routine = None
 
     def __repr__(self):
         return (
@@ -1029,6 +1034,10 @@ class FunctionBlock(Block, start=FunctionStmt, end=EndFunctionStmt):
     @property
     def type(self):
         return self.parent_routine.get_identifier_type(self._name)
+
+    @property
+    def routine(self):
+        return self.context.routines[self.name]
 
     @classmethod
     def create_block(cls, func_stmt, end_func_stmt, body):
