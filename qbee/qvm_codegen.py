@@ -1464,10 +1464,6 @@ def gen_input(node, code, codegen):
     code.add(('io', 'terminal', 'input'))
 
     for var in node.var_list:
-        # just so we won't forget updating here when arrays are
-        # supported.
-        assert not var.array_indices
-
         gen_lvalue_write(var, code, codegen)
 
 
