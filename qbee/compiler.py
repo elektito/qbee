@@ -403,13 +403,6 @@ class Pass1(CompilePass):
             letter = letter.lower()
             self.compilation.def_letter_types[letter] = node.type
 
-    def process_const_pre(self, node):
-        if not node.value.is_const:
-            raise CompileError(
-                EC.INVALID_CONSTANT,
-                node=node.value)
-        self.compilation.consts[node.name] = node.value
-
     def process_sub_block_pre(self, node):
         if node.parent_routine.name != '_main':
             raise CompileError(
@@ -601,6 +594,21 @@ class Pass2(CompilePass):
             raise InternalError(
                 f'Unknown built-in function: {node.name}')
         self._check_function_args(node, nargs, arg_types)
+
+    def process_const_pre(self, node):
+        if node.name in self.compilation.consts:
+            raise CompileError(
+                EC.DUPLICATE_DEFINITION,
+                node=node)
+        if node.parent_routine.has_variable(node.name):
+            raise CompileError(
+                EC.DUPLICATE_DEFINITION,
+                node=node)
+        if not node.value.is_const:
+            raise CompileError(
+                EC.INVALID_CONSTANT,
+                node=node.value)
+        self.compilation.consts[node.name] = node.value
 
     def process_lvalue_pre(self, node):
         const = self.compilation.consts.get(node.base_var)
@@ -813,6 +821,9 @@ class Pass2(CompilePass):
     def process_assignment_pre(self, node):
         if not node.lvalue.type.is_coercible_to(node.rvalue.type):
             raise CompileError(EC.TYPE_MISMATCH, node=node)
+
+        if node.lvalue.base_var in self.compilation.consts:
+            raise CompileError(EC.DUPLICATE_DEFINITION, node=node)
 
         if Type.name_ends_with_type_char(node.lvalue.base_var):
             base_name = node.lvalue.base_var[:-1]
