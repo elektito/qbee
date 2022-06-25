@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+from dataclasses import dataclass
 from .stmt import (
     Stmt, IfBlock, VarDeclClause, ArrayDimRange, CallStmt,
     ReturnValueSetStmt, FunctionBlock, SubBlock, SimpleCaseClause,
@@ -14,6 +15,11 @@ from .evalctx import EvaluationContext, Routine
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class BlockContext:
+    kind: str
 
 
 class CompilationUnit(EvaluationContext):
@@ -208,6 +214,7 @@ class Pass1(CompilePass):
     def __init__(self, compilation):
         super().__init__(compilation)
         self._last_label = None
+        self._cur_blocks = []
 
     def process_label_pre(self, node):
         if node.name in self.compilation.all_labels:
@@ -314,6 +321,46 @@ class Pass1(CompilePass):
                 EC.INVALID_EXIT,
                 'EXIT FUNCTION can only be used inside a FUNCTION',
                 node=node)
+
+    def process_loop_block_pre(self, node):
+        self._cur_blocks.append(BlockContext('do'))
+
+    def process_loop_block_post(self, node):
+        block = self._cur_blocks.pop()
+        assert block.kind == 'do'
+
+    def process_for_block_pre(self, node):
+        self._cur_blocks.append(BlockContext('for'))
+
+    def process_for_block_post(self, node):
+        block = self._cur_blocks.pop()
+        assert block.kind == 'for'
+
+    def process_exit_do_pre(self, node):
+        do_block = None
+        for block in reversed(self._cur_blocks):
+            if block.kind == 'do':
+                do_block = block
+                break
+        if do_block is None:
+            raise CompileError(
+                EC.INVALID_EXIT,
+                'EXIT DO outside DO...LOOP block',
+                node=node,
+            )
+
+    def process_exit_for_pre(self, node):
+        for_block = None
+        for block in reversed(self._cur_blocks):
+            if block.kind == 'for':
+                for_block = block
+                break
+        if for_block is None:
+            raise CompileError(
+                EC.INVALID_EXIT,
+                'EXIT FOR outside FOR...NEXT block',
+                node=node,
+            )
 
     def process_type_block_pre(self, node):
         if node.name in self.compilation.user_types:

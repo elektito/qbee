@@ -263,6 +263,13 @@ class LoopStmt(Stmt):
         return f'<LoopStmt {self.kind}{cond}>'
 
 
+class ExitDoStmt(Stmt):
+    child_fields = []
+
+    def __repr__(self):
+        return '<ExitDoStmt>'
+
+
 class EndStmt(Stmt):
     child_fields = []
 
@@ -296,6 +303,13 @@ class NextStmt(Stmt):
     def __repr__(self):
         var = f' {self.var}' if self.var else ''
         return f'<NextStmt{var}>'
+
+
+class ExitForStmt(Stmt):
+    child_fields = []
+
+    def __repr__(self):
+        return '<ExitForStmt>'
 
 
 class GotoStmt(Stmt):

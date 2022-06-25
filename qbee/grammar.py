@@ -25,6 +25,7 @@ from .stmt import (
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
     RandomizeStmt, GosubStmt, ReturnStmt, DefSegStmt, PokeStmt,
     ReadStmt, RestoreStmt, LocateStmt, ScreenStmt, WidthStmt, PlayStmt,
+    ExitDoStmt, ExitForStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -428,6 +429,9 @@ loop_stmt = (
     loop_kw.suppress() +
     Opt((while_kw | until_kw) - expr)
 ).set_name('loop_stmt')
+exit_do_stmt = (
+    exit_kw.suppress() + do_kw.suppress()
+).set_name('exit_do_stmt')
 
 end_stmt = (end_kw).set_name('end_stmt')
 
@@ -443,6 +447,9 @@ for_stmt = (
 next_stmt = (
     next_kw.suppress() + Opt(Located(identifier), default=None)
 ).set_name('next_stmt')
+exit_for_stmt = (
+    exit_kw.suppress() + for_kw.suppress()
+).set_name('exit_for_stmt')
 
 gosub_stmt = (
     gosub_kw.suppress() -
@@ -657,12 +664,14 @@ stmt = Located(
 
     do_stmt |
     loop_stmt |
+    exit_do_stmt |
 
     while_stmt |
     wend_stmt |
 
     for_stmt |
     next_stmt |
+    exit_for_stmt |
 
     # the order of the following is important. in particular, if_stmt
     # must be before if_block_begin.
@@ -1045,6 +1054,11 @@ def parse_loop_stmt(toks):
         return LoopStmt('forever', None)
 
 
+@parse_action(exit_do_stmt)
+def parse_exit_do(toks):
+    return ExitDoStmt()
+
+
 @parse_action(for_stmt)
 def parse_for_stmt(toks):
     var, from_expr, to_expr, step_expr = toks
@@ -1067,6 +1081,11 @@ def parse_next_stmt(toks):
     var.loc_end = var_loc_end
 
     return NextStmt(var)
+
+
+@parse_action(exit_for_stmt)
+def parse_exit_for(toks):
+    return ExitForStmt()
 
 
 @parse_action(end_stmt)

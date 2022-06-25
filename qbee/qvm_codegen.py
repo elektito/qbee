@@ -1,6 +1,7 @@
 import struct
 from enum import Enum, auto
 from collections import defaultdict
+from dataclasses import dataclass
 from qvm.instrs import op_to_instr
 from qvm.cpu import QVM_DEVICES
 from qvm.debug_info import DebugInfoCollector
@@ -13,6 +14,12 @@ from .program import Label, LineNo, Program
 from .exceptions import InternalError
 from .evalctx import Routine
 from . import stmt, expr
+
+
+@dataclass
+class BlockContext:
+    kind: str
+    exit_label: str
 
 
 class CanonicalOp(Enum):
@@ -705,6 +712,7 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
         self.compilation = compilation
         self.last_label = None
         self.label_counter = 1
+        self.cur_blocks = []
 
     def set_source_code(self, source_code):
         self.source_code = source_code
@@ -1254,6 +1262,8 @@ def gen_loop(node, code, codegen):
     do_label = codegen.get_label('do')
     loop_label = codegen.get_label('loop')
 
+    codegen.cur_blocks.append(BlockContext('do', loop_label))
+
     code.add(('_label', do_label))
     if node.kind.startswith('do_'):
         codegen.gen_code_for_node(node.cond, code)
@@ -1273,6 +1283,20 @@ def gen_loop(node, code, codegen):
         code.add(('jmp', do_label))
     code.add(('_label', loop_label))
 
+    block_context = codegen.cur_blocks.pop()
+    assert block_context.kind == 'do'
+
+
+@QvmCodeGen.generator_for(stmt.ExitDoStmt)
+def gen_exit_do(node, code, codegen):
+    do_block = None
+    for block in reversed(codegen.cur_blocks):
+        if block.kind == 'do':
+            do_block = block
+            break
+    assert do_block and do_block.kind == 'do'
+    code.add(('jmp', do_block.exit_label))
+
 
 @QvmCodeGen.generator_for(stmt.ForBlock)
 def gen_for_block(node, code, codegen):
@@ -1289,6 +1313,8 @@ def gen_for_block(node, code, codegen):
     body_label = codegen.get_label('for_body')
     next_label = codegen.get_label('for_next')
     end_label = codegen.get_label('for_end')
+
+    codegen.cur_blocks.append(BlockContext('for', end_label))
 
     # we use get_label to get unique names for our variables
     step_var = codegen.get_label('for_step')
@@ -1373,6 +1399,20 @@ def gen_for_block(node, code, codegen):
     )
 
     code.add(('_label', end_label))
+
+    block_context = codegen.cur_blocks.pop()
+    assert block_context.kind == 'for'
+
+
+@QvmCodeGen.generator_for(stmt.ExitForStmt)
+def gen_exit_for(node, code, codegen):
+    for_block = None
+    for block in reversed(codegen.cur_blocks):
+        if block.kind == 'for':
+            for_block = block
+            break
+    assert for_block and for_block.kind == 'for'
+    code.add(('jmp', for_block.exit_label))
 
 
 @QvmCodeGen.generator_for(stmt.EndStmt)
