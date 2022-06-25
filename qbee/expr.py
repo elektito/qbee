@@ -686,6 +686,9 @@ class BinaryOp(Expr):
         else:
             mask = 0xffff_ffff
 
+        def qbool(x):
+            return -1 if x else 0
+
         result = {
             Operator.ADD: lambda a, b: a + b,
             Operator.SUB: lambda a, b: a - b,
@@ -694,12 +697,12 @@ class BinaryOp(Expr):
             Operator.MOD: self._qb_mod,
             Operator.INTDIV: lambda a, b: a // b,
             Operator.EXP: lambda a, b: a ** b,
-            Operator.CMP_EQ: lambda a, b: a == b,
-            Operator.CMP_NE: lambda a, b: a != b,
-            Operator.CMP_LT: lambda a, b: a < b,
-            Operator.CMP_GT: lambda a, b: a > b,
-            Operator.CMP_LE: lambda a, b: a <= b,
-            Operator.CMP_GE: lambda a, b: a >= b,
+            Operator.CMP_EQ: lambda a, b: qbool(a == b),
+            Operator.CMP_NE: lambda a, b: qbool(a != b),
+            Operator.CMP_LT: lambda a, b: qbool(a < b),
+            Operator.CMP_GT: lambda a, b: qbool(a > b),
+            Operator.CMP_LE: lambda a, b: qbool(a <= b),
+            Operator.CMP_GE: lambda a, b: qbool(a >= b),
             Operator.AND: lambda a, b: (a & b) & mask,
             Operator.OR: lambda a, b: (a | b) & mask,
             Operator.XOR: lambda a, b: (a ^ b) & mask,
