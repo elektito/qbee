@@ -487,7 +487,6 @@ name to break at.
             fidx = len(frames) - i
 
             if routine and routine != self.debug_info.main_routine:
-                print(frame.ret_addr, frame.caller_addr, routine)
                 stmt = self.find_stmt(frame.caller_addr)
                 caller_line_no = stmt.source_start_line
                 print(f'line {caller_line_no} ')
