@@ -930,7 +930,7 @@ def gen_lvalue(node, code, codegen):
             type_char = node.type.type_char
             code.add((f'read{scope}{type_char}', base_var.full_name))
         else:
-            type_char = base_var.type.type_char
+            type_char = node.type.type_char
             code.add((f'readidx{scope}{type_char}',
                       base_var.full_name,
                       idx))
