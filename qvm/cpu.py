@@ -1,6 +1,7 @@
 import logging
 import itertools
 import math
+import signal
 from enum import Enum
 from qbee import grammar
 from pyparsing.exceptions import ParseException
@@ -204,6 +205,15 @@ class QvmCpu:
         self.breakpoints = []
         self.last_breakpoint = None
 
+        self.received_keyboard_interrupt = False
+        signal.signal(signal.SIGINT, self.signal_handler)
+
+    def signal_handler(self, signum, _):
+        if self.received_keyboard_interrupt:
+            # second keyboard interrupt; raise an exception
+            raise KeyboardInterrupt
+        self.received_keyboard_interrupt = True
+
     def connect_device(self, device_name, device):
         logging.info('Connecting device: %s', device_name)
 
@@ -263,6 +273,11 @@ class QvmCpu:
         return True
 
     def tick(self):
+        if self.received_keyboard_interrupt:
+            self.received_keyboard_interrupt = False
+            self._trap(TrapCode.KEYBOARD_INTERRUPT)
+            return
+
         instr_addr = self.pc
         instr, operands, size = self.get_current_instruction()
         self.pc += size
@@ -407,6 +422,8 @@ class QvmCpu:
             got = kwargs.get('got')
             print(f'Number of indices ({got}) does not match array '
                   f'dimensions ({expected})')
+        elif code == TrapCode.KEYBOARD_INTERRUPT:
+            print('Received keyboard interrupt')
         else:
             assert False
 
