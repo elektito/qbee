@@ -1083,6 +1083,20 @@ class QvmCpu:
         result = a.value - b.value
         self.push(a.type, result)
 
+    def _exec_swap(self):
+        a = self.pop()
+        b = self.pop()
+        self.push(a.type, a.value)
+        self.push(b.type, b.value)
+
+    def _exec_swapprev(self):
+        top = self.pop()
+        prev1 = self.pop()
+        prev2 = self.pop()
+        self.push(prev1.type, prev1.value)
+        self.push(prev2.type, prev2.value)
+        self.push(top.type, top.value)
+
     def _exec_ucase(self):
         s = self.pop(CellType.STRING)
         self.push(CellType.STRING, s.upper())
