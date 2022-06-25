@@ -427,6 +427,11 @@ class QvmCode(BaseCode):
                         del self._instrs[i-1]
                         i -= 2
 
+            # eliminate any instruction immediately after halt
+            if prev1.op == Op.HALT and not cur.op.name.startswith('_'):
+                del self._instrs[i]
+                i -= 1
+
             i += 1
 
     def __str__(self):
