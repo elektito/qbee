@@ -5,7 +5,7 @@ from qbee.evalctx import EvaluationContext, Routine, EvalError
 from .memlayout import (
     get_global_var_idx, get_local_var_idx, get_type_size
 )
-from .cpu import CellType, CellValue
+from .cell import CellType, CellValue
 
 
 class QArray:

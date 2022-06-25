@@ -2,9 +2,12 @@ import logging
 import itertools
 import math
 from enum import Enum
-from qbee import grammar, expr
+from qbee import grammar
 from pyparsing.exceptions import ParseException
 from .instrs import op_code_to_instr
+from .utils import format_number
+from .cell import CellType, CellValue, Reference
+from .trap import TrapCode, Trapped
 
 
 logger = logging.getLogger(__name__)
@@ -86,78 +89,6 @@ def get_device_op_name_by_id(device_name, op_code):
         if code == op_code:
             return name
     return None
-
-
-class Reference:
-    def __init__(self, segment, index=None):
-        if isinstance(segment, Reference):
-            ref = segment
-            self.segment = ref.segment
-            self.index = ref.index
-            return
-        else:
-            assert index is not None
-            self.segment = segment
-            self.index = index
-
-    def derefed(self):
-        return self.segment.get_cell(self.index)
-
-    def __repr__(self):
-        return f'<REF seg={self.segment} idx={self.index}>'
-
-
-class CellType(Enum):
-    INTEGER = 1
-    LONG = 2
-    SINGLE = 3
-    DOUBLE = 4
-    STRING = 5
-    FIXED_STRING = 6
-    REFERENCE = 7
-
-    @property
-    def py_type(self):
-        return {
-            CellType.INTEGER: int,
-            CellType.LONG: int,
-            CellType.SINGLE: float,
-            CellType.DOUBLE: float,
-            CellType.STRING: str,
-            CellType.FIXED_STRING: str,
-            CellType.REFERENCE: Reference,
-        }[self]
-
-    @property
-    def is_numeric(self):
-        return self in [
-            CellType.INTEGER,
-            CellType.LONG,
-            CellType.SINGLE,
-            CellType.DOUBLE,
-        ]
-
-    @property
-    def is_integral(self):
-        return self in [
-            CellType.INTEGER,
-            CellType.LONG,
-        ]
-
-
-class TrapCode(Enum):
-    INVALID_OP_CODE = 1
-    DEVICE_NOT_AVAILABLE = 2
-    DEVICE_ERROR = 3
-    STACK_EMPTY = 4
-    INVALID_LOCAL_VAR_IDX = 5
-    INVALID_GLOBAL_VAR_IDX = 5
-    TYPE_MISMATCH = 7
-    NULL_REFERENCE = 8
-    INVALID_OPERAND_VALUE = 9
-    INVALID_CELL_VALUE = 10
-    INDEX_OUT_OF_RANGE = 11
-    INVALID_DIMENSIONS = 12
 
 
 class MemorySegment:
@@ -256,48 +187,6 @@ class Array(MemorySegment):
 
     def __repr__(self):
         return f'<Array dims={len(self.bounds)} size={self.size}>'
-
-
-class CellValue:
-    def __init__(self, type, value):
-        assert isinstance(type, CellType) or type == 'ref'
-        assert isinstance(value, type.py_type)
-        self.type = type
-        self.value = value
-
-        expr_type = {
-            CellType.INTEGER: expr.Type.INTEGER,
-            CellType.LONG: expr.Type.LONG,
-            CellType.SINGLE: expr.Type.SINGLE,
-            CellType.DOUBLE: expr.Type.DOUBLE,
-            CellType.STRING: expr.Type.STRING,
-        }.get(self.type)
-        if expr_type is not None:
-            if not expr_type.can_hold(value):
-                raise Trapped(
-                    trap_code=TrapCode.INVALID_CELL_VALUE,
-                    trap_kwargs={
-                        'type': self.type,
-                        'value': value,
-                    }
-                )
-
-    def __repr__(self):
-        value = self.value
-        if self.type == CellType.STRING:
-            value = f'"{self.value}"'
-        return (
-            f'<CellValue type={self.type.name.upper()} value={value}>'
-        )
-
-    def __str__(self):
-        return f'{self.type.name.upper()}({self.value})'
-
-
-class Trapped(Exception):
-    def __init__(self, trap_code, trap_kwargs):
-        self.trap_code = trap_code
-        self.trap_kwargs = trap_kwargs
 
 
 class QvmCpu:
@@ -951,6 +840,16 @@ class QvmCpu:
         else:
             result = -1
         self.push(CellType.INTEGER, result)
+
+    def _exec_ntos(self):
+        value = self.pop()
+        if not value.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=value.type)
+
+        self.push(CellType.STRING,
+                  format_number(value.value, value.type))
 
     def _exec_or(self):
         b = self.pop()

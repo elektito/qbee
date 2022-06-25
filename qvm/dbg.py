@@ -8,7 +8,7 @@ from qbee import grammar
 from .module import QModule
 from .machine import QvmMachine
 from .debug_info import DebugInfo
-from .cpu import CellType
+from .cell import CellType
 from .eval import QvmEval, EvalError
 
 
@@ -103,7 +103,7 @@ Type help or ? to list commands.
             self.debug_info.main_routine,
             self.debug_info.user_types,
             self.find_routine)
-        for routine in self.debug_info.routines:
+        for routine in self.debug_info.routines.values():
             routine.context = self.eval_context
         self.debug_info.main_routine.context = self.eval_context
 

@@ -4,8 +4,11 @@ from datetime import datetime
 from enum import Enum
 from qbee import expr
 from .using import PrintUsingFormatter
-from .cpu import QvmCpu, CellType, TrapCode, QVM_DEVICES
+from .cpu import QvmCpu, QVM_DEVICES
+from .cell import CellType
+from .trap import TrapCode
 from .subterminal import SubTerminal
+from .utils import format_number
 
 
 logger = logging.getLogger(__name__)
@@ -294,14 +297,7 @@ class TerminalDevice(Device):
                     # limit it to a 32 bit float
                     enc = struct.pack('>f', nval)
                     nval, = struct.unpack('>f', enc)
-                nval = str(nval)
-                if nval.endswith('.0'):
-                    nval = nval[:-2]
-                if 'e' in nval and n.type == Type.DOUBLE:
-                    nval = nval.replace('e', 'D')
-                elif 'e' in nval:
-                    nval = nval.replace('e', 'E')
-                buf += nval
+                buf += format_number(nval, n.type)
             for arg in printables:
                 if arg == semicolon:
                     pass
