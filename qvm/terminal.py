@@ -4,6 +4,7 @@ import numpy as np
 from queue import Empty
 from functools import lru_cache
 from PIL import Image, ImageDraw
+from .exceptions import DeviceError
 
 
 KEYBOARD_BUF_SIZE = 8
@@ -21,6 +22,50 @@ class TerminalWindow(pyglet.window.Window):
 
         if ignore_keyboard_interrupt:
             signal.signal(signal.SIGINT, lambda a, b: None)
+
+        self.set_mode(0)
+
+        self.update_text()
+        self._text_updated = False
+
+        self.keyboard_buf = []
+
+        self.request_queue = request_queue
+        self.result_queue = result_queue
+        pyglet.clock.schedule_interval(self.update, 1 / 60)
+
+        self.time = 0.0
+
+    def set(self, attr_name, value):
+        setattr(self, attr_name, value)
+
+    def get(self, attr_name):
+        return getattr(self, attr_name)
+
+    def update(self, dt):
+        self.time += dt
+        try:
+            while req := self.request_queue.get_nowait():
+                method_name, args, kwargs, with_result = req
+                result = getattr(self, method_name)(*args, **kwargs)
+                if with_result:
+                    self.result_queue.put(result)
+        except Empty:
+            pass
+
+    def clear_screen(self):
+        self.text_buffer = bytearray(
+            self.text_lines * self.text_columns * 2)
+
+        # set current background and foreground color for the entire
+        # screen text buffer
+        attrs = self._get_current_text_attrs_byte()
+        for i in range(0, len(self.text_buffer), 2):
+            self.text_buffer[i] = attrs
+
+    def set_mode(self, mode):
+        assert mode == 0, 'Only SCREEN 0 supported for now'
+        self.mode = mode
 
         self.char_width = 8
         self.char_height = 16
@@ -73,90 +118,119 @@ class TerminalWindow(pyglet.window.Window):
         # is shown before its hidden for blinking
         self.cursor_blink_show_time = 0.8
 
+        # by default the "view print" area, spans the entire screen
+        # except for the last line. this seems to be the default in
+        # QBASIC (or DOS?) too, because if you print something on the
+        # last line, the rest of the screen scrolls, but last line is
+        # not affected. If you perform a single "VIEW PRINT" command
+        # (with no arguments, meaning the entire screen), then writing
+        # to the last line causes scroll.
+        self.text_view_top = 0
+        self.text_view_bottom = self.text_lines - 2
+
         # cursor position on the screen
-        self.cursor_row = self.cursor_col = 0
+        self._cursor_row = self._cursor_col = 0
 
-        self.update_text()
-        self._text_updated = False
+    def locate(self, row, col):
+        if row is not None:
+            if row < self.text_view_top or \
+               row > self.text_view_bottom:
+                # for some reason QB allows moving the cursor to the
+                # bottom of the screen, even if its out of VIEW PRINT
+                # area.
+                if row != self.text_lines - 1:
+                    raise DeviceError('Invalid cursor row')
+            self._cursor_row = row
 
-        self.keyboard_buf = []
+        if col is not None:
+            if col < 0 or col >= self.text_columns:
+                raise DeviceError('Invalid cursor col')
 
-        self.request_queue = request_queue
-        self.result_queue = result_queue
-        pyglet.clock.schedule_interval(self.update, 1 / 60)
+            self._cursor_col = col
 
-        self.time = 0.0
+    def view_print(self, top_line, bottom_line):
+        if top_line is None:
+            top_line = 0
+        if bottom_line is None:
+            bottom_line = self.text_lines - 1
 
-    def set(self, attr_name, value):
-        setattr(self, attr_name, value)
-
-    def get(self, attr_name):
-        return getattr(self, attr_name)
-
-    def update(self, dt):
-        self.time += dt
-        try:
-            while req := self.request_queue.get_nowait():
-                method_name, args, kwargs, with_result = req
-                result = getattr(self, method_name)(*args, **kwargs)
-                if with_result:
-                    self.result_queue.put(result)
-        except Empty:
-            pass
-
-    def clear_screen(self):
-        self.text_buffer = bytearray(
-            self.text_lines * self.text_columns * 2)
-
-        # set current background and foreground color for the entire
-        # screen text buffer
-        attrs = self._get_current_text_attrs_byte()
-        for i in range(0, len(self.text_buffer), 2):
-            self.text_buffer[i] = attrs
+        self.text_view_top = top_line
+        self.text_view_bottom = bottom_line
 
     def put_text(self, text):
         if isinstance(text, str):
             text = text.encode('cp437')
         assert isinstance(text, (bytes, bytearray))
         for char in text:
-            idx = self.cursor_row * self.text_columns + self.cursor_col
+            # the following check is performed here, instead of at the
+            # bottom of the loop where we actually increment
+            # _cursor_col, because we don't want any possible scrolls
+            # immediately happen, but on the next time we want to
+            # write something to the screen.
+            #
+            # this seems to be consistent with how QB itself works. If
+            # you perform a `PRINT "x";` at the bottom-right corner of
+            # the screen, the screen won't scroll, even though
+            # technically the cursor is now outside the
+            # screen. Instead, next time you try to write something,
+            # the scroll is performed.
+            #
+            # notice that this might leave _cursor_col outside valid
+            # range when this function returns.
+            if self._cursor_col == self.text_columns:
+                self._cursor_col = 0
+                self._cursor_row += 1
+
+                self.scroll_if_necessary()
+
+            idx = self._cursor_row * self.text_columns + self._cursor_col
             idx *= 2
 
             if idx > len(self.text_buffer) - 2:
                 break
 
             if char == 13:
-                self.cursor_col = 0
+                self._cursor_col = 0
                 continue
 
             if char == 10:
-                self.cursor_row += 1
-
-                if self.cursor_row == self.text_lines:
-                    self.scroll()
-                    self.cursor_row -= 1
-
+                self._cursor_row += 1
+                self.scroll_if_necessary()
                 continue
 
             attrs = self._get_current_text_attrs_byte()
             self.text_buffer[idx] = attrs
             self.text_buffer[idx + 1] = char
 
-            self.cursor_col += 1
-            if self.cursor_col == self.text_columns:
-                self.cursor_col = 0
-                self.cursor_row += 1
-
-                if self.cursor_row == self.text_lines:
-                    self.scroll()
-                    self.cursor_row -= 1
+            self._cursor_col += 1
 
         self._text_updated = True
 
+    def scroll_if_necessary(self):
+        # this function can be called after the cursor has just been
+        # moved to the next line after printing one character to the
+        # screen. depending on the position of the cursor (which might
+        # be temporarily in an invalid position), it will perform
+        # screen scrolling if necessary. The cursor position is also
+        # fixed.
+
+        if self._cursor_row > self.text_view_bottom:
+            # last line will not scroll itself, but moving past it
+            # _will_ cause a scroll (of the rest of the screen)
+            self.scroll()
+            self._cursor_row = self.text_view_bottom
+
     def scroll(self):
+        # scroll the entire screen except for the last line
         start = self.text_columns * 2
-        empty_line = bytearray(self.text_columns * 2)
-        self.text_buffer = self.text_buffer[start:] + empty_line
+        end = -self.text_columns * 2
+
+        empty_char = bytes([self._get_current_text_attrs_byte(), 0])
+        empty_line = bytearray(empty_char * self.text_columns)
+
+        last_line = self.text_buffer[end:]
+        scroll_area = self.text_buffer[start:end]
+        self.text_buffer = scroll_area + empty_line + last_line
 
     def update_text(self):
         draw = ImageDraw.Draw(self.text_img)
@@ -237,8 +311,8 @@ class TerminalWindow(pyglet.window.Window):
         if self.show_cursor and \
            0 <= (self.time % 1.0) <= self.cursor_blink_show_time:
             text_bottom = self.text_texture.height - 1
-            x = self.cursor_col * self.char_width
-            y = text_bottom - (self.cursor_row * self.char_height + self.cursor_start)
+            x = self._cursor_col * self.char_width
+            y = text_bottom - (self._cursor_row * self.char_height + self.cursor_start)
             w = self.char_width
             h = self.cursor_end - self.cursor_start
 

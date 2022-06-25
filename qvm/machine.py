@@ -10,6 +10,7 @@ from .cell import CellType
 from .trap import TrapCode
 from .subterminal import SubTerminal
 from .utils import format_number
+from .exceptions import DeviceError
 
 
 logger = logging.getLogger(__name__)
@@ -561,6 +562,7 @@ class SmartTerminalDevice(TerminalDevice):
 
     def _set_mode(self, mode, color_switch, apage, vpage):
         self.mode = mode
+        self.terminal.call('set_mode', mode)
 
     def _width(self, columns, lines):
         print('WIDTH NOT SUPPORTED FOR NOW')
@@ -577,10 +579,11 @@ class SmartTerminalDevice(TerminalDevice):
         self.terminal.call('clear_screen')
 
     def _locate(self, row, col, cursor, start, stop):
-        if row >= 0:
-            self.terminal.call('set', 'cursor_row', row)
-        if col >= 0:
-            self.terminal.call('set', 'cursor_col', col)
+        if row < 0:
+            row = None
+        if col < 0:
+            col = None
+        self.terminal.call('locate', row, col)
 
     def _print(self, text):
         self.terminal.call('put_text', text)
@@ -625,14 +628,12 @@ class SmartTerminalDevice(TerminalDevice):
         return string
 
     def _view_print(self, top_line, bottom_line):
-        if bottom_line >= 0 or top_line >= 0:
-            self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
-                error_msg='VIEW PRINT with arguments not supported',
-            )
+        if top_line <= 0:
+            # view print with no argument
+            top_line = None
+            bottom_line = None
 
-        # no need to do anything for view print without arguments
-        # right now
+        self.terminal.call('view_print', top_line, bottom_line)
 
 
 class PcSpeakerDevice(Device):
