@@ -5,7 +5,7 @@ from qbee.evalctx import EvaluationContext, Routine, EvalError
 from .memlayout import (
     get_global_var_idx, get_local_var_idx, get_type_size
 )
-from .cpu import CellType
+from .cpu import CellType, CellValue
 
 
 class QArray:
@@ -40,7 +40,7 @@ class QArray:
         value = arridx(self.array_data, indices, self.bounds)
         if value is None:
             value = self.default_value
-        else:
+        elif not isinstance(value, QStruct):
             value = value.value
         return value
 
@@ -51,10 +51,13 @@ class QArray:
         lines.append(f'Array of type: {self.element_type.name}')
         lines.append(f'Bounds: {self.bounds}')
         for indices in all_indices:
+            value = self.at(*indices)
+            if isinstance(value, QStruct):
+                value = value.to_short_string()
             if len(indices) == 1:
-                lines.append(f'{indices[0]}: {self.at(*indices)}')
+                lines.append(f'{indices[0]}: {value}')
             else:
-                lines.append(f'{indices}: {self.at(*indices)}')
+                lines.append(f'{indices}: {value}')
         return '\n'.join(lines)
 
 
@@ -63,7 +66,32 @@ class QStruct:
         self.name = name
         self.contents = contents
 
+    def get_field(self, *fields):
+        if len(fields) == 0:
+            return self
+        elif len(fields) == 1:
+            value, _ = self.contents[fields[0]]
+            return value
+        else:
+            first, _ = self.contents[fields[0]]
+            return first.get_field(*fields[1:])
+
     def __str__(self):
+        return self.to_long_string()
+
+    def to_short_string(self):
+        parts = []
+        for name, (value, field_type) in self.contents.items():
+            if field_type.is_user_defined:
+                value_str = value.to_short_string()
+            else:
+                value_str = str(value)
+            part = f'{name}={value_str}'
+            parts.append(part)
+        parts = ', '.join(parts)
+        return f'{self.name} {{{parts}}}'
+
+    def to_long_string(self):
         lines = [f'Struct {self.name}:']
         lines += self._get_str_lines(indent=3)
         return '\n'.join(lines)
@@ -118,8 +146,7 @@ class QvmEval(EvaluationContext):
         if base_type.is_array:
             value = self.read_array(segment, base_idx,
                                     base_type.array_base_type)
-
-        if base_type.is_user_defined:
+        elif base_type.is_user_defined:
             value = self.read_struct(segment, base_idx, base_type)
 
         if lvalue.array_indices:
@@ -141,8 +168,9 @@ class QvmEval(EvaluationContext):
                 raise EvalError(
                     'Cannot read a field from a non-struct value')
             value = value.get_field(*lvalue.dotted_vars)
-            if value is not None:
-                value = value.value
+
+        if isinstance(value, CellValue):
+            value = value.value
 
         if value is None:
             raise EvalError(
@@ -179,7 +207,11 @@ class QvmEval(EvaluationContext):
 
         def read_sub_array(base_idx, rest_bounds, rest_dim_sizes):
             if rest_bounds == []:
-                return segment.get_cell(base_idx)
+                if element_type.is_user_defined:
+                    return self.read_struct(
+                        segment, base_idx, element_type)
+                else:
+                    return segment.get_cell(base_idx)
             else:
                 first_lbound, first_ubound = rest_bounds[0]
                 array = []
