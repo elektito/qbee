@@ -103,6 +103,7 @@ Type help or ? to list commands.
             self.debug_info.main_routine,
             self.debug_info.user_types,
             self.debug_info.consts,
+            self.debug_info.global_vars,
             self.find_routine)
         for routine in self.debug_info.routines.values():
             routine.context = self.eval_context
