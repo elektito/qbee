@@ -2,6 +2,7 @@ import struct
 import logging
 from datetime import datetime
 from enum import Enum
+from random import Random
 from qbee import expr
 from .using import PrintUsingFormatter
 from .cpu import QvmCpu, QVM_DEVICES
@@ -89,12 +90,27 @@ class RngDevice(Device):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.seed = None
+        self.rng = Random()
+        self.last_rnd = self.rng.random()
 
     def _exec_seed(self):
         logger.info('DEV RNG: seed')
         seed = self._get_arg_from_stack(CellType.SINGLE)
-        self.seed = seed
+        self.rng.seed(seed)
+
+    def _exec_rnd(self):
+        arg = self._get_arg_from_stack(CellType.SINGLE)
+        if arg == 0:
+            self.cpu.push(CellType.SINGLE, self.last_rnd)
+        elif arg < 0:
+            state = self.rng.getstate()
+            self.rng.seed(arg)
+            self.last_rnd = self.rng.random()
+            self.cpu.push(CellType.SINGLE, self.last_rnd)
+            self.rng.setstate(state)
+        else:
+            self.last_rnd = self.rng.random()
+            self.cpu.push(CellType.SINGLE, self.last_rnd)
 
 
 class MemoryDevice(Device):
