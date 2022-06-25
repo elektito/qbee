@@ -195,8 +195,8 @@ Type help or ? to list commands.
     def find_routine(self, addr):
         for routine in self.debug_info.routines.values():
             if routine.start_offset <= addr < routine.end_offset:
-                if routine_record:
-                    routine = routine_record.node.routine
+                if routine:
+                    routine = routine.node.routine
                 else:
                     routine = self.debug_info.main_routine
                 return routine
