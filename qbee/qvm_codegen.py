@@ -1653,6 +1653,8 @@ def gen_func_block(node, code, codegen):
 @QvmCodeGen.generator_for(stmt.ReturnValueSetStmt)
 def gen_ret_value(node, code, codegen):
     codegen.gen_code_for_node(node.value, code)
+    gen_code_for_conv(
+        node.parent_routine.return_type, node.value, code, codegen)
     code.add(('storel', '_retval'))
 
 
