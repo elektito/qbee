@@ -128,7 +128,7 @@ class QvmEval(EvaluationContext):
             raise ValueError(
                 'Indices and dotted vars not valid with conts')
         elif lvalue.base_var in self.consts:
-            const_value, const_type = self.consts[lvalue.base_var]
+            const_type, const_value = self.consts[lvalue.base_var]
             return const_value
 
         base_type = lvalue.base_type
