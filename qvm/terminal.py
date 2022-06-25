@@ -356,6 +356,16 @@ class TerminalWindow(pyglet.window.Window):
             symbol = numpad_keys[symbol]
 
         if (ord('a') <= symbol <= ord('z')) and \
+             modifiers & key.MOD_CTRL:
+            self._add_key_to_buffer(symbol - ord('a') + 1)
+        elif (ord('[') <= symbol <= ord('_')) and \
+             modifiers & key.MOD_CTRL:
+            self._add_key_to_buffer(symbol - ord('[') + 27)
+        elif symbol == ord('6') and modifiers & key.MOD_CTRL:
+            self._add_key_to_buffer(30)
+        elif symbol == ord('-') and modifiers & key.MOD_CTRL:
+            self._add_key_to_buffer(31)
+        elif (ord('a') <= symbol <= ord('z')) and \
            modifiers & key.MOD_SHIFT:
             self._add_key_to_buffer(symbol - (ord('a') - ord('A')))
         elif symbol == key.BACKSPACE:
@@ -443,11 +453,6 @@ class TerminalWindow(pyglet.window.Window):
             elif modifiers == 0:
                 self._add_key_to_buffer((0, 77))
         elif symbol <= 127:
-            self._add_key_to_buffer(symbol)
-        elif modifiers & key.MOD_CTRL:
-            symbol = {
-                key.NUM1: 1,
-            }[symbol]
             self._add_key_to_buffer(symbol)
 
     def _add_key_to_buffer(self, key):
