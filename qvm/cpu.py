@@ -263,6 +263,7 @@ class QvmCpu:
         return True
 
     def tick(self):
+        instr_addr = self.pc
         instr, operands, size = self.get_current_instruction()
         self.pc += size
         if instr is None:
@@ -283,7 +284,8 @@ class QvmCpu:
         if operands:
             operands_list = ' ' + \
                 ', '.join(str(i) for i in operands)
-        logger.info(f'INSTR: {instr.op}{operands_list}')
+        logger.info(
+            f'INSTR: {instr_addr:08x}: {instr.op}{operands_list}')
         try:
             func(*operands)
         except Trapped as e:
