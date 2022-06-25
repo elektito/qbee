@@ -261,8 +261,8 @@ not_expr <<= Located(not_kw[...] - compare_expr)
 and_expr = Located(not_expr - (and_kw - not_expr)[...])
 or_expr = Located(and_expr - (or_kw - and_expr)[...])
 xor_expr = Located(or_expr - (xor_kw - or_expr)[...])
-eqv_expr = Located(xor_expr - (xor_kw - xor_expr)[...])
-imp_expr = Located(eqv_expr - (eqv_kw - eqv_expr)[...])
+eqv_expr = Located(xor_expr - (eqv_kw - xor_expr)[...])
+imp_expr = Located(eqv_expr - (imp_kw - eqv_expr)[...])
 expr <<= (
     array_pass |
     imp_expr
