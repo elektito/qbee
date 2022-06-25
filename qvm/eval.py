@@ -139,6 +139,7 @@ class QvmEval(EvaluationContext):
         if cell_value and cell_value.type == CellType.REFERENCE:
             segment = cell_value.value.segment
             base_idx = cell_value.value.index
+            cell_value = segment.get_cell(base_idx)
 
         if not base_type.is_array and not base_type.is_user_defined:
             if cell_value is None:
