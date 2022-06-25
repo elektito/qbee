@@ -1061,6 +1061,22 @@ class QvmCpu:
             self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
                       idx=idx)
 
+    def _exec_storeidxg(self, var, idx):
+        value = self.pop()
+        try:
+            self.globals_segment.set_cell(var + idx, value)
+        except IndexError:
+            self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
+                      idx=var+idx)
+
+    def _exec_storeidxl(self, var, idx):
+        value = self.pop()
+        try:
+            self.cur_frame.set_cell(var + idx, value)
+        except IndexError:
+            self.trap(TrapCode.INVALID_LOCAL_VAR_IDX,
+                      idx=var+idx)
+
     def _exec_storeref(self):
         ref = self.pop(CellType.REFERENCE)
         value = self.pop()
@@ -1201,6 +1217,27 @@ for scope in ['local', 'global']:
             default_value = 0 if _type.is_numeric else ''
             def method(self, idx):
                 value = self.read_var(scope, idx)
+                if value is None:
+                    value = CellValue(
+                        _type, _type.py_type(default_value))
+                    self.write_var(scope, idx, value)
+                self.push(value.type, value.value)
+            method.__name__ = attr
+            return method
+        setattr(QvmCpu, attr, get_method(scope, _type, attr))
+
+
+# add exec methods for all variants of the readidx instruction (except
+# for the ones dealing with references)
+for scope in ['local', 'global']:
+    for _type in value_types:
+        type_name = _type.name.lower()
+        scope_char = 'l' if scope == 'local' else 'g'
+        attr = f'_exec_readidx{scope_char}_{type_name}'
+        def get_method(scope, _type, name):
+            default_value = 0 if _type.is_numeric else ''
+            def method(self, var, idx):
+                value = self.read_var(scope, var + idx)
                 if value is None:
                     value = CellValue(
                         _type, _type.py_type(default_value))
