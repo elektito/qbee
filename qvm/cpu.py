@@ -454,6 +454,28 @@ class QvmCpu:
         except IndexError:
             self.trap(TrapCode.STACK_EMPTY)
 
+    def _bitwise(self, op):
+        b = self.pop()
+        a = self.pop()
+
+        if not a.type.is_integral:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='integral',
+                      got=a.type)
+
+        if not b.type.is_integral:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='integral',
+                      got=b.type)
+
+        if a.type != b.type:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected=a.type,
+                      got=b.type)
+
+        result = op(a.value, b.value)
+        self.push(a.type, result)
+
     def _exec_add(self):
         b = self.pop()
         a = self.pop()
@@ -490,26 +512,7 @@ class QvmCpu:
         self.push(CellType.REFERENCE, ref)
 
     def _exec_and(self):
-        b = self.pop()
-        a = self.pop()
-
-        if not a.type.is_integral:
-            self.trap(TrapCode.TYPE_MISMATCH,
-                      expected='integral',
-                      got=a.type)
-
-        if not b.type.is_integral:
-            self.trap(TrapCode.TYPE_MISMATCH,
-                      expected='integral',
-                      got=b.type)
-
-        if a.type != b.type:
-            self.trap(TrapCode.TYPE_MISMATCH,
-                      expected=a.type,
-                      got=b.type)
-
-        result = a.value & b.value
-        self.push(a.type, result)
+        self._bitwise(lambda a, b: a & b)
 
     def _exec_arridx(self, n_indices):
         array_ref = self.pop(CellType.REFERENCE)
@@ -629,6 +632,9 @@ class QvmCpu:
             result = 0
         self.push(CellType.INTEGER, result)
 
+    def _exec_eqv(self):
+        self._bitwise(lambda a, b: ~(a ^ b))
+
     def _exec_frame(self, params_size, local_vars_size):
         logger.info(
             'Creating stack frame: params=%d locals=%d',
@@ -707,6 +713,9 @@ class QvmCpu:
     def _exec_ijmp(self):
         target = self.pop(CellType.LONG)
         self.pc = target
+
+    def _exec_imp(self):
+        self._bitwise(lambda a, b: (~a | b))
 
     def _exec_initarrl(self, idx, n_dims, element_size):
         bounds = []
@@ -889,26 +898,7 @@ class QvmCpu:
                   format_number(value.value, value.type))
 
     def _exec_or(self):
-        b = self.pop()
-        a = self.pop()
-
-        if not a.type.is_integral:
-            self.trap(TrapCode.TYPE_MISMATCH,
-                      expected='integral',
-                      got=a.type)
-
-        if not b.type.is_integral:
-            self.trap(TrapCode.TYPE_MISMATCH,
-                      expected='integral',
-                      got=b.type)
-
-        if a.type != b.type:
-            self.trap(TrapCode.TYPE_MISMATCH,
-                      expected=a.type,
-                      got=b.type)
-
-        result = a.value | b.value
-        self.push(a.type, result)
+        self._bitwise(lambda a, b: a | b)
 
     def _exec_pop(self):
         self.pop()
@@ -1117,6 +1107,9 @@ class QvmCpu:
     def _exec_ucase(self):
         s = self.pop(CellType.STRING)
         self.push(CellType.STRING, s.upper())
+
+    def _exec_xor(self):
+        self._bitwise(lambda a, b: a ^ b)
 
 
 # add exec methods for all variants of the push instruction
