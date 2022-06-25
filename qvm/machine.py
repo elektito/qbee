@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Device:
-    class DeviceError(Enum):
+    class Error(Enum):
         UNKNOWN_OP = 1
         BAD_ARG_TYPE = 2
         BAD_ARG_VALUE = 3
@@ -38,12 +38,18 @@ class Device:
             self.cpu.trap(
                 TrapCode.DEVICE_ERROR,
                 device_id=self.id,
-                error_code=Device.DeviceError.UNKNOWN_OP,
+                error_code=Device.Error.UNKNOWN_OP,
                 error_msg=f'Unknown op for {self.name} device: {op}')
         else:
             try:
                 self.cur_op = op
                 func()
+            except DeviceError as e:
+                self.cpu.trap(
+                    TrapCode.DEVICE_ERROR,
+                    device_id=self.id,
+                    error_code=Device.Error.OP_FAILED,
+                    error_msg=str(e))
             finally:
                 self.cur_op = None
 
@@ -65,7 +71,7 @@ class Device:
             )
             self.cpu.trap(TrapCode.DEVICE_ERROR,
                           device_id=self.id,
-                          error_code=Device.DeviceError.BAD_ARG_TYPE,
+                          error_code=Device.Error.BAD_ARG_TYPE,
                           error_msg=error_msg)
         elif arg_type is None:
             return boxed_value
@@ -125,7 +131,7 @@ class MemoryDevice(Device):
         segment = self._get_arg_from_stack(CellType.LONG)
         if segment < 0 or segment > 65535:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg=f'Invalid segment: 0x{segment:04x}',
             )
             return
@@ -142,7 +148,7 @@ class MemoryDevice(Device):
             return self._get_control_keys()
         else:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg=(
                     f'Cannot read memory at: {self.cur_segment:04x}:'
                     f'{offset:04x}'
@@ -155,7 +161,7 @@ class MemoryDevice(Device):
         value = self._get_arg_from_stack(CellType.INTEGER)
         if value < 0 or value > 255:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg=f'Byte value {value} for poke not valid.'
             )
             return
@@ -164,7 +170,7 @@ class MemoryDevice(Device):
             return self._set_control_keys()
         else:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg=(
                     f'Cannot write to memory at: '
                     f'{self.cur_segment:04x}:{offset:04x}'
@@ -209,7 +215,7 @@ class TerminalDevice(Device):
 
         if vpage != -1 or apage != -1 or color_switch != -1:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg=(
                     'color_switch, apage, and vpage not supported for '
                     'set_mode operation.'
@@ -277,7 +283,7 @@ class TerminalDevice(Device):
             elif arg == 3:
                 if format_string is not None:
                     self._device_error(
-                        error_code=Device.DeviceError.BAD_ARG_VALUE,
+                        error_code=Device.Error.BAD_ARG_VALUE,
                         error_msg=(
                             'Invalid argument type code for PRINT '
                             '(multiple format strings)'
@@ -287,7 +293,7 @@ class TerminalDevice(Device):
                 i += 2
             else:
                 self._device_error(
-                    error_code=Device.DeviceError.BAD_ARG_VALUE,
+                    error_code=Device.Error.BAD_ARG_VALUE,
                     error_msg=(
                         f'Invalid argument type code for PRINT '
                         f'(unknown code: {args[i]})'
@@ -376,7 +382,7 @@ class TerminalDevice(Device):
                     self.cpu.push(CellType.STRING, v)
                 else:
                     self._device_error(
-                        error_code=Device.DeviceError.BAD_ARG_VALUE,
+                        error_code=Device.Error.BAD_ARG_VALUE,
                         error_msg=f'Unknown var type {vtype} for INPUT',
                     )
 
@@ -385,7 +391,7 @@ class TerminalDevice(Device):
         nvars = self.cpu.pop(CellType.INTEGER)
         if nvars <= 0:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg='INPUT number of variables not positive',
             )
 
@@ -419,7 +425,7 @@ class DumbTerminalDevice(TerminalDevice):
     def _set_mode(self, mode, color_switch, apage, vpage):
         if mode != 0:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg=(
                     'Dumb terminal only supports SCREEN 0.'
                 )
@@ -429,7 +435,7 @@ class DumbTerminalDevice(TerminalDevice):
     def _width(self, columns, lines):
         if lines != 25 or columns != 80:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg=(
                     'Only 80x25 text mode is supported in dumb terminal'
                 )
@@ -439,7 +445,7 @@ class DumbTerminalDevice(TerminalDevice):
     def _color(self, fg_color, bg_color, border):
         if fg_color > 31:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg=(
                     'Foreground color should be in range [0, 31]'
                 )
@@ -448,7 +454,7 @@ class DumbTerminalDevice(TerminalDevice):
 
         if bg_color > 7:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg=(
                     'Background color should be in range [0, 7]'
                 )
@@ -457,7 +463,7 @@ class DumbTerminalDevice(TerminalDevice):
 
         if border > 15:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg=(
                     'Border color should be in range [0, 15]'
                 )
@@ -524,14 +530,14 @@ class DumbTerminalDevice(TerminalDevice):
 
     def _inkey(self):
         self._device_error(
-            error_code=Device.DeviceError.BAD_ARG_VALUE,
+            error_code=Device.Error.BAD_ARG_VALUE,
             error_msg='INKEY not supported on dumb terminal.',
         )
 
     def _input(self, same_line):
         if same_line:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg='Cannot stay on the same line in dumb terminal',
             )
 
@@ -540,7 +546,7 @@ class DumbTerminalDevice(TerminalDevice):
     def _view_print(self, top_line, bottom_line):
         if bottom_line >= 0 or top_line >= 0:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_VALUE,
+                error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg='VIEW PRINT with arguments not supported',
             )
 
@@ -651,7 +657,7 @@ class DataDevice(Device):
             s = self.cpu.module.data[self.data_part][self.data_idx]
         except IndexError:
             self._device_error(
-                error_code=Device.DeviceError.OP_FAILED,
+                error_code=Device.Error.OP_FAILED,
                 error_msg='Out of data',
             )
 
@@ -670,7 +676,7 @@ class DataDevice(Device):
                 assert False
         except (ValueError, TypeError) as e:
             self._device_error(
-                error_code=Device.DeviceError.BAD_ARG_TYPE,
+                error_code=Device.Error.BAD_ARG_TYPE,
                 error_msg='Cannot READ data as requested type',
             )
 
