@@ -841,6 +841,15 @@ class QvmCpu:
             result = -1
         self.push(CellType.INTEGER, result)
 
+    def _exec_neg(self):
+        value = self.pop()
+        if not value.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=value.type)
+
+        self.push(value.type, -value.value)
+
     def _exec_ntos(self):
         value = self.pop()
         if not value.type.is_numeric:
