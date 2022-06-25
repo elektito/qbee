@@ -631,7 +631,7 @@ class QvmCpu:
                           idx=idx,
                           lbound=lbound,
                           ubound=ubound)
-            dim_sizes.append((ubound - lbound + 1) * element_size)
+            dim_sizes.append((ubound - lbound + 1))
             bounds.append((lbound, ubound))
             base_idx += 2
 
@@ -643,7 +643,7 @@ class QvmCpu:
                 for e in ls:
                     r *= e
                 return r
-            prev_dims_size = mul(dim_sizes[n+1:])
+            prev_dims_size = mul(dim_sizes[n+1:]) * element_size
             idx += prev_dims_size * (cur_idx - lbound)
 
         ref = array_ref.segment.get_cell_ref(idx)

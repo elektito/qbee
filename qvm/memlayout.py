@@ -81,6 +81,9 @@ def get_dotted_index(base_type, dotted_vars, context):
         struct_name = base_type.user_type_name
         struct = context.user_types[struct_name]
         field_index = list(struct.fields).index(var)
+        prev_field_types = list(struct.fields.values())[:field_index]
+        field_index = sum(
+            get_type_size(context, t) for t in prev_field_types)
         idx += field_index
         base_type = struct.fields[var]
 

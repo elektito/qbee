@@ -187,7 +187,7 @@ class QvmEval(EvaluationContext):
                     sub_array = read_sub_array(
                         base_idx, rest_bounds[1:], rest_dim_sizes[1:])
                     array.append(sub_array)
-                    base_idx += mul(rest_dim_sizes[1:])
+                    base_idx += mul(rest_dim_sizes[1:]) * element_size
                 return array
 
         n_dims = segment.get_cell(base_idx + 1)
@@ -203,7 +203,7 @@ class QvmEval(EvaluationContext):
         for idx in range(n_dims):
             lbound = segment.get_cell(base_idx + 0).value
             ubound = segment.get_cell(base_idx + 1).value
-            dim_sizes.append((ubound - lbound + 1) * element_size)
+            dim_sizes.append((ubound - lbound + 1))
             bounds.append((lbound, ubound))
             base_idx += 2
 
@@ -213,7 +213,7 @@ class QvmEval(EvaluationContext):
             sub_array = read_sub_array(
                 base_idx, bounds[1:], dim_sizes[1:])
             array.append(sub_array)
-            base_idx += mul(dim_sizes[1:])
+            base_idx += mul(dim_sizes[1:]) * element_size
 
         return QArray(array, bounds, element_type)
 
