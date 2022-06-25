@@ -46,7 +46,6 @@ class CellValue:
         assert isinstance(type, CellType) or type == 'ref'
         assert isinstance(value, type.py_type)
         self.type = type
-        self.value = value
 
         expr_type = {
             CellType.INTEGER: expr.Type.INTEGER,
@@ -64,6 +63,10 @@ class CellValue:
                         'value': value,
                     }
                 )
+
+            self.value = expr_type.coerce(value)
+        else:
+            self.value = value
 
     def __repr__(self):
         value = self.value

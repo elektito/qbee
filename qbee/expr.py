@@ -76,16 +76,27 @@ class Type:
             elif self._type == BuiltinType.LONG:
                 return -2**31 <= value < 2**31
             elif self._type == BuiltinType.SINGLE:
-                return (
-                    (-3.40282347e+38 <= value <= -1.17549435e-38) or
-                    (1.17549435e-38 <= value <= 3.40282347e+38) or
-                    (value == 0.0)
-                )
+                import struct
+                try:
+                    struct.pack('>f', value)
+                except OverflowError:
+                    return False
+                else:
+                    return True
             else:
                 return True
         if self._type == BuiltinType.STRING and isinstance(value, str):
             return True
         return False
+
+    def coerce(self, value):
+        if self._type == BuiltinType.SINGLE:
+            import struct
+            packed = struct.pack('>f', value)
+            unpacked, = struct.unpack('>f', packed)
+            return unpacked
+        else:
+            return self.py_type(value)
 
     def modified(self, **changes):
         return dataclass_replace(self, **changes)
