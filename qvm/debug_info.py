@@ -45,6 +45,7 @@ class DebugInfo:
         self.source_code = source_code
         self.empty_blocks = empty_blocks
         self.main_routine = compilation.routines['_main']
+        self.user_types = compilation.user_types
         self.global_vars = compilation.global_vars
         self.consts = consts
         self.routines = {}

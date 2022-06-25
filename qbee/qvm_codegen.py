@@ -6,7 +6,7 @@ from qvm.cpu import QVM_DEVICES
 from qvm.debug_info import DebugInfoCollector
 from qvm.memlayout import (
     get_type_size, get_local_var_idx, get_global_var_idx,
-    get_params_size, get_local_vars_size,
+    get_params_size, get_local_vars_size, get_dotted_index,
 )
 from .codegen import BaseCodeGen, BaseCode
 from .program import Label, LineNo, Program
@@ -735,22 +735,6 @@ class QvmCodeGen(BaseCodeGen, cg_name='qvm', code_class=QvmCode):
 # Shared code
 
 
-def get_lvalue_dotted_index(lvalue, codegen):
-    assert isinstance(lvalue, expr.Lvalue)
-
-    idx = 0
-    if lvalue.dotted_vars:
-        base_type = lvalue.base_type
-        for var in lvalue.dotted_vars:
-            struct_name = base_type.user_type_name
-            struct = codegen.compilation.user_types[struct_name]
-            field_index = list(struct.fields).index(var)
-            idx += field_index
-            base_type = struct.fields[var]
-
-    return idx
-
-
 def gen_lvalue_write(node, code, codegen):
     # this function is called from any code generator that needs to
     # write to an lvalue. the value to write should already be on top
@@ -764,7 +748,8 @@ def gen_lvalue_write(node, code, codegen):
         code.add(('storeref',))
         return
 
-    idx = get_lvalue_dotted_index(node, codegen)
+    idx = get_dotted_index(
+        node.base_type, node.dotted_vars, codegen.compilation)
 
     if base_var.is_global:
         scope = 'g'  # global
@@ -801,7 +786,8 @@ def gen_lvalue_ref(node, code, codegen):
     if node.array_indices:
         code.add(('arridx', len(node.array_indices)))
 
-    idx = get_lvalue_dotted_index(node, codegen)
+    idx = get_dotted_index(
+        node.base_type, node.dotted_vars, codegen.compilation)
     if idx > 0:
         if idx < 32768:
             code.add(('push%', idx))
@@ -925,7 +911,8 @@ def gen_lvalue(node, code, codegen):
         gen_lvalue_ref(node, code, codegen)
         code.add((f'deref{type_char}',))
     else:
-        idx = get_lvalue_dotted_index(node, codegen)
+        idx = get_dotted_index(
+            node.base_type, node.dotted_vars, codegen.compilation)
         if idx == 0:
             type_char = node.type.type_char
             code.add((f'read{scope}{type_char}', base_var.full_name))

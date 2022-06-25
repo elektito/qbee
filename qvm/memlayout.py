@@ -73,3 +73,15 @@ def get_local_vars_size(routine):
 def get_frame_size(roiutine):
     # the total number of cells a call frame for a routine needs
     return get_params_size(routine) + get_local_vars_size(routine)
+
+
+def get_dotted_index(base_type, dotted_vars, context):
+    idx = 0
+    for var in dotted_vars:
+        struct_name = base_type.user_type_name
+        struct = context.user_types[struct_name]
+        field_index = list(struct.fields).index(var)
+        idx += field_index
+        base_type = struct.fields[var]
+
+    return idx

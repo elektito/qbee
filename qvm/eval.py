@@ -2,7 +2,9 @@ from numbers import Number
 from itertools import product
 from qbee import grammar
 from qbee.evalctx import EvaluationContext, Routine, EvalError
-from .memlayout import get_global_var_idx, get_local_var_idx
+from .memlayout import (
+    get_global_var_idx, get_local_var_idx, get_type_size
+)
 from .cpu import CellType
 
 
@@ -56,12 +58,39 @@ class QArray:
         return '\n'.join(lines)
 
 
+class QStruct:
+    def __init__(self, name, contents):
+        self.name = name
+        self.contents = contents
+
+    def __str__(self):
+        lines = [f'Struct {self.name}:']
+        lines += self._get_str_lines(indent=3)
+        return '\n'.join(lines)
+
+    def _get_str_lines(self, indent=0):
+        lines = []
+        for name, (value, field_type) in self.contents.items():
+            line = ' ' * indent + f'{name}'
+            if isinstance(value, QStruct):
+                line += f' ({field_type.name}):'
+                lines.append(line)
+                lines.extend(value._get_str_lines(indent=indent+3))
+            else:
+                line += f': {value} ({field_type.name})'
+                lines.append(line)
+
+        return lines
+
+
 class QvmEval(EvaluationContext):
-    def __init__(self, cpu, main_routine, find_routine_func):
+    def __init__(self, cpu, main_routine, user_types,
+                 find_routine_func):
         super().__init__()
 
         self.cpu = cpu
         self.main_routine = main_routine
+        self.user_types = user_types
         self.find_routine_func = find_routine_func
 
     def eval_lvalue(self, lvalue):
@@ -76,16 +105,15 @@ class QvmEval(EvaluationContext):
         segment, base_idx = self.eval_var(lvalue.base_var)
 
         cell_value = segment.get_cell(base_idx)
-        if cell_value.type == CellType.REFERENCE:
+        if cell_value and cell_value.type == CellType.REFERENCE:
             segment = cell_value.value.segment
             base_idx = cell_value.value.index
 
         if not base_type.is_array and not base_type.is_user_defined:
-            result = segment.get_cell(base_idx)
-            if result is None:
+            if cell_value is None:
                 raise EvalError(
                     f'{lvalue.base_var} does not have a value yet')
-            return result.value
+            return cell_value.value
 
         if base_type.is_array:
             value = self.read_array(segment, base_idx,
@@ -132,6 +160,8 @@ class QvmEval(EvaluationContext):
                 pass
 
         frame = self.cpu.cur_frame
+        if frame is None:
+            raise EvalError('No stack frame')
         routine = self.find_routine_func(frame.code_start)
 
         try:
@@ -186,3 +216,25 @@ class QvmEval(EvaluationContext):
             base_idx += mul(dim_sizes[1:])
 
         return QArray(array, bounds, element_type)
+
+    def read_struct(self, segment, base_idx, struct_type):
+        struct = self.user_types[struct_type.name]
+        idx = base_idx
+        result = {}
+        for field_name, field_type in struct.fields.items():
+            if field_type.is_user_defined:
+                value = self.read_struct(segment, idx, field_type)
+            else:
+                value = segment.get_cell(idx)
+                if value is not None:
+                    value = value.value
+                else:
+                    if field_type.is_numeric:
+                        value = field_type.py_type(0)
+                    else:
+                        value = ''
+
+            result[field_name] = (value, field_type)
+            idx += get_type_size(self, field_type)
+
+        return QStruct(struct_type.name, result)
