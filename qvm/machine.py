@@ -405,7 +405,7 @@ class DumbTerminalDevice(TerminalDevice):
             self._device_error(
                 error_code=Device.DeviceError.BAD_ARG_VALUE,
                 error_msg=(
-                    'Dump terminal only supports SCREEN 0.'
+                    'Dumb terminal only supports SCREEN 0.'
                 )
             )
             return
