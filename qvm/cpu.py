@@ -852,6 +852,15 @@ class QvmCpu:
 
         self.push(value.type, -value.value)
 
+    def _exec_not(self):
+        value = self.pop()
+        if not value.type.is_integral:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='integral',
+                      got=value.type)
+
+        self.push(value.type, ~value.value)
+
     def _exec_ntos(self):
         value = self.pop()
         if not value.type.is_numeric:
@@ -903,6 +912,19 @@ class QvmCpu:
         self.cur_frame = self.cur_frame.prev_frame
         ret_addr = self.pop(CellType.LONG)
         self.pc = ret_addr
+
+    def _exec_retv(self):
+        self.cur_frame.destroy()
+        self.cur_frame = self.cur_frame.prev_frame
+
+        retval = self.pop()
+        if retval.type == CellType.REFERENCE:
+            retval = retval.value.derefed()
+
+        ret_addr = self.pop(CellType.LONG)
+        self.pc = ret_addr
+
+        self.push(retval.type, retval.value)
 
     def _exec_readl_reference(self, idx):
         try:
