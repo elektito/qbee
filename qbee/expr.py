@@ -516,7 +516,7 @@ class NumericLiteral(Expr):
 
         if token.startswith('&'):
             if type_char and type_char not in '%&':
-                raise ValueError
+                raise ValueError('Invalid type char for integral value')
 
             base = 16 if token.startswith('&h') else 8
             value = int(token[2:], base=base)
@@ -530,12 +530,44 @@ class NumericLiteral(Expr):
             if 'd' in token:
                 # a double scientific value (like 1.2d-4); change type
                 # to DOUBLE if no explicit type char is specified
-                if type_char is None:
-                    literal_type = Type.DOUBLE
+                literal_type = Type.DOUBLE
+                if type_char and type_char != '#':
+                    raise ValueError(
+                        'Illegal number (type char does not match '
+                        'DOUBLE scientific value)'
+                    )
                 token = token.replace('d', 'e')
             elif 'e' in token:
                 literal_type = Type.SINGLE
+                if type_char and type_char != '!':
+                    raise ValueError(
+                        'Illegal number (type char does not match '
+                        'SINGLE scientific value)'
+                    )
+
+        try:
             value = literal_type.py_type(token)
+        except ValueError:
+            raise ValueError(
+                'Illegal number (numeric value incompatible with type '
+                'char)')
+        if literal_type == Type.INTEGER:
+            if value < -32768 or value > 32767:
+                raise ValueError(
+                    'Illegal number (does not fit in INTEGER)')
+        elif literal_type == Type.LONG:
+            if value < -2**31 or value > 2**31-1:
+                raise ValueError(
+                    'Illegal number (does not fit in LONG)')
+        elif literal_type == Type.SINGLE:
+            # check if it fits in a 32-bit float
+            import struct
+            try:
+                struct.pack('>f', value)
+            except OverflowError:
+                raise ValueError(
+                    'Illegal number (does not fit in SINGLE)')
+
         return cls(value, literal_type)
 
 
