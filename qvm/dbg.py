@@ -488,10 +488,13 @@ name to break at.
 
             if routine and routine != self.debug_info.main_routine:
                 stmt = self.find_stmt(frame.caller_addr)
-                caller_line_no = stmt.source_start_line
-                print(f'line {caller_line_no} ')
-                print('   ',
-                      self.source_lines[caller_line_no - 1].strip())
+                if stmt is None:
+                    print('<unknown line>')
+                else:
+                    caller_line_no = stmt.source_start_line
+                    print(f'line {caller_line_no} ')
+                    print('   ',
+                          self.source_lines[caller_line_no - 1].strip())
 
                 print(f'[{fidx}] {routine.kind.upper()} '
                       f'{routine.name} ', end='')
