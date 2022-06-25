@@ -545,12 +545,13 @@ class NumericLiteral(Expr):
                         'SINGLE scientific value)'
                     )
 
-        try:
-            value = literal_type.py_type(token)
-        except ValueError:
-            raise ValueError(
-                'Illegal number (numeric value incompatible with type '
-                'char)')
+            try:
+                value = literal_type.py_type(token)
+            except ValueError as e:
+                print(e)
+                raise ValueError(
+                    'Illegal number (numeric value incompatible with '
+                    'type char)')
         if literal_type == Type.INTEGER:
             if value < -32768 or value > 32767:
                 raise ValueError(
