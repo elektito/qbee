@@ -279,9 +279,9 @@ class TerminalDevice(Device):
                 )
 
         if format_string:
-            formatter = PrintUsingFormatter(format_string)
+            formatter = PrintUsingFormatter(format_string.value)
             new_line = printables[-1] not in [comma, semicolon]
-            printables = [a for a in printables
+            printables = [a.value for a in printables
                           if a != semicolon and a != comma]
             self._print(formatter.format(printables))
             if new_line:
