@@ -91,7 +91,7 @@ Type help or ? to list commands.
         self.debug_info = self.module.debug_info
         self.machine = machine
         self.cpu = machine.cpu
-        self.auto_status_enabled = True
+        self.auto_status = 'cur'
 
         self.instrs = []
         self.load_instructions()
@@ -243,6 +243,7 @@ Type help or ? to list commands.
                               f'precise line; set at line '
                               f'{stmt.source_start_line}')
                     return bp, None
+            return None, 'No such line number'
         else:
             routine_name = spec.lower()
             routine = self.debug_info.routines.get(routine_name)
@@ -298,8 +299,14 @@ Type help or ? to list commands.
                 print(f'   {line}')
 
     def show_auto_status(self):
-        if self.auto_status_enabled:
+        if self.auto_status == 'cur':
             self.do_cur('')
+        elif self.auto_status == 'curi':
+            self.do_curi('')
+        elif self.auto_status == 'off':
+            pass
+        else:
+            assert False
 
     def print_cell_value(self, value, name, kind):
         if value is None:
@@ -324,12 +331,18 @@ Type help or ? to list commands.
         progresses the debuggee."""
         arg = arg.strip().upper()
         if arg == '':
-            status = 'ON' if self.auto_status_enabled else 'OFF'
-            print(f'Auto-status is {status}')
-        elif arg == 'ON':
-            self.auto_status_enabled = True
+            status = {
+                'cur': 'source context',
+                'curi': 'machine code context',
+                'off': 'off',
+            }[self.auto_status]
+            print(f'Auto-status: {status}')
+        elif arg in ('ON', 'CUR'):
+            self.auto_status = 'cur'
+        elif arg == 'CURI':
+            self.auto_status = 'curi'
         elif arg == 'OFF':
-            self.auto_status_enabled = False
+            self.auto_status = 'off'
         else:
             print('Invalid argument.')
 
