@@ -113,13 +113,14 @@ class QStruct:
 
 class QvmEval(EvaluationContext):
     def __init__(self, cpu, main_routine, user_types, consts,
-                 find_routine_func):
+                 global_vars, find_routine_func):
         super().__init__()
 
         self.cpu = cpu
         self.main_routine = main_routine
         self.user_types = user_types
         self.consts = consts
+        self.global_vars = global_vars
         self.find_routine_func = find_routine_func
 
     def eval_lvalue(self, lvalue):
