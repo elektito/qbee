@@ -148,6 +148,9 @@ class TerminalWindow(pyglet.window.Window):
 
             self._cursor_col = col
 
+    def get_cursor_pos(self):
+        return self._cursor_row, self._cursor_col
+
     def view_print(self, top_line, bottom_line):
         if top_line is None:
             top_line = 0

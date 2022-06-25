@@ -615,10 +615,11 @@ class SmartTerminalDevice(TerminalDevice):
                 break
             elif k == 8 and string:
                 string = string[:-1]
-                col = self.terminal.call_with_result('get', 'cursor_col')
-                self.terminal.call('set', 'cursor_col', col - 1)
+                row, col = self.terminal.call_with_result('get_cursor_pos')
+                col = 0 if col <= 0 else col - 1
+                self.terminal.call('locate', row, col)
                 self.terminal.call('put_text', ' ')
-                self.terminal.call('set', 'cursor_col', col - 1)
+                self.terminal.call('locate', row, col)
 
         if not same_line:
             self.terminal.call('put_text', '\r\n')
