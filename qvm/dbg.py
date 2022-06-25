@@ -358,6 +358,23 @@ Type help or ? to list commands.
         'Show current instruction and a few before/after it.'
         self.show_instruction_with_context(self.cpu.pc)
 
+    def do_stack(self, arg):
+        stack = self.cpu.stack
+        original_size = len(stack)
+        if len(stack) > 5:
+            stack = stack[-5:]
+
+        top = ', '.join(str(i) for i in stack)
+        if len(stack) < original_size:
+            nrest = original_size - len(stack)
+            rest = '[{nrest} item'
+            if nrest != 1:
+                rest += 's'
+            rest += ']...'
+            print(f'STACK: {rest}, {top}')
+        else:
+            print(f'STACK: {top}')
+
     @unhalted
     def do_stepi(self, arg):
         'Execute one machine instruction.'
