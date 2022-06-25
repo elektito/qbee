@@ -19,6 +19,9 @@ def parse_string(input_string):
             line_node = line_rule.parse_string(line, parse_all=True)
         except (ParseException, ParseSyntaxException) as e:
             raise SyntaxError(loc=line_loc + e.loc)
+        except SyntaxError as e:
+            raise SyntaxError(loc=line_loc + e.loc_start,
+                              msg=e.msg)
 
         # the line is always a list of one containing the actual Line
         # node
