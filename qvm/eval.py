@@ -112,13 +112,14 @@ class QStruct:
 
 
 class QvmEval(EvaluationContext):
-    def __init__(self, cpu, main_routine, user_types,
+    def __init__(self, cpu, main_routine, user_types, consts,
                  find_routine_func):
         super().__init__()
 
         self.cpu = cpu
         self.main_routine = main_routine
         self.user_types = user_types
+        self.consts = consts
         self.find_routine_func = find_routine_func
 
     def eval_lvalue(self, lvalue):
@@ -127,7 +128,8 @@ class QvmEval(EvaluationContext):
             raise ValueError(
                 'Indices and dotted vars not valid with conts')
         elif lvalue.base_var in self.consts:
-            return self.consts[lvalue.base_var].eval()
+            const_value, const_type = self.consts[lvalue.base_var]
+            return const_value
 
         base_type = lvalue.base_type
         segment, base_idx = self.eval_var(lvalue.base_var)
