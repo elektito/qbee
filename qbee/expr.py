@@ -8,6 +8,7 @@ from .exceptions import (
 )
 from .node import Node
 from .utils import split_camel
+from .numeric import Int16, Int32, Float32, Float64
 
 
 class BuiltinType(Enum):
@@ -90,11 +91,8 @@ class Type:
         return False
 
     def coerce(self, value):
-        if self._type == BuiltinType.SINGLE:
-            import struct
-            packed = struct.pack('>f', value)
-            unpacked, = struct.unpack('>f', packed)
-            return unpacked
+        if self.is_integral:
+            return self.py_type(round(value))
         else:
             return self.py_type(value)
 
@@ -158,10 +156,10 @@ class Type:
             raise ValueError('Cannot get py_type of {self}')
 
         return {
-            BuiltinType.INTEGER: int,
-            BuiltinType.LONG: int,
-            BuiltinType.SINGLE: float,
-            BuiltinType.DOUBLE: float,
+            BuiltinType.INTEGER: Int16,
+            BuiltinType.LONG: Int32,
+            BuiltinType.SINGLE: Float32,
+            BuiltinType.DOUBLE: Float64,
             BuiltinType.STRING: str,
         }[self._type]
 
@@ -334,6 +332,24 @@ class Type:
             '#': Type.DOUBLE,
             '$': Type.STRING,
         }[type_char]
+
+    @staticmethod
+    def highest_precision(type1, type2):
+        """
+        Returns the type with the highest precision out of two numeric
+        types
+        """
+        assert isinstance(type1, Type) and type1.is_numeric
+        assert isinstance(type2, Type) and type2.is_numeric
+
+        if type1 == Type.DOUBLE or type2 == Type.DOUBLE:
+            return Type.DOUBLE
+        elif type1 == Type.SINGLE or type2 == Type.SINGLE:
+            return Type.SINGLE
+        elif type1 == Type.LONG or type2 == Type.LONG:
+            return Type.LONG
+        else:
+            return Type.INTEGER
 
 
 class Operator(Enum):
@@ -555,14 +571,24 @@ class NumericLiteral(Expr):
                         'Illegal number (type char does not match '
                         'SINGLE scientific value)'
                     )
+            elif '.' in token and not type_char:
+                literal_type = Type.SINGLE
+            elif not type_char:
+                literal_type = Type.LONG
 
             try:
                 value = literal_type.py_type(token)
             except ValueError as e:
-                print(e)
                 raise ValueError(
                     'Illegal number (numeric value incompatible with '
                     'type char)')
+            except OverflowError as e:
+                raise ValueError('Illegal number (overflow)')
+
+            if not type_char and literal_type == Type.LONG and \
+               (-32768 <= value <= 32767):
+                literal_type = Type.INTEGER
+
         if literal_type == Type.INTEGER:
             if value < -32768 or value > 32767:
                 raise ValueError(
@@ -647,14 +673,8 @@ class BinaryOp(Expr):
         if ltype.is_user_defined or rtype.is_user_defined:
             return Type.UNKNOWN
 
-        if ltype == Type.DOUBLE or rtype == Type.DOUBLE:
-            return Type.DOUBLE
-        if ltype == Type.SINGLE or rtype == Type.SINGLE:
-            return Type.SINGLE
-        if ltype == Type.LONG or rtype == Type.LONG:
-            return Type.LONG
-        if ltype == Type.INTEGER or rtype == Type.INTEGER:
-            return Type.INTEGER
+        if ltype.is_numeric and rtype.is_numeric:
+            return Type.highest_precision(ltype, rtype)
 
         return Type.STRING
 
@@ -677,48 +697,37 @@ class BinaryOp(Expr):
                 'non-primitive values')
 
     def _eval_numeric(self):
-        left = self.type.py_type(self.left.eval())
-        right = self.type.py_type(self.right.eval())
-
-        if self.left.type == Type.INTEGER and \
-           self.right.type == Type.INTEGER:
-            mask = 0xffff
-        else:
-            mask = 0xffff_ffff
+        left = self.type.coerce(self.left.eval())
+        right = self.type.coerce(self.right.eval())
 
         def qbool(x):
-            return -1 if x else 0
+            return Type.INTEGER.py_type(-1 if x else 0)
 
         result = {
-            Operator.ADD: lambda a, b: a + b,
-            Operator.SUB: lambda a, b: a - b,
-            Operator.MUL: lambda a, b: a * b,
-            Operator.DIV: lambda a, b: a / b,
-            Operator.MOD: self._qb_mod,
-            Operator.INTDIV: lambda a, b: a // b,
-            Operator.EXP: lambda a, b: a ** b,
             Operator.CMP_EQ: lambda a, b: qbool(a == b),
             Operator.CMP_NE: lambda a, b: qbool(a != b),
             Operator.CMP_LT: lambda a, b: qbool(a < b),
             Operator.CMP_GT: lambda a, b: qbool(a > b),
             Operator.CMP_LE: lambda a, b: qbool(a <= b),
             Operator.CMP_GE: lambda a, b: qbool(a >= b),
-            Operator.AND: lambda a, b: (a & b) & mask,
-            Operator.OR: lambda a, b: (a | b) & mask,
-            Operator.XOR: lambda a, b: (a ^ b) & mask,
-            Operator.EQV: lambda a, b: ~(a ^ b) & mask,
-            Operator.IMP: lambda a, b: (~a | b) & mask,
+            Operator.AND: lambda a, b: (a & b),
+            Operator.OR: lambda a, b: (a | b),
+            Operator.XOR: lambda a, b: (a ^ b),
+            Operator.EQV: lambda a, b: ~(a ^ b),
+            Operator.IMP: lambda a, b: (~a | b),
+            Operator.ADD: lambda a, b: a + b,
+            Operator.SUB: lambda a, b: a - b,
+            Operator.MUL: lambda a, b: a * b,
+            Operator.DIV: lambda a, b: a / b,
+            Operator.MOD: lambda a, b: a % b,
+            Operator.INTDIV: lambda a, b: a // b,
+            Operator.EXP: lambda a, b: a ** b,
         }[self.op](left, right)
 
         return result
 
     def _eval_string(self):
         return self.left.eval() + self.right.eval()
-
-    def _qb_mod(self, a, b):
-        a = int(round(a))
-        b = int(round(b))
-        return a % b
 
 
 class UnaryOp(Expr):

@@ -303,6 +303,8 @@ class QvmCpu:
             f'INSTR: {instr_addr:08x}: {instr.op}{operands_list}')
         try:
             func(*operands)
+        except OverflowError:
+            self._trap(TrapCode.OVERFLOW)
         except Trapped as e:
             self._trap(e.trap_code, **e.trap_kwargs)
 
@@ -424,6 +426,8 @@ class QvmCpu:
                   f'dimensions ({expected})')
         elif code == TrapCode.KEYBOARD_INTERRUPT:
             print('Received keyboard interrupt')
+        elif code == TrapCode.OVERFLOW:
+            print('Overflow')
         else:
             assert False
 

@@ -1,5 +1,6 @@
 from enum import Enum
 from qbee import expr
+from qbee.numeric import Int16, Int32, Float32, Float64
 from .trap import TrapCode, Trapped
 
 
@@ -15,10 +16,10 @@ class CellType(Enum):
     @property
     def py_type(self):
         return {
-            CellType.INTEGER: int,
-            CellType.LONG: int,
-            CellType.SINGLE: float,
-            CellType.DOUBLE: float,
+            CellType.INTEGER: Int16,
+            CellType.LONG: Int32,
+            CellType.SINGLE: Float32,
+            CellType.DOUBLE: Float64,
             CellType.STRING: str,
             CellType.FIXED_STRING: str,
             CellType.REFERENCE: Reference,
@@ -43,8 +44,8 @@ class CellType(Enum):
 
 class CellValue:
     def __init__(self, type, value):
-        assert isinstance(type, CellType) or type == 'ref'
-        assert isinstance(value, type.py_type)
+        assert isinstance(type, CellType)
+
         self.type = type
 
         expr_type = {

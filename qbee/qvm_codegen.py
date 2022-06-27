@@ -396,17 +396,23 @@ class QvmCode(BaseCode):
                 left = expr.NumericLiteral(left, prev2_type)
                 right = expr.NumericLiteral(right, prev1_type)
                 binary_expr = expr.BinaryOp(left, right, op)
-                value = binary_expr.eval()
 
-                self._instrs[i-2] = QvmInstr(
-                    f'push{prev1.type_char}', value)
+                try:
+                    value = binary_expr.eval()
+                except OverflowError:
+                    pass
+                except TypeError:
+                    pass
+                else:
+                    self._instrs[i-2] = QvmInstr(
+                        f'push{prev1.type_char}', value)
 
-                # remove the next two instructions
-                del self._instrs[i]
-                del self._instrs[i-1]
-                i -= 2
+                    # remove the next two instructions
+                    del self._instrs[i]
+                    del self._instrs[i-1]
+                    i -= 2
 
-                continue
+                    continue
 
             # Eliminate consecutive jump-like instructions
             jump_instrs = [

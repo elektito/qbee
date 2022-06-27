@@ -72,7 +72,10 @@ class Node(ABC):
 
     def fold(self):
         for child in self.children:
-            folded = child.fold()
+            try:
+                folded = child.fold()
+            except OverflowError:
+                continue
             assert isinstance(folded, Node)
             if folded != child:
                 self.replace_child(child, folded)
