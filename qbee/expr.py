@@ -1,4 +1,5 @@
 import numbers
+import ctypes
 from enum import Enum
 from abc import abstractmethod
 from dataclasses import dataclass, replace as dataclass_replace
@@ -555,6 +556,10 @@ class NumericLiteral(Expr):
                         'Illegal number (type char does not match '
                         'SINGLE scientific value)'
                     )
+            elif not type_char and '.' in token:
+                literal_type = Type.SINGLE
+            elif not type_char:
+                literal_type = Type.LONG
 
             try:
                 value = literal_type.py_type(token)
@@ -677,37 +682,45 @@ class BinaryOp(Expr):
                 'non-primitive values')
 
     def _eval_numeric(self):
-        left = self.type.py_type(self.left.eval())
-        right = self.type.py_type(self.right.eval())
+        assert self.left.type == self.right.type
 
-        if self.left.type == Type.INTEGER and \
-           self.right.type == Type.INTEGER:
-            mask = 0xffff
-        else:
-            mask = 0xffff_ffff
+        left = self.type.coerce(self.left.eval())
+        right = self.type.coerce(self.right.eval())
 
         def qbool(x):
             return -1 if x else 0
 
+        def limit(x):
+            if not self.left.type.is_integral:
+                return x
+
+            mask, c_type = {
+                Type.INTEGER: (0xffff, ctypes.c_short),
+                Type.LONG: (0xffff_ffff, ctypes.c_long),
+            }[self.left.type]
+            x &= mask
+            print(x, mask, c_type, c_type(x).value)
+            return c_type(x).value
+
         result = {
-            Operator.ADD: lambda a, b: a + b,
-            Operator.SUB: lambda a, b: a - b,
-            Operator.MUL: lambda a, b: a * b,
-            Operator.DIV: lambda a, b: a / b,
-            Operator.MOD: self._qb_mod,
-            Operator.INTDIV: lambda a, b: a // b,
-            Operator.EXP: lambda a, b: a ** b,
             Operator.CMP_EQ: lambda a, b: qbool(a == b),
             Operator.CMP_NE: lambda a, b: qbool(a != b),
             Operator.CMP_LT: lambda a, b: qbool(a < b),
             Operator.CMP_GT: lambda a, b: qbool(a > b),
             Operator.CMP_LE: lambda a, b: qbool(a <= b),
             Operator.CMP_GE: lambda a, b: qbool(a >= b),
-            Operator.AND: lambda a, b: (a & b) & mask,
-            Operator.OR: lambda a, b: (a | b) & mask,
-            Operator.XOR: lambda a, b: (a ^ b) & mask,
-            Operator.EQV: lambda a, b: ~(a ^ b) & mask,
-            Operator.IMP: lambda a, b: (~a | b) & mask,
+            Operator.AND: lambda a, b: limit(a & b),
+            Operator.OR: lambda a, b: limit(a | b),
+            Operator.XOR: lambda a, b: limit(a ^ b),
+            Operator.EQV: lambda a, b: limit(~(a ^ b)),
+            Operator.IMP: lambda a, b: limit(~a | b),
+            Operator.ADD: lambda a, b: limit(a + b),
+            Operator.SUB: lambda a, b: limit(a - b),
+            Operator.MUL: lambda a, b: limit(a * b),
+            Operator.DIV: lambda a, b: limit(a / b),
+            Operator.MOD: lambda a, b: limit(a % b),
+            Operator.INTDIV: lambda a, b: limit(a // b),
+            Operator.EXP: lambda a, b: limit(a ** b),
         }[self.op](left, right)
 
         return result

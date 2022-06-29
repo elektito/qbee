@@ -44,7 +44,6 @@ class CellType(Enum):
 class CellValue:
     def __init__(self, type, value):
         assert isinstance(type, CellType) or type == 'ref'
-        assert isinstance(value, type.py_type)
         self.type = type
 
         expr_type = {
