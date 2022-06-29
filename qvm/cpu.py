@@ -1089,8 +1089,8 @@ class QvmCpu:
 
         if a.type != b.type:
             self.trap(TrapCode.TYPE_MISMATCH,
-                      a.type,
-                      b.type)
+                      expected=a.type,
+                      got=b.type)
 
         result = a.value - b.value
         self.push(a.type, result)
