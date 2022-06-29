@@ -615,8 +615,13 @@ class QvmCpu:
                       expected=dividend.type,
                       got=divisor.type)
 
+        if dividend.type in [CellType.INTEGER, CellType.LONG]:
+            result_type = CellType.SINGLE
+        else:
+            result_type = dividend.type
+
         result = dividend.value / divisor.value
-        self.push(dividend.type, result)
+        self.push(result_type, result)
 
     def _exec_dupl(self):
         value = self.stack.pop()

@@ -462,7 +462,10 @@ class Expr(Node):
 
     def fold(self):
         if self.is_const:
-            value = self.eval()
+            try:
+                value = self.eval()
+            except OverflowError:
+                return self
             if self.type.is_numeric:
                 literal = NumericLiteral(value, self.type)
             else:
@@ -564,10 +567,13 @@ class NumericLiteral(Expr):
             try:
                 value = literal_type.py_type(token)
             except ValueError as e:
-                print(e)
                 raise ValueError(
                     'Illegal number (numeric value incompatible with '
                     'type char)')
+
+            if not type_char and literal_type == Type.LONG:
+                if -32768 <= value < 32768:
+                    literal_type = Type.INTEGER
         if literal_type == Type.INTEGER:
             if value < -32768 or value > 32767:
                 raise ValueError(
@@ -657,9 +663,15 @@ class BinaryOp(Expr):
         if ltype == Type.SINGLE or rtype == Type.SINGLE:
             return Type.SINGLE
         if ltype == Type.LONG or rtype == Type.LONG:
-            return Type.LONG
+            if self.op == Operator.DIV:
+                return Type.SINGLE
+            else:
+                return Type.LONG
         if ltype == Type.INTEGER or rtype == Type.INTEGER:
-            return Type.INTEGER
+            if self.op == Operator.DIV:
+                return Type.SINGLE
+            else:
+                return Type.INTEGER
 
         return Type.STRING
 
@@ -699,8 +711,10 @@ class BinaryOp(Expr):
                 Type.LONG: (0xffff_ffff, ctypes.c_long),
             }[self.left.type]
             x &= mask
-            print(x, mask, c_type, c_type(x).value)
-            return c_type(x).value
+            result = c_type(x).value
+            if result != x:
+                raise OverflowError
+            return result
 
         result = {
             Operator.CMP_EQ: lambda a, b: qbool(a == b),
