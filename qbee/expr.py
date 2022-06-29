@@ -72,10 +72,18 @@ class Type:
         if self.is_array:
             return False
         if self.is_numeric and isinstance(value, numbers.Number):
-            try:
-                x = self.py_type(value)
-            except OverflowError:
-                return False
+            if self._type == BuiltinType.INTEGER:
+                return -32768 <= value <= 32767
+            elif self._type == BuiltinType.LONG:
+                return -2**31 <= value < 2**31
+            elif self._type == BuiltinType.SINGLE:
+                import struct
+                try:
+                    struct.pack('>f', value)
+                except OverflowError:
+                    return False
+                else:
+                    return True
             else:
                 return True
         if self._type == BuiltinType.STRING and isinstance(value, str):
