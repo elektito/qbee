@@ -69,12 +69,22 @@ class QStruct:
     def get_field(self, *fields):
         if len(fields) == 0:
             return self
-        elif len(fields) == 1:
-            value, _ = self.contents[fields[0]]
-            return value
+
+        field_name = fields[0]
+        if field_name not in self.contents:
+            raise EvalError(
+                f'No such field "{field_name}" in struct "{self.name}"'
+            )
+
+        field_value, _ = self.contents[fields[0]]
+        if len(fields) == 1:
+            return field_value
         else:
-            first, _ = self.contents[fields[0]]
-            return first.get_field(*fields[1:])
+            if not isinstance(field_value, QStruct):
+                raise EvalError(
+                    f'Attempting to read field "{fields[1]}" from '
+                    f'non-struct')
+            return field_value.get_field(*fields[1:])
 
     def __str__(self):
         return self.to_long_string()
