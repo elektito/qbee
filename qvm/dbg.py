@@ -232,8 +232,12 @@ Type help or ? to list commands.
                 key=lambda r: r.source_start_offset
             )
 
+            # Look for the first statement at, or after, the given
+            # line number which is not empty (that is, has at least
+            # one instruction)
             for stmt in stmts:
-                if stmt.source_start_line >= line_no:
+                if stmt.source_start_line >= line_no and \
+                   stmt.end_offset - stmt.start_offset > 0:
                     bp = Breakpoint(
                         start_addr=stmt.start_offset,
                         line=stmt.source_start_line
