@@ -151,7 +151,7 @@ class QModule:
                 var_idx, = struct.unpack('>H', bcode[idx:idx+2])
                 idx += 2
                 args = [var_idx]
-            elif op[-1] in ('readidxg', 'readidxl') or \
+            elif op[:-1] in ('readidxg', 'readidxl') or \
                  op in ('storeidxg', 'storeidxl'):
                 var_idx, offset = struct.unpack(
                     '>HH', bcode[idx:idx+4])
