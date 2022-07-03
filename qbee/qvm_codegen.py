@@ -1765,6 +1765,8 @@ def gen_select_block(node, code, codegen):
     if node.case_blocks:
         last_case = node.case_blocks[-1][0]
     for case, body in node.case_blocks:
+        code.add(('_dbg_info_start', case))
+
         if case == last_case:
             next_case_label = end_label
         code.add(('_label', cur_case_label))
@@ -1777,6 +1779,8 @@ def gen_select_block(node, code, codegen):
 
         cur_case_label = next_case_label
         next_case_label = codegen.get_label('case')
+
+        code.add(('_dbg_info_end', case))
 
     code.add(
         ('_label', end_label),
