@@ -13,14 +13,22 @@ from qbee import qvm_codegen  # noqa
 
 CASES_DIR = 'tests/test_cases/'
 
-QTestCase = namedtuple('QTestCase', ['text',
-                                     'expected_result',
-                                     'expected_error'])
+QTestCase = namedtuple('QTestCase', [
+    'filename',
+    'idx',
+    'text',
+    'expected_result',
+    'expected_error'
+])
 
 all_cases = []
 
+def get_fixture_id(f):
+    optimization, debug_info = f
+    wdinfo = 'withdbg' if debug_info else 'nodbg'
+    return f'O{optimization}-{wdinfo}'
 
-@fixture(params=product([0, 1, 2], [True, False]))
+@fixture(params=product([0, 1, 2], [True, False]), ids=get_fixture_id)
 def compiler(request):
     optimization_level, debug_info = request.param
     compiler = Compiler(
@@ -31,7 +39,7 @@ def compiler(request):
     yield compiler
 
 
-def load_test_case(text, defaults=None):
+def load_test_case(text, filename, test_idx, defaults=None):
     results_re = re.compile(
         r'(?P<expected_result>\w+)(:(?P<options>.*))?',)
 
@@ -62,7 +70,8 @@ def load_test_case(text, defaults=None):
             expected_error = m.group('options').upper().strip()
             expected_error = ErrorCode[expected_error]
 
-    return QTestCase(text, expected_result, expected_error)
+    return QTestCase(filename, test_idx,
+                     text, expected_result, expected_error)
 
 
 def load_test_file(filename):
@@ -76,7 +85,10 @@ def load_test_file(filename):
         text = text[eol+1:]
 
     parts = text.split('\n===\n')
-    return [load_test_case(part, defaults) for part in parts]
+    return [
+        load_test_case(part, filename, i, defaults)
+        for i, part in enumerate(parts)
+    ]
 
 
 def get_cases(expected_result):
@@ -95,18 +107,22 @@ def get_cases(expected_result):
     ]
 
 
-@mark.parametrize('case', get_cases('success'))
+def get_test_id(case):
+    return f'{case.filename}::{case.idx}'
+
+
+@mark.parametrize('case', get_cases('success'), ids=get_test_id)
 def test_qb_success(compiler, case):
     compiler.compile(case.text)
 
 
-@mark.parametrize('case', get_cases('syntaxerror'))
+@mark.parametrize('case', get_cases('syntaxerror'), ids=get_test_id)
 def test_qb_syntax_error(compiler, case):
     with raises(SyntaxError) as e:
         compiler.compile(case.text)
 
 
-@mark.parametrize('case', get_cases('compileerror'))
+@mark.parametrize('case', get_cases('compileerror'), ids=get_test_id)
 def test_qb_compile_error(compiler, case):
     with raises(CompileError) as exc_info:
         compiler.compile(case.text)
