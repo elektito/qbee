@@ -1746,8 +1746,7 @@ def gen_while_block(node, code, codegen):
     code.add(('jz', wend_label))
 
     code.add(('_label', body_label))
-    for child_stmt in node.body:
-        codegen.gen_code_for_node(child_stmt, code)
+    gen_code_for_block(node.body, code, codegen)
     code.add(('jmp', check_label))
 
     code.add(('_label', wend_label))
@@ -1773,8 +1772,7 @@ def gen_select_block(node, code, codegen):
         code.add(('jz', next_case_label))
 
         code.add(('_label', codegen.get_label('case_body')))
-        for child_stmt in body:
-            codegen.gen_code_for_node(child_stmt, code)
+        gen_code_for_block(body, code, codegen)
         code.add(('jmp', end_label))
 
         cur_case_label = next_case_label
