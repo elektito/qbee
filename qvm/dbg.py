@@ -533,9 +533,12 @@ name to break at.
                 print(f'[{fidx}] _main ', end='')
 
         stmt = self.find_stmt(self.cpu.pc)
-        line_no = stmt.source_start_line
-        print(f'line {line_no} ')
-        print('   ', self.source_lines[line_no - 1].strip())
+        if stmt is None:
+            print('<unknown stmt>')
+        else:
+            line_no = stmt.source_start_line
+            print(f'line {line_no} ')
+            print('   ', self.source_lines[line_no - 1].strip())
 
     def do_print(self, arg):
         'Print the value of a variable'
