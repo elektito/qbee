@@ -92,6 +92,14 @@ def get_device_op_name_by_id(device_name, op_code):
     return None
 
 
+class HaltReason(Enum):
+    NONE = 1
+    INSTRUCTION = 2
+    TRAP = 3
+    END_OF_CODE = 4
+    BREAKPOINT = 5
+
+
 class MemorySegment:
     def __init__(self, size):
         self.size = size
@@ -199,6 +207,7 @@ class QvmCpu:
 
         self.globals_segment = MemorySegment(self.module.n_global_cells)
         self.halted = False
+        self.halt_reason = HaltReason.NONE
         self.pc = 0
         self.cur_frame = None
         self.stack = []
@@ -263,11 +272,20 @@ class QvmCpu:
 
         self.last_breakpoint = None
         self.halted = False
-        while self.pc < len(self.module.code) and not self.halted:
+        self.halt_reason = HaltReason.NONE
+        while True:
+            if self.halted:
+                # halt_reason set somewhere else
+                break
+            if self.pc >= len(self.module.code):
+                self.halt_reason = HaltReason.END_OF_CODE
+                break
+
             self.tick()
             for bp in self.breakpoints:
                 if bp(self):
                     self.last_breakpoint = bp
+                    self.halt_reason = HaltReason.BREAKPOINT
                     return False
 
         return True
@@ -309,6 +327,7 @@ class QvmCpu:
         if self.pc >= len(self.module.code):
             logger.info(
                 'Halting because execution reached end of module')
+            self.halt_reason = HaltReason.END_OF_CODE
             self.halted = True
 
     def next(self):
@@ -428,6 +447,7 @@ class QvmCpu:
             assert False
 
         self.halted = True
+        self.halt_reason = HaltReason.TRAP
 
     def push(self, value_type, value):
         logger.info(
@@ -692,6 +712,7 @@ class QvmCpu:
 
     def _exec_halt(self):
         self.halted = True
+        self.halt_reason = HaltReason.INSTRUCTION
 
     def _exec_idiv(self):
         a = self.pop()

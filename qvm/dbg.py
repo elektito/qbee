@@ -10,6 +10,7 @@ from .machine import QvmMachine
 from .debug_info import DebugInfo
 from .cell import CellType
 from .eval import QvmEval, EvalError
+from .cpu import HaltReason
 
 
 class Breakpoint:
@@ -67,7 +68,11 @@ class Breakpoint:
 def unhalted(func):
     @wraps(func)
     def wrapped(self, *args, **kwargs):
-        if self.machine.halted:
+        reasons = [
+            HaltReason.INSTRUCTION,
+            HaltReason.END_OF_CODE,
+        ]
+        if self.cpu.halted and self.cpu.halt_reason in reasons:
             print('Machine is halted.')
             return
         return func(self, *args, **kwargs)
@@ -404,9 +409,18 @@ Type help or ? to list commands.
     def do_cur(self, arg):
         'Show current statement'
         stmt = self.find_nonempty_stmt(self.cpu.pc)
-        if stmt is None:
+        reasons = [HaltReason.INSTRUCTION, HaltReason.END_OF_CODE]
+        if stmt is None and self.cpu.halted and \
+           self.cpu.halt_reason in reasons:
             assert self.cpu.halted
             print('Program is finished')
+            return
+        if stmt is None:
+            # probably logical thing to do is to use the last
+            # statement that we actually executed, but that means we
+            # need to keep track of (at least) the last few statements
+            # we executed.
+            print('Cannot detect current statement')
             return
         self.show_statement_with_context(stmt)
 
