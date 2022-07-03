@@ -264,7 +264,7 @@ class QvmCpu:
         except IndexError:
             self.trap(trap_code, idx=idx)
 
-    def run(self):
+    def run(self, step_over=False):
         """Run the cpu until either halted, or a breakpoint is hit.
         Returns a boolean, indicating the reason execution stopped.
         If stopped due to a breakpoint, False is returned, otherwise
@@ -281,7 +281,12 @@ class QvmCpu:
                 self.halt_reason = HaltReason.END_OF_CODE
                 break
 
-            self.tick()
+            if step_over:
+                ret = self.next()
+                if not ret:
+                    return False
+            else:
+                self.tick()
             for bp in self.breakpoints:
                 if bp(self):
                     self.last_breakpoint = bp
@@ -345,7 +350,7 @@ class QvmCpu:
             try:
                 ret = self.run()
                 if self.last_breakpoint == bp:
-                    return False
+                    return True
                 else:
                     return ret
             finally:

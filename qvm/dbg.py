@@ -448,13 +448,19 @@ Type help or ? to list commands.
     @unhalted
     def do_next(self, arg):
         stmt = self.find_nonempty_stmt(self.cpu.pc)
-        while not self.cpu.halted:
-            if not self.cpu.next():
-                print('Hit breakpoint')
-                break
-            next_stmt = self.find_nonempty_stmt(self.cpu.pc)
+
+        def step_breakpoint(cpu):
+            next_stmt = self.find_nonempty_stmt(cpu.pc)
             if next_stmt and next_stmt != stmt:
-                break
+                return True
+            return False
+
+        self.cpu.add_breakpoint(step_breakpoint)
+        try:
+            if not self.cpu.run(step_over=True):
+                print('Hit breakpoint')
+        finally:
+            self.cpu.del_breakpoint(step_breakpoint)
 
         self.show_auto_status()
 
