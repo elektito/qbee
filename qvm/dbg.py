@@ -278,13 +278,9 @@ Type help or ? to list commands.
         cur_idx = i
         for i in range(start, end + 1):
             i_addr, instr, operands = self.instrs[i]
-            operands_list = ''
-            if operands:
-                operands_list = ' ' + \
-                    ', '.join(str(i) for i in operands)
             prefix = ' > ' if i == cur_idx else '   '
-            print(
-                f'{prefix}{i_addr:08x}: {instr.op: <12}{operands_list}')
+            print(self.format_instr(i_addr, instr, operands,
+                                    prefix=prefix))
 
     def show_statement_with_context(self, stmt, context_size=3):
         start_line = stmt.source_start_line - context_size
@@ -321,6 +317,17 @@ Type help or ? to list commands.
                 value = value.value.derefed()
             print('  type:', value.type.name)
             print('  value:', value.value)
+
+    def format_instr(self, i_addr, instr, operands, prefix=''):
+        operands = [
+            f'"{i}"' if isinstance(i, str) else i for i in operands
+        ]
+        operands_list = ''
+        if operands:
+            operands_list = ' ' + \
+                ', '.join(str(i) for i in operands)
+
+        return f'{prefix}{i_addr:08x}: {instr.op: <12}{operands_list}'
 
     def postcmd(self, stop, line):
         if stop:
@@ -527,6 +534,25 @@ name to break at.
             return
 
         print(value)
+
+    def do_annotate(self, arg):
+        for i_addr, instr, operands in self.instrs:
+            instr_str = self.format_instr(i_addr, instr, operands,
+                                          prefix='   ')
+
+            stmt = self.find_stmt(i_addr)
+            node = stmt.node if stmt else stmt
+            stmt_desc = str(node)
+
+            if stmt:
+                start = stmt.node.loc_start
+                end = stmt.node.loc_end
+                stmt_desc = self.debug_info.source_code[start:end]
+                stmt_desc = stmt_desc.strip()
+            else:
+                stmt_desc = ''
+
+            print(f'{instr_str: <72} ; {stmt_desc}')
 
     def do_quit(self, arg):
         'Exit debugger'
