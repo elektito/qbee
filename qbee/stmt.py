@@ -944,6 +944,7 @@ class IfBlock(Block, start=IfBeginStmt, end=EndIfStmt):
         if_blocks = []
         else_body = []
         elseif_stmts = []
+        else_stmt = None
         for stmt in body:
             if isinstance(stmt, ElseIfStmt):
                 elseif_stmts.append(stmt)
@@ -952,6 +953,7 @@ class IfBlock(Block, start=IfBeginStmt, end=EndIfStmt):
                 cur_if_cond = stmt.cond
             elif isinstance(stmt, ElseStmt):
                 if_blocks.append((cur_if_cond, cur_if_body))
+                else_stmt = stmt
                 cur_if_cond = None
             elif cur_if_cond:
                 cur_if_body.append(stmt)
@@ -963,6 +965,7 @@ class IfBlock(Block, start=IfBeginStmt, end=EndIfStmt):
 
         block = cls(if_blocks, else_body)
         block.elseif_stmts = elseif_stmts
+        block.else_stmt = else_stmt
         return block
 
     @property

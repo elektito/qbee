@@ -2,6 +2,7 @@ import struct
 from enum import Enum, auto
 from collections import defaultdict
 from dataclasses import dataclass
+from copy import copy
 from qvm.instrs import op_to_instr
 from qvm.cpu import QVM_DEVICES
 from qvm.debug_info import DebugInfoCollector
@@ -1448,24 +1449,36 @@ def gen_goto(node, code, codegen):
 def gen_if_block(node, code, codegen):
     endif_label = codegen.get_label('endif')
 
+    cur_else_stmt = None
+    elseif_stmts = copy(node.elseif_stmts)
+
     for cond, body in node.if_blocks:
         else_label = codegen.get_label('else')
-
-        elseif_stmt = node.get_elseif_for_cond(cond)
-        if elseif_stmt:
-            code.add(('_dbg_info_start', elseif_stmt))
 
         codegen.gen_code_for_node(cond, code)
         gen_code_for_conv(expr.Type.INTEGER, cond, code, codegen)
         code.add(('jz', else_label))
 
-        if elseif_stmt:
-            code.add(('_dbg_info_end', elseif_stmt))
+        if cur_else_stmt and codegen.debug_info_enabled:
+            code.add(('_dbg_info_end', cur_else_stmt))
 
         gen_code_for_block(body, code, codegen)
 
+        if codegen.debug_info_enabled:
+            if elseif_stmts:
+                cur_else_stmt = elseif_stmts[0]
+                elseif_stmts = elseif_stmts[1:]
+            elif node.else_stmt:
+                cur_else_stmt = node.else_stmt
+
+            if cur_else_stmt:
+                code.add(('_dbg_info_start', cur_else_stmt))
+
         code.add(('jmp', endif_label))
         code.add(('_label', else_label))
+
+    if cur_else_stmt and codegen.debug_info_enabled:
+        code.add(('_dbg_info_end', cur_else_stmt))
 
     gen_code_for_block(node.else_body, code, codegen)
     code.add(('_label', endif_label))
