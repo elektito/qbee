@@ -23,11 +23,12 @@ class Device:
         BAD_ARG_VALUE = 3
         OP_FAILED = 4
 
-    def __init__(self, device_id, cpu):
+    def __init__(self, device_id, cpu, impl):
         assert hasattr(self, 'name')
 
         self.id = device_id
         self.cpu = cpu
+        self.impl = impl
 
         self.cur_op = None
 
@@ -46,11 +47,19 @@ class Device:
                 self.cur_op = op
                 func()
             except DeviceError as e:
+                error_code = e.error_code or Device.Error.OP_FAILED
                 self.cpu.trap(
                     TrapCode.DEVICE_ERROR,
                     device_id=self.id,
-                    error_code=Device.Error.OP_FAILED,
+                    error_code=error_code,
                     error_msg=str(e))
+            except AttributeError as e:
+                if e.obj is self.impl:
+                    self.cpu.trap(
+                    TrapCode.DEVICE_ERROR,
+                    device_id=self.id,
+                    error_code=Device.Error.OP_FAILED,
+                    error_msg=f'{self.name}::{op} not implemented')
             finally:
                 self.cur_op = None
 
@@ -85,47 +94,26 @@ class TimeDevice(Device):
 
     def _exec_get_time(self):
         logger.info('DEV TIME: get_time')
-        now = datetime.now()
-        midnight = now.replace(
-            hour=0, minute=0, second=0, microsecond=0)
-        time_since_midnight = (now - midnight).total_seconds()
+        time_since_midnight = self.impl.time_get_time()
         self.cpu.push(CellType.SINGLE, time_since_midnight)
 
 
 class RngDevice(Device):
     name = 'rng'
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.rng = Random()
-        self.last_rnd = self.rng.random()
-
     def _exec_seed(self):
         logger.info('DEV RNG: seed')
         seed = self._get_arg_from_stack(CellType.SINGLE)
-        self.rng.seed(seed)
+        self.impl.rng_seed(seed)
 
     def _exec_rnd(self):
         arg = self._get_arg_from_stack(CellType.SINGLE)
-        if arg == 0:
-            self.cpu.push(CellType.SINGLE, self.last_rnd)
-        elif arg < 0:
-            state = self.rng.getstate()
-            self.rng.seed(arg)
-            self.last_rnd = self.rng.random()
-            self.cpu.push(CellType.SINGLE, self.last_rnd)
-            self.rng.setstate(state)
-        else:
-            self.last_rnd = self.rng.random()
-            self.cpu.push(CellType.SINGLE, self.last_rnd)
+        result = self.impl.rng_rnd(arg)
+        self.cpu.push(CellType.SINGLE, result)
 
 
 class MemoryDevice(Device):
     name = 'memory'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.cur_segment = None  # default segment
 
     def _exec_set_segment(self):
         logger.info('DEV MEMORY: set_segment')
@@ -136,26 +124,17 @@ class MemoryDevice(Device):
                 error_msg=f'Invalid segment: 0x{segment:04x}',
             )
             return
-        self.cur_segment = segment
+        self.impl.memory_set_segment(segment)
 
     def _exec_set_default_segment(self):
         logger.info('DEV MEMORY: set_default_segment')
-        self.cur_segment = None
+        self.impl.memory_set_default_segment()
 
     def _exec_peek(self):
         logger.info('DEV MEMORY: peek')
         offset = self._get_arg_from_stack(CellType.LONG)
-        if self.cur_segment == 0 and offset == 0x417:
-            return self._get_control_keys()
-        else:
-            self._device_error(
-                error_code=Device.Error.BAD_ARG_VALUE,
-                error_msg=(
-                    f'Cannot read memory at: {self.cur_segment:04x}:'
-                    f'{offset:04x}'
-                ),
-            )
-            return
+        result = self.impl.memory_peek(offset)
+        self.cpu.push(CellType.INTEGER, result)
 
     def _exec_poke(self):
         logger.info('DEV MEMORY: poke')
@@ -167,17 +146,7 @@ class MemoryDevice(Device):
             )
             return
         offset = self._get_arg_from_stack(CellType.LONG)
-        if self.cur_segment == 0 and offset == 0x417:
-            return self._set_control_keys()
-        else:
-            self._device_error(
-                error_code=Device.Error.BAD_ARG_VALUE,
-                error_msg=(
-                    f'Cannot write to memory at: '
-                    f'{self.cur_segment:04x}:{offset:04x}'
-                ),
-            )
-            return
+        self.impl.memory_poke(offset, value)
 
     def _get_control_keys(self):
         # The original meaning of the bits at 0000:0417, were (from
@@ -224,23 +193,23 @@ class TerminalDevice(Device):
             )
             return
 
-        self._set_mode(mode, color_switch, apage, vpage)
+        self.impl.terminal_set_mode(mode, color_switch, apage, vpage)
 
     def _exec_width(self):
         lines = self._get_arg_from_stack(CellType.INTEGER)
         columns = self._get_arg_from_stack(CellType.INTEGER)
 
-        self._width(columns, lines)
+        self.impl.terminal_width(columns, lines)
 
     def _exec_color(self):
         border = self._get_arg_from_stack(CellType.INTEGER)
         bg_color = self._get_arg_from_stack(CellType.INTEGER)
         fg_color = self._get_arg_from_stack(CellType.INTEGER)
 
-        self._color(fg_color, bg_color, border)
+        self.impl.terminal_color(fg_color, bg_color, border)
 
     def _exec_cls(self):
-        self._cls()
+        self.impl.terminal_cls()
 
     def _exec_locate(self):
         stop = self._get_arg_from_stack(CellType.INTEGER)
@@ -255,7 +224,7 @@ class TerminalDevice(Device):
         if row >= 1:
             row -= 1
 
-        self._locate(row, column, cursor, start, stop)
+        self.impl.terminal_locate(row, column, cursor, start, stop)
 
     def _exec_print(self):
         nargs = self._get_arg_from_stack(CellType.INTEGER)
@@ -306,9 +275,9 @@ class TerminalDevice(Device):
             new_line = printables[-1] not in [comma, semicolon]
             printables = [a.value for a in printables
                           if a != semicolon and a != comma]
-            self._print(formatter.format(printables))
+            self.impl.terminal_print(formatter.format(printables))
             if new_line:
-                self._print('\r\n')
+                self.impl.terminal_print('\r\n')
         else:
             buf = ''
             def print_number(n):
@@ -334,10 +303,11 @@ class TerminalDevice(Device):
             if len(printables) == 0 or \
                printables[-1] not in [comma, semicolon]:
                 buf += '\r\n'
-            self._print(buf)
+            self.impl.terminal_print(buf)
 
     def _exec_inkey(self):
-        self._inkey()
+        result = self.impl.terminal_inkey()
+        self.cpu.push(CellType.STRING, result)
 
     def _exec_input(self):
         def push_vars(string, var_types):
@@ -406,24 +376,265 @@ class TerminalDevice(Device):
         same_line = self.cpu.pop(CellType.INTEGER)
 
         while True:
-            self._print(prompt)
+            self.impl.terminal_print(prompt)
             if prompt_question:
-                self._print('? ')
+                self.impl.terminal_print('? ')
 
-            string = self._input(same_line)
+            string = self.impl.terminal_input(same_line)
             success = push_vars(string, var_types)
             if success:
                 break
-            self._print('Redo from start\r\n')
+            self.impl.terminal_print('Redo from start\r\n')
 
     def _exec_view_print(self):
         bottom_line = self.cpu.pop(CellType.INTEGER)
         top_line = self.cpu.pop(CellType.INTEGER)
-        self._view_print(top_line, bottom_line)
+        self.impl.terminal_view_print(top_line, bottom_line)
 
 
-class DumbTerminalDevice(TerminalDevice):
-    def _set_mode(self, mode, color_switch, apage, vpage):
+class PcSpeakerDevice(Device):
+    name = 'pcspkr'
+
+    def _exec_play(self):
+        command = self.cpu.pop(CellType.STRING)
+        self.impl.pcspkr_play(command)
+
+
+class DataDevice(Device):
+    name = 'data'
+
+    # NOTE: The DataDevice does not really perform IO, so it won't
+    # call 'impl' for its operations.
+
+    def _exec_read(self):
+        data_type = self.cpu.pop(CellType.INTEGER)
+        try:
+            s = self.cpu.module.data[self.data_part][self.data_idx]
+        except IndexError:
+            self._device_error(
+                error_code=Device.Error.OP_FAILED,
+                error_msg='Out of data',
+            )
+
+        try:
+            if data_type == 1:
+                self.cpu.push(CellType.INTEGER, int(s))
+            elif data_type == 2:
+                self.cpu.push(CellType.LONG, int(s))
+            elif data_type == 3:
+                self.cpu.push(CellType.SINGLE, float(s))
+            elif data_type == 4:
+                self.cpu.push(CellType.DOUBLE, float(s))
+            elif data_type == 5:
+                self.cpu.push(CellType.STRING, s)
+            else:
+                assert False
+        except (ValueError, TypeError) as e:
+            self._device_error(
+                error_code=Device.Error.BAD_ARG_TYPE,
+                error_msg='Cannot READ data as requested type',
+            )
+
+        self.data_idx += 1
+        if self.data_idx >= len(self.cpu.module.data[self.data_part]):
+            self.data_idx = 0
+            self.data_part += 1
+
+    def _exec_restore(self):
+        part_idx = self.cpu.pop(CellType.INTEGER)
+        self.data_part = part_idx
+        self.data_idx = 0
+
+
+class BasePeripheralsImpl:
+    def __init__(self):
+        super().__init__()
+
+        # memory
+        self.cur_segment = None  # default segment
+
+        # rng
+        self.rng = Random()
+        self.last_rnd = self.rng.random()
+
+    # memory
+
+    def memory_set_segment(self, segment):
+        self.cur_segment = segment
+
+    def memory_set_default_segment(self):
+        self.cur_segment = None
+
+    def memory_peek(self, offset):
+        if self.cur_segment == 0 and offset == 0x417:
+            return self.misc_get_control_keys()
+        else:
+            raise DeviceError(
+                error_code=Device.Error.BAD_ARG_VALUE,
+                error_msg=(
+                    f'Cannot read memory at: {self.cur_segment:04x}:'
+                    f'{offset:04x}'
+                ),
+            )
+
+    def memory_poke(self, offset, value):
+        if self.cur_segment == 0 and offset == 0x417:
+            self.misc_set_control_keys()
+        else:
+            raise DeviceError(
+                error_code=Device.Error.BAD_ARG_VALUE,
+                error_msg=(
+                    f'Cannot write to memory at: '
+                    f'{self.cur_segment:04x}:{offset:04x}'
+                ),
+            )
+
+    # pcspkr
+
+    def pcspkr_play(self, command):
+        logger.info('PLAY: %s', command)
+
+    # rng
+
+    def rng_seed(self, seed):
+        self.rng.seed(seed)
+
+    def rng_rnd(self, arg):
+        if arg == 0:
+            return self.last_rnd
+        elif arg < 0:
+            state = self.rng.getstate()
+            self.rng.seed(arg)
+            self.last_rnd = self.rng.random()
+            self.rng.setstate(state)
+            return self.last_rnd
+        else:
+            self.last_rnd = self.rng.random()
+            return self.last_rnd
+
+    # time
+
+    def time_get_time(self):
+        now = datetime.now()
+        midnight = now.replace(
+            hour=0, minute=0, second=0, microsecond=0)
+        time_since_midnight = (now - midnight).total_seconds()
+        return time_since_midnight
+
+    # misc
+
+    def misc_get_control_keys(self):
+        # The original meaning of the bits at 0000:0417, were (from
+        # most significant to least significant bits):
+        #
+        # Insert|Caps Lock|Num Lock|Scroll Lock|Alt|Ctrl|LShift|RShift
+        #
+        # We do not support reading/setting these values right now
+        # however.
+        logger.info('Reading control keys not supported; returning 0.')
+        return 0
+
+    def misc_set_control_keys(self):
+        # The original meaning of the bits at 0000:0417, were (from
+        # most significant to least significant bits):
+        #
+        # Insert|Caps Lock|Num Lock|Scroll Lock|Alt|Ctrl|LShift|RShift
+        #
+        # We do not support reading/setting these values right now
+        # however.
+        logger.info('Setting control keys not supported.')
+
+
+class SmartTerminalMixin:
+    def __init__(self):
+        super().__init__()
+        self.mode = 0
+        self.terminal = SubTerminal()
+        self.terminal.launch()
+
+    def terminal_set_mode(self, mode, color_switch, apage, vpage):
+        self.mode = mode
+        self.terminal.call('set_mode', mode)
+
+    def terminal_width(self, columns, lines):
+        print('WIDTH NOT SUPPORTED FOR NOW')
+
+    def terminal_color(self, fg_color, bg_color, border):
+        if border >= 0:
+            self.terminal.call('set', 'border_color', border)
+        if fg_color >= 0:
+            self.terminal.call('set', 'fg_color', fg_color)
+        if bg_color >= 0:
+            self.terminal.call('set', 'bg_color', bg_color)
+
+    def terminal_cls(self):
+        self.terminal.call('clear_screen')
+
+    def terminal_locate(self, row, col, cursor, start, stop):
+        if row < 0:
+            row = None
+        if col < 0:
+            col = None
+        self.terminal.call('locate', row, col)
+
+    def terminal_print(self, text):
+        self.terminal.call('put_text', text)
+
+    def terminal_inkey(self):
+        k = self.terminal.call_with_result('get_key')
+        if k == -1:
+            return ''
+        elif isinstance(k, int):
+            return chr(k)
+        elif isinstance(k, tuple):
+            return chr(k[0]) + chr(k[1])
+        else:
+            assert False
+
+    def terminal_input(self, same_line):
+        self.terminal.call('set', 'show_cursor', True)
+        string = ''
+        while True:
+            k = self.terminal.call_with_result('get_key')
+            if k == -1:
+                continue
+            if isinstance(k, tuple):
+                pass
+            elif 32 <= k <= 126:
+                self.terminal.call('put_text', chr(k))
+                string += chr(k)
+            elif k == 13:
+                break
+            elif k == 8 and string:
+                string = string[:-1]
+                row, col = self.terminal.call_with_result(
+                    'get_cursor_pos')
+                col = 0 if col <= 0 else col - 1
+                self.terminal.call('locate', row, col)
+                self.terminal.call('put_text', ' ')
+                self.terminal.call('locate', row, col)
+
+        if not same_line:
+            self.terminal.call('put_text', '\r\n')
+
+        self.terminal.call('set', 'show_cursor', False)
+
+        return string
+
+    def terminal_view_print(self, top_line, bottom_line):
+        if top_line <= 0:
+            # view print with no argument
+            top_line = None
+            bottom_line = None
+
+        self.terminal.call('view_print', top_line, bottom_line)
+
+
+class DumbTerminalMixin:
+    def __init__(self):
+        super().__init__()
+
+    def terminal_set_mode(self, mode, color_switch, apage, vpage):
         if mode != 0:
             self._device_error(
                 error_code=Device.Error.BAD_ARG_VALUE,
@@ -433,7 +644,7 @@ class DumbTerminalDevice(TerminalDevice):
             )
             return
 
-    def _width(self, columns, lines):
+    def terminal_width(self, columns, lines):
         if lines != 25 or columns != 80:
             self._device_error(
                 error_code=Device.Error.BAD_ARG_VALUE,
@@ -443,7 +654,7 @@ class DumbTerminalDevice(TerminalDevice):
             )
             return
 
-    def _color(self, fg_color, bg_color, border):
+    def terminal_color(self, fg_color, bg_color, border):
         if fg_color > 31:
             self._device_error(
                 error_code=Device.Error.BAD_ARG_VALUE,
@@ -517,34 +728,34 @@ class DumbTerminalDevice(TerminalDevice):
         if fg_color > 0:
             print(fg_ansi_code[fg_color], end='')
 
-    def _cls(self):
+    def terminal_cls(self):
         seq =  '\033[2J'    # clear screen
         seq += '\033[1;1H'  # move cursor to screen top-left
         print(seq, end='')
 
-    def _locate(self, row, column, cursor, start, stop):
+    def terminal_locate(self, row, column, cursor, start, stop):
         print(f'\033[{row};{column}H', end='')
 
-    def _print(self, text):
+    def terminal_print(self, text):
         text = text.replace('\r\n', '\n')
         print(text, end='')
 
-    def _inkey(self):
-        self._device_error(
+    def terminal_inkey(self):
+        raise DeviceError(
             error_code=Device.Error.BAD_ARG_VALUE,
             error_msg='INKEY not supported on dumb terminal.',
         )
 
-    def _input(self, same_line):
+    def terminal_input(self, same_line):
         if same_line:
-            self._device_error(
+            raise DeviceError(
                 error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg='Cannot stay on the same line in dumb terminal',
             )
 
         return input()
 
-    def _view_print(self, top_line, bottom_line):
+    def terminal_view_print(self, top_line, bottom_line):
         if bottom_line >= 0 or top_line >= 0:
             self._device_error(
                 error_code=Device.Error.BAD_ARG_VALUE,
@@ -554,173 +765,49 @@ class DumbTerminalDevice(TerminalDevice):
         # no need to do anything for view print without arguments
 
 
-class SmartTerminalDevice(TerminalDevice):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.terminal = SubTerminal()
-        self.terminal.launch()
-
-    def _set_mode(self, mode, color_switch, apage, vpage):
-        self.mode = mode
-        self.terminal.call('set_mode', mode)
-
-    def _width(self, columns, lines):
-        print('WIDTH NOT SUPPORTED FOR NOW')
-
-    def _color(self, fg_color, bg_color, border):
-        if border >= 0:
-            self.terminal.call('set', 'border_color', border)
-        if fg_color >= 0:
-            self.terminal.call('set', 'fg_color', fg_color)
-        if bg_color >= 0:
-            self.terminal.call('set', 'bg_color', bg_color)
-
-    def _cls(self):
-        self.terminal.call('clear_screen')
-
-    def _locate(self, row, col, cursor, start, stop):
-        if row < 0:
-            row = None
-        if col < 0:
-            col = None
-        self.terminal.call('locate', row, col)
-
-    def _print(self, text):
-        self.terminal.call('put_text', text)
-
-    def _inkey(self):
-        k = self.terminal.call_with_result('get_key')
-        if k == -1:
-            self.cpu.push(CellType.STRING, '')
-        elif isinstance(k, int):
-            self.cpu.push(CellType.STRING, chr(k))
-        elif isinstance(k, tuple):
-            self.cpu.push(CellType.STRING, chr(k[0]) + chr(k[1]))
-        else:
-            assert False
-
-    def _input(self, same_line):
-        self.terminal.call('set', 'show_cursor', True)
-        string = ''
-        while True:
-            k = self.terminal.call_with_result('get_key')
-            if k == -1:
-                continue
-            if isinstance(k, tuple):
-                pass
-            elif 32 <= k <= 126:
-                self.terminal.call('put_text', chr(k))
-                string += chr(k)
-            elif k == 13:
-                break
-            elif k == 8 and string:
-                string = string[:-1]
-                row, col = self.terminal.call_with_result('get_cursor_pos')
-                col = 0 if col <= 0 else col - 1
-                self.terminal.call('locate', row, col)
-                self.terminal.call('put_text', ' ')
-                self.terminal.call('locate', row, col)
-
-        if not same_line:
-            self.terminal.call('put_text', '\r\n')
-
-        self.terminal.call('set', 'show_cursor', False)
-
-        return string
-
-    def _view_print(self, top_line, bottom_line):
-        if top_line <= 0:
-            # view print with no argument
-            top_line = None
-            bottom_line = None
-
-        self.terminal.call('view_print', top_line, bottom_line)
+class SmartPeripheralsImpl(BasePeripheralsImpl, SmartTerminalMixin):
+    pass
 
 
-class PcSpeakerDevice(Device):
-    name = 'pcspkr'
-
-    def _exec_play(self):
-        command = self.cpu.pop(CellType.STRING)
-        logger.info('PLAY: %s', command)
-
-
-class DataDevice(Device):
-    name = 'data'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.data_part = 0
-        self.data_idx = 0
-
-    def _exec_read(self):
-        data_type = self.cpu.pop(CellType.INTEGER)
-        try:
-            s = self.cpu.module.data[self.data_part][self.data_idx]
-        except IndexError:
-            self._device_error(
-                error_code=Device.Error.OP_FAILED,
-                error_msg='Out of data',
-            )
-
-        try:
-            if data_type == 1:
-                self.cpu.push(CellType.INTEGER, int(s))
-            elif data_type == 2:
-                self.cpu.push(CellType.LONG, int(s))
-            elif data_type == 3:
-                self.cpu.push(CellType.SINGLE, float(s))
-            elif data_type == 4:
-                self.cpu.push(CellType.DOUBLE, float(s))
-            elif data_type == 5:
-                self.cpu.push(CellType.STRING, s)
-            else:
-                assert False
-        except (ValueError, TypeError) as e:
-            self._device_error(
-                error_code=Device.Error.BAD_ARG_TYPE,
-                error_msg='Cannot READ data as requested type',
-            )
-
-        self.data_idx += 1
-        if self.data_idx >= len(self.cpu.module.data[self.data_part]):
-            self.data_idx = 0
-            self.data_part += 1
-
-    def _exec_restore(self):
-        part_idx = self.cpu.pop(CellType.INTEGER)
-        self.data_part = part_idx
-        self.data_idx = 0
+class DumbPeripheralsImpl(BasePeripheralsImpl, DumbTerminalMixin):
+    pass
 
 
 class QvmMachine:
-    def __init__(self, module, terminal='smart'):
+    def __init__(self, module, impl=None, terminal='smart'):
         self.cpu = QvmCpu(module)
 
-        time_device = TimeDevice(QVM_DEVICES['time']['id'], self.cpu)
+        if not impl:
+            impl_class = {
+                'smart': SmartPeripheralsImpl,
+                'dumb': DumbPeripheralsImpl,
+            }.get(terminal)
+            assert impl_class is not None
+
+            impl = impl_class()
+
+        time_device = TimeDevice(
+            QVM_DEVICES['time']['id'], self.cpu, impl)
         self.cpu.connect_device('time', time_device)
 
-        rng_device = RngDevice(QVM_DEVICES['rng']['id'], self.cpu)
+        rng_device = RngDevice(
+            QVM_DEVICES['rng']['id'], self.cpu, impl)
         self.cpu.connect_device('rng', rng_device)
 
         memory_device = MemoryDevice(
-            QVM_DEVICES['memory']['id'], self.cpu)
+            QVM_DEVICES['memory']['id'], self.cpu, impl)
         self.cpu.connect_device('memory', memory_device)
 
-        terminal_class = {
-            'smart': SmartTerminalDevice,
-            'dumb': DumbTerminalDevice,
-        }.get(terminal)
-        assert terminal_class is not None
-        terminal_device = terminal_class(
-            QVM_DEVICES['terminal']['id'], self.cpu)
+        terminal_device = TerminalDevice(
+            QVM_DEVICES['terminal']['id'], self.cpu, impl)
         self.cpu.connect_device('terminal', terminal_device)
 
         speaker_device = PcSpeakerDevice(
-            QVM_DEVICES['pcspkr']['id'], self.cpu)
+            QVM_DEVICES['pcspkr']['id'], self.cpu, impl)
         self.cpu.connect_device('pcspkr', speaker_device)
 
-        data_device = DataDevice(QVM_DEVICES['data']['id'], self.cpu)
+        data_device = DataDevice(
+            QVM_DEVICES['data']['id'], self.cpu, impl)
         self.cpu.connect_device('data', data_device)
 
     def run(self):

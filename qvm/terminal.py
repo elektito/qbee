@@ -139,7 +139,7 @@ class TerminalWindow(pyglet.window.Window):
                 # bottom of the screen, even if its out of VIEW PRINT
                 # area.
                 if row != self.text_lines - 1:
-                    raise DeviceError('Invalid cursor row')
+                    raise DeviceError(error_msg='Invalid cursor row')
             self._cursor_row = row
 
         if col is not None:
