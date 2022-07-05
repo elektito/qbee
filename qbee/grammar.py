@@ -1,6 +1,5 @@
 import argparse
 import re
-from functools import wraps
 from functools import reduce
 from pyparsing import (
     ParserElement, CaselessKeyword, Literal, Regex, LineEnd, StringEnd,
@@ -858,10 +857,6 @@ line = (
 def parse_action(rule):
     def wrapper(func):
         rule.add_parse_action(func)
-
-        @wraps(func)
-        def wrapped(*args, **kwargs):
-            return func(*args, **kwargs)
         return func
     return wrapper
 
