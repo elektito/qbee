@@ -665,6 +665,28 @@ class QvmCpu:
     def _exec_eqv(self):
         self._bitwise(lambda a, b: ~(a ^ b))
 
+    def _exec_exp(self):
+        b = self.pop()
+        a = self.pop()
+
+        if not a.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=a.type)
+
+        if not b.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=b.type)
+
+        if a.type != b.type:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected=a.type,
+                      got=b.type)
+
+        result = a.value ** b.value
+        self.push(a.type, result)
+
     def _exec_frame(self, params_size, local_vars_size):
         logger.info(
             'Creating stack frame: params=%d locals=%d',
