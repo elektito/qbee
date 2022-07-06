@@ -1,12 +1,18 @@
 # success
 10 goto 10
+---
+norun
 ===
 10 cls
 20 goto 10
+---
+norun
 ===
 foo:
     cls
     goto foo
+---
+norun
 ===
 goto
 ---

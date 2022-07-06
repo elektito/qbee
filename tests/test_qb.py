@@ -5,6 +5,10 @@ from itertools import product
 from pytest import mark, raises, fixture
 from qbee.exceptions import ErrorCode, SyntaxError, CompileError
 from qbee.compiler import Compiler
+from qvm.module import QModule
+from qvm.cpu import HaltReason
+from testvm import TestMachine
+from qb_test_parser import parse_qb_test_file
 
 # Import codegen implementations to enable them (this is needed even
 # though we don't directly use the imported module)
@@ -39,56 +43,15 @@ def compiler(request):
     yield compiler
 
 
-def load_test_case(text, filename, test_idx, defaults=None):
-    results_re = re.compile(
-        r'(?P<expected_result>\w+)(:(?P<options>.*))?',)
-
-    expected_result = 'success'
-    expected_error = None
-    if defaults:
-        m = results_re.match(defaults)
-        expected_result = m.group('expected_result')
-        expected_error = m.group('options')
-        if expected_error:
-            expected_error = ErrorCode[expected_error.strip()]
-
-    sep = '\n---\n'
-    if sep in text:
-        text, extra = text.split(sep)
-        extra = extra.split('\n')
-
-        m = results_re.match(extra[0])
-        assert m
-
-        expected_result = m.group('expected_result').lower()
-        assert expected_result in ['syntaxerror',
-                                   'compileerror',
-                                   'success']
-
-        expected_error = None
-        if m.group('options'):
-            expected_error = m.group('options').upper().strip()
-            expected_error = ErrorCode[expected_error]
-
-    return QTestCase(filename, test_idx,
-                     text, expected_result, expected_error)
+@fixture
+def vm():
+    test_machine = TestMachine()
+    yield test_machine
 
 
 def load_test_file(filename):
-    with open(filename, encoding='cp437') as f:
-        text = f.read()
-
-    defaults = None
-    if text.startswith('#'):
-        eol = text.index('\n')
-        defaults = text[1:eol].strip()
-        text = text[eol+1:]
-
-    parts = text.split('\n===\n')
-    return [
-        load_test_case(part, filename, i, defaults)
-        for i, part in enumerate(parts)
-    ]
+    t = parse_qb_test_file(filename)
+    return t.cases
 
 
 def get_cases(expected_result):
@@ -112,19 +75,42 @@ def get_test_id(case):
 
 
 @mark.parametrize('case', get_cases('success'), ids=get_test_id)
-def test_qb_success(compiler, case):
-    compiler.compile(case.text)
+def test_qb_success(compiler, vm, case):
+    code = compiler.compile(case.source_code)
+    bcode = bytes(code)
+    module = QModule.parse(bcode)
+    vm.init(module)
+    if not case.no_run:
+        vm.run()
+        assert vm.cpu.halt_reason == HaltReason.INSTRUCTION
+
+        if case.expected_io:
+            assert vm.io == case.expected_io
+
+
+@mark.parametrize('case', get_cases('trap'), ids=get_test_id)
+def test_qb_trap(compiler, vm, case):
+    code = compiler.compile(case.source_code)
+    bcode = bytes(code)
+    module = QModule.parse(bcode)
+    vm.init(module)
+    if not case.no_run:
+        vm.run()
+        assert vm.cpu.halt_reason == HaltReason.TRAP
+
+        if case.expected_error is not None:
+            assert vm.cpu.last_trap == case.expected_error
 
 
 @mark.parametrize('case', get_cases('syntaxerror'), ids=get_test_id)
 def test_qb_syntax_error(compiler, case):
     with raises(SyntaxError) as e:
-        compiler.compile(case.text)
+        compiler.compile(case.source_code)
 
 
 @mark.parametrize('case', get_cases('compileerror'), ids=get_test_id)
 def test_qb_compile_error(compiler, case):
     with raises(CompileError) as exc_info:
-        compiler.compile(case.text)
-    if case.expected_error:
+        compiler.compile(case.source_code)
+    if case.expected_error is not None:
         assert exc_info.value.code == case.expected_error
