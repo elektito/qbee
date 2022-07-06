@@ -397,7 +397,11 @@ class QvmCode(BaseCode):
                 left = expr.NumericLiteral(left, prev2_type)
                 right = expr.NumericLiteral(right, prev1_type)
                 binary_expr = expr.BinaryOp(left, right, op)
-                value = binary_expr.eval()
+                try:
+                    value = binary_expr.eval()
+                except OverflowError:
+                    i += 1
+                    continue
 
                 self._instrs[i-2] = QvmInstr(
                     f'push{prev1.type_char}', value)

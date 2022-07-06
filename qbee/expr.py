@@ -97,6 +97,8 @@ class Type:
             unpacked, = struct.unpack('>f', packed)
             return unpacked
         else:
+            if self.py_type == int and isinstance(value, float):
+                value = round(value)
             return self.py_type(value)
 
     def modified(self, **changes):
@@ -694,8 +696,6 @@ class BinaryOp(Expr):
                 'non-primitive values')
 
     def _eval_numeric(self):
-        assert self.left.type == self.right.type
-
         left = self.type.coerce(self.left.eval())
         right = self.type.coerce(self.right.eval())
 
@@ -706,11 +706,12 @@ class BinaryOp(Expr):
             if not self.left.type.is_integral:
                 return x
 
-            mask, c_type = {
-                Type.INTEGER: (0xffff, ctypes.c_short),
-                Type.LONG: (0xffff_ffff, ctypes.c_long),
-            }[self.left.type]
-            x &= mask
+            c_type = {
+                Type.INTEGER: ctypes.c_short,
+                Type.LONG: ctypes.c_long,
+                Type.SINGLE: ctypes.c_float,
+                Type.DOUBLE: ctypes.c_double,
+            }[self.type]
             result = c_type(x).value
             if result != x:
                 raise OverflowError
