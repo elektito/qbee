@@ -282,8 +282,6 @@ class TerminalDevice(Device):
             buf = ''
             def print_number(n):
                 nonlocal buf
-                if n.value >= 0:
-                    buf += ' '
                 nval = n.value
                 if n.type == CellType.SINGLE:
                     # limit it to a 32 bit float
