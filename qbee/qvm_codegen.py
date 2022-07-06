@@ -399,7 +399,7 @@ class QvmCode(BaseCode):
                 binary_expr = expr.BinaryOp(left, right, op)
                 try:
                     value = binary_expr.eval()
-                except OverflowError:
+                except (OverflowError, ZeroDivisionError):
                     i += 1
                     continue
 

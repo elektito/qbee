@@ -466,7 +466,7 @@ class Expr(Node):
         if self.is_const:
             try:
                 value = self.eval()
-            except OverflowError:
+            except (OverflowError, ZeroDivisionError):
                 return self
             if self.type.is_numeric:
                 literal = NumericLiteral(value, self.type)
