@@ -328,6 +328,8 @@ class QvmCpu:
             func(*operands)
         except Trapped as e:
             self._trap(e.trap_code, **e.trap_kwargs)
+        except ZeroDivisionError:
+            self._trap(TrapCode.DIVISION_BY_ZERO)
 
         if self.pc >= len(self.module.code):
             logger.info(
@@ -448,6 +450,8 @@ class QvmCpu:
                   f'dimensions ({expected})')
         elif code == TrapCode.KEYBOARD_INTERRUPT:
             print('Received keyboard interrupt')
+        elif code == TrapCode.DIVISION_BY_ZERO:
+            print('Division by zero')
         else:
             assert False
 

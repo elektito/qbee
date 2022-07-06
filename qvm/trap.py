@@ -15,6 +15,7 @@ class TrapCode(Enum):
     INDEX_OUT_OF_RANGE = 11
     INVALID_DIMENSIONS = 12
     KEYBOARD_INTERRUPT = 13
+    DIVISION_BY_ZERO = 14
 
 
 class Trapped(Exception):
