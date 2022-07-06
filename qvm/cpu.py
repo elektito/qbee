@@ -742,8 +742,8 @@ class QvmCpu:
         self.halt_reason = HaltReason.INSTRUCTION
 
     def _exec_idiv(self):
-        a = self.pop()
         b = self.pop()
+        a = self.pop()
 
         if not a.type.is_integral:
             self.trap(TrapCode.TYPE_MISMATCH,
