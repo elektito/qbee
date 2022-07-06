@@ -393,6 +393,9 @@ class TerminalDevice(Device):
 class PcSpeakerDevice(Device):
     name = 'pcspkr'
 
+    def _exec_beep(self):
+        self.impl.pcspkr_beep()
+
     def _exec_play(self):
         command = self.cpu.pop(CellType.STRING)
         self.impl.pcspkr_play(command)
