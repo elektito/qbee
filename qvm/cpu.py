@@ -213,6 +213,7 @@ class QvmCpu:
         self.stack = []
         self.breakpoints = []
         self.last_breakpoint = None
+        self.last_trap = None
 
         self.received_keyboard_interrupt = False
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -457,6 +458,7 @@ class QvmCpu:
 
         self.halted = True
         self.halt_reason = HaltReason.TRAP
+        self.last_trap = code
 
     def push(self, value_type, value):
         logger.info(
