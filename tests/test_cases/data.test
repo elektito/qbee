@@ -1,0 +1,13 @@
+# success
+
+sub foo
+    data 1, 2
+end sub
+---
+compileerror: ILLEGAL_IN_SUB
+===
+function foo
+    data 1, 2
+end function
+---
+compileerror: ILLEGAL_IN_SUB

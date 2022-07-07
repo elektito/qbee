@@ -1,0 +1,18 @@
+# success
+
+sub foo
+    type bar
+         x as integer
+    end type
+end sub
+---
+compileerror: ILLEGAL_IN_SUB
+===
+
+function foo
+    type bar
+         x as integer
+    end type
+end function
+---
+compileerror: ILLEGAL_IN_SUB

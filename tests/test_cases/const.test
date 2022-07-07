@@ -1,0 +1,26 @@
+# success
+
+const a = 100
+call foo
+
+sub foo
+    print a
+end sub
+---
+io: terminal, print, " 100\r\n"
+===
+
+const a = 100
+call foo
+
+sub foo
+    a = 99
+end sub
+---
+compileerror: DUPLICATE_DEFINITION
+===
+
+const a = 10 - 20 * 2
+print a
+---
+io: terminal, print, "-30\r\n"
