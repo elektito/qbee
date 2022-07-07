@@ -363,6 +363,11 @@ class Pass1(CompilePass):
             )
 
     def process_type_block_pre(self, node):
+        if node.parent_routine != self.compilation.main_routine:
+            raise CompileError(
+                EC.ILLEGAL_IN_SUB,
+                'TYPE block is illegal in SUB/FUNCTION',
+                node=node)
         if node.name in self.compilation.user_types:
             raise CompileError(
                 EC.DUPLICATE_DEFINITION,
@@ -392,6 +397,11 @@ class Pass1(CompilePass):
                 node=node)
 
     def process_data_pre(self, node):
+        if node.parent_routine != self.compilation.main_routine:
+            raise CompileError(
+                EC.ILLEGAL_IN_SUB,
+                'DATA is illegal in SUB/FUNCTION',
+                node=node)
         self.compilation.data[self._last_label].extend(node.items)
 
 
