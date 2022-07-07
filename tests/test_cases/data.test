@@ -135,6 +135,12 @@ print a; b; c
 ---
 io: terminal, print, " 1  0  2 \r\n"
 ===
+data 1,
+read a, b$
+print b$
+---
+io: terminal, print, "\r\n"
+===
 data "x" y
 ---
 syntaxerror
