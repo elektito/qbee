@@ -1,5 +1,6 @@
 import struct
 import sys
+from qbee.utils import Empty
 from .instrs import op_code_to_instr
 from .debug_info import DebugInfo
 
@@ -35,11 +36,14 @@ def parse_data_section(section):
         nitems, = struct.unpack('>H', section[idx:idx+2])
         idx += 2
         for j in range(nitems):
-            size, = struct.unpack('>H', section[idx:idx+2])
+            size, = struct.unpack('>h', section[idx:idx+2])
             idx += 2
-            item = section[idx:idx+size]
-            idx += size
-            part.append(item.decode('cp437'))
+            if size < 0:
+                item = Empty.value
+            else:
+                item = section[idx:idx+size].decode('cp437')
+                idx += size
+            part.append(item)
         data_parts.append(part)
 
     if idx != len(section):

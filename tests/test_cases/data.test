@@ -7,6 +7,18 @@ print a; b; x$
 ---
 io: terminal, print, " 1  2 foo\r\n"
 ===
+data     1,       2   , 3
+read a, b$, c
+print a; b$; c
+---
+io: terminal, print, " 1 2 3 \r\n"
+===
+data 1,   "foo  "
+read a, b$
+print b$
+---
+io: terminal, print, "foo  \r\n"
+===
 data 1
 data 2, foo
 
@@ -92,6 +104,40 @@ read x$
 print x$
 ---
 io: terminal, print, "foo 'xyz\r\n"
+===
+data
+read x$
+print x$
+---
+io: terminal, print, "\r\n"
+===
+data
+read x%
+print x%
+---
+io: terminal, print, " 0 \r\n"
+===
+data ""
+read x$
+print x$
+---
+io: terminal, print, "\r\n"
+===
+data ""
+read x%
+print x%
+---
+trap: DEVICE_ERROR
+===
+data 1,,2
+read a, b, c
+print a; b; c
+---
+io: terminal, print, " 1  0  2 \r\n"
+===
+data "x" y
+---
+syntaxerror
 ===
 sub foo
     data 1, 2

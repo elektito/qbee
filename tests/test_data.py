@@ -1,4 +1,4 @@
-from qbee.utils import parse_data
+from qbee.utils import parse_data, Empty
 
 
 def test_simple():
@@ -43,7 +43,7 @@ def test_quote_in_the_middle():
 
 def test_empty_items():
     items = parse_data('foo,, ,   ,1')
-    assert items == ['foo', '', '', '', '1']
+    assert items == ['foo', Empty.value, Empty.value, Empty.value, '1']
 
 
 def test_empty_quoted():
@@ -53,12 +53,12 @@ def test_empty_quoted():
 
 def test_empty():
     items = parse_data('')
-    assert items == ['']
+    assert items == [Empty.value]
 
 
 def test_empty_with_spaces():
     items = parse_data('  \t ')
-    assert items == ['']
+    assert items == [Empty.value]
 
 
 def test_syntax_error_multi_quoted():

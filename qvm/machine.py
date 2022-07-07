@@ -4,6 +4,7 @@ from datetime import datetime
 from enum import Enum
 from random import Random
 from qbee import expr
+from qbee.utils import Empty
 from .using import PrintUsingFormatter
 from .cpu import QvmCpu, QVM_DEVICES
 from .cell import CellType
@@ -424,15 +425,20 @@ class DataDevice(Device):
 
         try:
             if data_type == 1:
-                self.cpu.push(CellType.INTEGER, int(s))
+                value = 0 if s == Empty.value else int(s)
+                self.cpu.push(CellType.INTEGER, value)
             elif data_type == 2:
-                self.cpu.push(CellType.LONG, int(s))
+                value = 0 if s == Empty.value else int(s)
+                self.cpu.push(CellType.LONG, value)
             elif data_type == 3:
-                self.cpu.push(CellType.SINGLE, float(s))
+                value = 0.0 if s == Empty.value else float(s)
+                self.cpu.push(CellType.SINGLE, value)
             elif data_type == 4:
-                self.cpu.push(CellType.DOUBLE, float(s))
+                value = 0.0 if s == Empty.value else float(s)
+                self.cpu.push(CellType.DOUBLE, value)
             elif data_type == 5:
-                self.cpu.push(CellType.STRING, s)
+                value = '' if s == Empty.value else s
+                self.cpu.push(CellType.STRING, value)
             else:
                 assert False
         except (ValueError, TypeError) as e:

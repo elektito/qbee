@@ -1,4 +1,12 @@
+from enum import Enum
 import sys
+
+
+# We'll use this value wherever we need an empty value and None is a
+# valid non-empty value, or we just want to be more intentional with
+# our empties.
+class Empty(Enum):
+    value = 1
 
 
 def eprint(*args, **kwargs):
@@ -20,7 +28,7 @@ def parse_data(s):
             if c in whitespace:
                 pass
             elif c == ',':
-                items.append('')
+                items.append(Empty.value)
             elif c == '"':
                 state = READING_QUOTED
             else:
@@ -50,7 +58,12 @@ def parse_data(s):
 
     if state == READING_UNQUOTED:
         items.append(item.strip())
-    elif state in [BEFORE_ITEM, READING_QUOTED]:
+    elif state == BEFORE_ITEM:
+        if item:
+            items.append(item)
+        else:
+            items.append(Empty.value)
+    elif state == READING_QUOTED:
         items.append(item)
 
     return items

@@ -14,6 +14,7 @@ from .codegen import BaseCodeGen, BaseCode
 from .program import Label, LineNo, Program
 from .exceptions import InternalError
 from .evalctx import Routine
+from .utils import Empty
 from . import stmt, expr
 
 
@@ -481,6 +482,7 @@ class QvmCode(BaseCode):
             for label, data in self._data.items():
                 s += f'{label}:\n'
                 for item in data:
+                    item = '<EMPTY>' if item == Empty.value else ''
                     s += f'    {item}\n'
             s += '\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n'
 
@@ -684,10 +686,13 @@ class QvmCode(BaseCode):
 
         data_section = struct.pack('>H', len(self._data))
         for data_part in self._data.values():
-            data_section += struct.pack('>H', len(data_part))
+            data_section += struct.pack('>h', len(data_part))
             for data_item in data_part:
-                data_section += struct.pack('>H', len(data_item))
-                data_section += data_item.encode('cp437')
+                if data_item == Empty.value:
+                    data_section += struct.pack('>h', -1)
+                else:
+                    data_section += struct.pack('>h', len(data_item))
+                    data_section += data_item.encode('cp437')
         sections.append((2, data_section))
 
         n_global_cells = sum(
