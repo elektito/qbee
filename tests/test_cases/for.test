@@ -1,0 +1,64 @@
+# success
+for i = 1 to 5
+    print i
+next
+---
+io: terminal, print, " 1 \r\n"
+io: terminal, print, " 2 \r\n"
+io: terminal, print, " 3 \r\n"
+io: terminal, print, " 4 \r\n"
+io: terminal, print, " 5 \r\n"
+===
+for i = 1 to 5
+    print i
+next i
+---
+io: terminal, print, " 1 \r\n"
+io: terminal, print, " 2 \r\n"
+io: terminal, print, " 3 \r\n"
+io: terminal, print, " 4 \r\n"
+io: terminal, print, " 5 \r\n"
+===
+for i = 5 to 1 step -1
+    print i
+next
+---
+io: terminal, print, " 5 \r\n"
+io: terminal, print, " 4 \r\n"
+io: terminal, print, " 3 \r\n"
+io: terminal, print, " 2 \r\n"
+io: terminal, print, " 1 \r\n"
+===
+for i = 10 to 1 step -25
+    print i
+next
+---
+io: terminal, print, " 10 \r\n"
+===
+cls
+for i = 5 to 1
+    print i
+next
+---
+io: terminal, cls
+===
+for i = 1 to 5
+next j
+---
+compileerror: BLOCK_MISMATCH
+===
+for i = 1 to 2
+    for j = 10 to 20 step 10
+        print i; j
+    next
+next
+---
+io: terminal, print, " 1  10 \r\n"
+io: terminal, print, " 1  20 \r\n"
+io: terminal, print, " 2  10 \r\n"
+io: terminal, print, " 2  20 \r\n"
+===
+for i$ = 1 to 10
+next
+---
+compileerror: TYPE_MISMATCH
