@@ -8,7 +8,7 @@ from qbee.compiler import Compiler
 from qvm.module import QModule
 from qvm.cpu import HaltReason
 from testvm import TestMachine
-from qb_test_parser import parse_qb_test_file
+from qb_test_parser import parse_qb_test_file, TestCase
 
 # Import codegen implementations to enable them (this is needed even
 # though we don't directly use the imported module)
@@ -71,6 +71,8 @@ def get_cases(expected_result):
 
 
 def get_test_id(case):
+    if not isinstance(case, TestCase):
+        return
     return f'{case.filename}::{case.idx}'
 
 
