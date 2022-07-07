@@ -407,6 +407,11 @@ class DataDevice(Device):
     # NOTE: The DataDevice does not really perform IO, so it won't
     # call 'impl' for its operations.
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.data_part = 0
+        self.data_idx = 0
+
     def _exec_read(self):
         data_type = self.cpu.pop(CellType.INTEGER)
         try:

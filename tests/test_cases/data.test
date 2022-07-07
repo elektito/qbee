@@ -1,5 +1,92 @@
 # success
+data 1, 2, "foo"
 
+read a, b
+read x$
+print a; b; x$
+---
+io: terminal, print, " 1  2 foo\r\n"
+===
+data 1
+data 2, foo
+
+read a, b
+read x$
+print a; b; x$
+---
+io: terminal, print, " 1  2 foo\r\n"
+===
+data 1, 2
+read a
+restore
+read x$
+print a; x$
+---
+io: terminal, print, " 1 1\r\n"
+===
+data foo bar, spam eggs
+read x$, y$
+print x$; y$
+---
+io: terminal, print, "foo barspam eggs\r\n"
+===
+data "foo,bar:x",buz
+read x$
+print x$
+---
+io: terminal, print, "foo,bar:x\r\n"
+===
+data 1, 2
+read a, b, c
+---
+trap: DEVICE_ERROR
+===
+10 data 1, 2
+20 data 20, 30
+restore 20
+read a, b
+print a; b
+---
+io: terminal, print, " 20  30 \r\n"
+===
+foo:
+cls
+data 1, 2
+
+bar:
+data 20, 30
+
+restore bar
+
+read a, b
+print a; b
+---
+io: terminal, cls
+io: terminal, print, " 20  30 \r\n"
+===
+restore bar
+read a, b
+print a; b
+
+foo: data 1, 2
+bar: data 20, 30
+spam: data 200, 300
+---
+io: terminal, print, " 20  30 \r\n"
+===
+data 1, "foo, bar
+read a, x$
+print x$
+---
+io: terminal, print, "foo, bar\r\n"
+===
+data 1,"foo": cls
+read a, b$
+print a; b$
+---
+io: terminal, cls
+io: terminal, print, " 1 foo\r\n"
+===
 sub foo
     data 1, 2
 end sub
