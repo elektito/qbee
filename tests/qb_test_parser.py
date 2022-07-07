@@ -25,6 +25,8 @@ EmptyTestCase = namedtuple('EmptyTestCase', [])
 
 @dataclass
 class TestCase:
+    __test__ = False
+
     source_code: str
     expected_result: str
     expected_error: str = None
@@ -36,6 +38,8 @@ class TestCase:
 
 @dataclass
 class TestFile:
+    __test__ = False
+
     filename: str = None
     global_expected_result: str = None
     global_expected_error: str = None
@@ -155,6 +159,8 @@ def parse_test_file(toks):
             if value:
                 value = value[0].strip().upper()
                 expected_error = TrapCode[value]
+        else:
+            assert False, f'Invalid expected_result: {name}'
 
     new_cases = []
     for case in cases:
