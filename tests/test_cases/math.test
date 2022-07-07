@@ -3,6 +3,10 @@ print 1+1
 ---
 io: terminal, print, " 2\r\n"
 ===
+print -1+1
+---
+io: terminal, print, " 0\r\n"
+===
 print 30-40
 ---
 io: terminal, print, "-10\r\n"
@@ -87,3 +91,26 @@ io: terminal, print, "-1084\r\n"
 print 3000 imp 40
 ---
 io: terminal, print, "-2961\r\n"
+===
+x& = 100
+let y& = 200
+
+print x& * (y& + 1) / 10
+---
+io: terminal, print, " 2010\r\n"
+===
+print 2 + 3 * 4
+---
+io: terminal, print, " 14\r\n"
+===
+print 2 * 3 ^ 2
+---
+io: terminal, print, " 18\r\n"
+===
+print -2^3
+---
+io: terminal, print, "-8\r\n"
+===
+print 2^2^3
+---
+io: terminal, print, " 256\r\n"

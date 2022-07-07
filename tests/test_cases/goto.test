@@ -38,3 +38,61 @@ goto 10
 ---
 compileerror: LABEL_NOT_DEFINED
 ===
+foo:
+foo:
+---
+compileerror: DUPLICATE_LABEL
+===
+10 cls
+10 beep
+---
+compileerror: DUPLICATE_LABEL
+===
+10 cls
+sub foo
+    10 beep
+end sub
+---
+compileerror: DUPLICATE_LABEL
+===
+foo:
+
+sub bar
+foo:
+    beep
+end sub
+---
+compileerror: DUPLICATE_LABEL
+===
+foo:
+
+sub bar
+    goto foo
+end sub
+---
+compileerror: LABEL_NOT_DEFINED
+===
+foo:
+
+function bar
+    goto foo
+end function
+---
+compileerror: LABEL_NOT_DEFINED
+===
+10 cls
+
+sub bar
+    goto 10
+end sub
+---
+compileerror: LABEL_NOT_DEFINED
+===
+10 beep
+
+function bar
+    goto 10
+end function
+---
+compileerror: LABEL_NOT_DEFINED
+===
