@@ -423,7 +423,7 @@ comment = (
     single_quote + SkipTo(LineEnd() | StringEnd())
 ).suppress().set_name('comment')
 
-quoted_string = Regex(r'"[^"]+"')
+quoted_string = Regex(r'"[^"]*"')
 unquoted_string = Regex(r'[^"\n:]+')
 unclosed_quoted_string = Regex(r'"[^"\n]+') + FollowedBy(LineEnd())
 data_clause = quoted_string | unquoted_string
