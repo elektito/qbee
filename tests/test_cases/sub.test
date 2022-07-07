@@ -32,3 +32,22 @@ sub foo
 end sub
 ---
 compileerror: DUPLICATE_DEFINITION
+===
+sub foo
+    sub bar: end sub
+end sub
+---
+compileerror: ILLEGAL_IN_SUB
+===
+sub foo
+    function bar: end function
+end sub
+---
+compileerror: ILLEGAL_IN_SUB
+===
+sub foo
+for i = 1 to 5
+end sub
+next i
+---
+syntaxerror

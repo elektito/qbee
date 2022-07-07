@@ -87,6 +87,12 @@ print a; b$
 io: terminal, cls
 io: terminal, print, " 1 foo\r\n"
 ===
+data foo 'xyz
+read x$
+print x$
+---
+io: terminal, print, "foo 'xyz\r\n"
+===
 sub foo
     data 1, 2
 end sub

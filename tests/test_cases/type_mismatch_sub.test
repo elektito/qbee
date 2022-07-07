@@ -32,3 +32,36 @@ end sub
 sub foo(x as string)
     x = 100
 end sub
+===
+x=foo(10)
+
+function foo(x as string)
+end function
+
+===
+
+x=foo("text")
+
+function foo(x as long)
+end function
+
+===
+
+x = 10.1
+y = foo(x)
+
+function foo(x as long)
+end function
+
+===
+
+y = foo("text")
+
+function foo(x)
+end function
+
+===
+
+function foo(x as string)
+    x = 100
+end function

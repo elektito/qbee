@@ -96,3 +96,7 @@ end function
 ---
 compileerror: LABEL_NOT_DEFINED
 ===
+cls:
+---
+io: terminal, cls
+===

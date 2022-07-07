@@ -1,0 +1,78 @@
+# success
+print sum(10, 20)
+
+function sum(a, b)
+         sum = a + b
+end function
+---
+io: terminal, print, " 30 \r\n"
+===
+print sum(10, 20)
+
+function sum(a, b)
+         sum = a + b
+         exit function
+         sum = a - b
+end function
+---
+io: terminal, print, " 30 \r\n"
+===
+print foo
+function foo
+         foo=100
+end function
+---
+io: terminal, print, " 100 \r\n"
+===
+a = 10
+b = 20
+print sum(a, b); a; b
+
+function sum(a, b)
+         sum = a + b
+         a = 100
+         b = 200
+end function
+---
+io: terminal, print, " 30  100  200 \r\n"
+===
+a = 10
+b = 20
+print sum((a), b); a; b
+
+function sum(a, b)
+         sum = a + b
+         a = 100
+         b = 200
+end function
+---
+io: terminal, print, " 30  10  200 \r\n"
+===
+dim a as string
+x=foo(a)
+print a
+
+function foo(x as string)
+         x = "foobar"
+end function
+---
+io: terminal, print, "foobar\r\n"
+===
+function foo
+    function bar: end function
+end function
+---
+compileerror: ILLEGAL_IN_SUB
+===
+function foo
+    sub bar: end sub
+end function
+---
+compileerror: ILLEGAL_IN_SUB
+===
+function foo
+for i = 1 to 5
+end function
+next i
+---
+syntaxerror

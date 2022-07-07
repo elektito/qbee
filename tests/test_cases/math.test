@@ -114,3 +114,11 @@ io: terminal, print, "-8 \r\n"
 print 2^2^3
 ---
 io: terminal, print, " 256 \r\n"
+===
+a% = 1.1
+b% = 1.5
+c% = 2.5
+d% = 2.6
+print a%; b%; c%; d%
+---
+io: terminal, print, " 1  2  2  3 \r\n"
