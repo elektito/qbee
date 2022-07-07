@@ -9,8 +9,8 @@ sub foo(a)
     a = 20
 end sub
 ---
-io: terminal, print, " 10\r\n"
-io: terminal, print, " 20\r\n"
+io: terminal, print, " 10 \r\n"
+io: terminal, print, " 20 \r\n"
 ===
 
 a = 10
@@ -22,8 +22,8 @@ sub foo(a)
     a = 20
 end sub
 ---
-io: terminal, print, " 10\r\n"
-io: terminal, print, " 10\r\n"
+io: terminal, print, " 10 \r\n"
+io: terminal, print, " 10 \r\n"
 ===
 
 foo = 10
