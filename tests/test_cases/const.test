@@ -9,6 +9,11 @@ end sub
 ---
 io: terminal, print, " 100 \r\n"
 ===
+const a = 100
+a = 101
+---
+compileerror: DUPLICATE_DEFINITION
+===
 
 const a = 100
 call foo
