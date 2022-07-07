@@ -46,6 +46,12 @@ end sub
 compileerror: ILLEGAL_IN_SUB
 ===
 sub foo
+    dim shared x as long
+end sub
+---
+compileerror: ILLEGAL_IN_SUB
+===
+sub foo
 for i = 1 to 5
 end sub
 next i

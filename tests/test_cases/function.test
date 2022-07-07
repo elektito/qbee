@@ -71,6 +71,12 @@ end function
 compileerror: ILLEGAL_IN_SUB
 ===
 function foo
+    dim shared x as long
+end function
+---
+compileerror: ILLEGAL_IN_SUB
+===
+function foo
 for i = 1 to 5
 end function
 next i

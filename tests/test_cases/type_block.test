@@ -16,3 +16,11 @@ function foo
 end function
 ---
 compileerror: ILLEGAL_IN_SUB
+===
+type foo
+     x as long
+end type
+dim f as foo
+print f + 10
+---
+compileerror: TYPE_MISMATCH
