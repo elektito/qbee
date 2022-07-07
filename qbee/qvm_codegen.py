@@ -1673,7 +1673,9 @@ def gen_exit_sub(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.ExitFunctionStmt)
 def gen_exit_function(node, code, codegen):
-    code.add(('ret',))
+    type_char = node.parent_routine.return_type.type_char
+    code.add((f'readl{type_char}', '_retval'))
+    code.add(('retv',))
 
 
 @QvmCodeGen.generator_for(stmt.SubBlock)
