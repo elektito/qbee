@@ -35,6 +35,10 @@ class TestCase:
     filename: str = None
     idx: int = None
 
+    inkey_list: list = field(default_factory=list)
+    rnd_list: list = field(default_factory=list)
+    timer_list: list = field(default_factory=list)
+
 
 @dataclass
 class TestFile:
@@ -82,6 +86,9 @@ def parse_test_case(toks):
     expected_error = None
     expected_io = []
     no_run = False
+    inkey_list = []
+    timer_list = []
+    rnd_list = []
     for name, value in options:
         name = name.lower()
         if name == 'success':
@@ -114,6 +121,12 @@ def parse_test_case(toks):
             expected_io.append(tuple(value))
         elif name == 'norun':
             no_run = True
+        elif name == 'with_inkey':
+            inkey_list = list(value)
+        elif name == 'with_rnd':
+            rnd_list = list(value)
+        elif name == 'with_timer':
+            timer_list = list(value)
         else:
             assert False, f'Unknown option: {name}'
 
@@ -122,7 +135,11 @@ def parse_test_case(toks):
         expected_result=expected_result,
         expected_error=expected_error,
         expected_io=expected_io,
-        no_run=no_run)
+        no_run=no_run,
+        inkey_list=inkey_list,
+        rnd_list=rnd_list,
+        timer_list=timer_list,
+    )
 
 
 def parse_test_file(toks):

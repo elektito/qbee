@@ -81,7 +81,7 @@ def test_qb_success(compiler, vm, case):
     code = compiler.compile(case.source_code)
     bcode = bytes(code)
     module = QModule.parse(bcode)
-    vm.init(module)
+    vm.init(module, case)
     if not case.no_run:
         vm.run()
         assert vm.cpu.halt_reason == HaltReason.INSTRUCTION
@@ -95,7 +95,7 @@ def test_qb_trap(compiler, vm, case):
     code = compiler.compile(case.source_code)
     bcode = bytes(code)
     module = QModule.parse(bcode)
-    vm.init(module)
+    vm.init(module, case)
     if not case.no_run:
         vm.run()
         assert vm.cpu.halt_reason == HaltReason.TRAP

@@ -14,6 +14,15 @@ io: terminal, print, "\"\r\n"
 print chr$("A")
 ---
 compileerror: TYPE_MISMATCH
+=== INKEY$ ===
+print inkey$
+---
+io: terminal, print, "\r\n"
+=== INKEY$ ===
+print inkey$
+---
+with_inkey: "A"
+io: terminal, print, "A\r\n"
 === INT ===
 print int(1.6)
 ---
@@ -126,6 +135,25 @@ compileerror: TYPE_MISMATCH
 print right$("FooBar", "3")
 ---
 compileerror: TYPE_MISMATCH
+=== RND ===
+print rnd(1)
+print rnd(0)
+print rnd(0)
+print rnd(2)
+---
+with_rnd: 0.1, 0.2, 0.3
+io: terminal, print, " 0.1 \r\n"
+io: terminal, print, " 0.1 \r\n"
+io: terminal, print, " 0.1 \r\n"
+io: terminal, print, " 0.2 \r\n"
+===
+print rnd(-1)
+print rnd(-1)
+print rnd(-2)
+---
+io: terminal, print, " 0.01 \r\n"
+io: terminal, print, " 0.01 \r\n"
+io: terminal, print, " 0.02 \r\n"
 === SPACE$ ===
 print space$(3)
 ---
@@ -150,6 +178,13 @@ io: terminal, print, "-10\r\n"
 print str$(0)
 ---
 io: terminal, print, " 0\r\n"
+=== TIMER ===
+print timer
+print timer
+---
+with_timer: 1000, 2000
+io: terminal, print, " 1000 \r\n"
+io: terminal, print, " 2000 \r\n"
 === UCASE$ ===
 print ucase$("FooBar")
 ---
