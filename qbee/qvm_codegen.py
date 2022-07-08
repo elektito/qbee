@@ -1094,7 +1094,9 @@ def gen_builtin_func_call(node, code, codegen):
             gen_code_for_conv(
                 expr.Type.INTEGER, node.args[2], code, codegen)
         else:
-            code.add(('push%', -1))
+            # a LONG value indicates a missing length (i.e. go until
+            # the end of the string)
+            code.add(('push&', -1))
 
         code.add(('strmid',))
     elif node.name == 'peek':

@@ -1041,6 +1041,8 @@ class QvmCpu:
 
     def _exec_space(self):
         n = self.pop(CellType.INTEGER)
+        if n < 0:
+            self.trap(TrapCode.INVALID_OPERAND_VALUE)
         self.push(CellType.STRING, ' ' * n)
 
     def _exec_storeg(self, idx):
@@ -1083,6 +1085,8 @@ class QvmCpu:
     def _exec_strleft(self):
         n = self.pop(CellType.INTEGER)
         s = self.pop(CellType.STRING)
+        if n < 0:
+            self.trap(TrapCode.INVALID_OPERAND_VALUE)
         self.push(CellType.STRING, s[:n])
 
     def _exec_strlen(self):
@@ -1093,6 +1097,10 @@ class QvmCpu:
         length = self.pop()
         start = self.pop(CellType.INTEGER)
         string = self.pop(CellType.STRING)
+
+        if start <= 0:
+            self.trap(TrapCode.INVALID_OPERAND_VALUE,
+                      desc='STRMID start index should be positive')
 
         if length.type == CellType.LONG:
             # a LONG value for length indicates the sub-string should
@@ -1105,11 +1113,10 @@ class QvmCpu:
                           got=length.type)
             length = length.value
 
-        if start <= 0:
-            self.trap(TrapCode.INVALID_OPERAND_VALUE,
-                      desc='STRMID start index should be positive')
+        if length is None:
+            length = len(string) - start + 1
 
-        if length <= 0:
+        if length < 0:
             self.trap(TrapCode.INVALID_OPERAND_VALUE,
                       desc='STRMID length should be positive')
 
@@ -1125,6 +1132,8 @@ class QvmCpu:
     def _exec_strright(self):
         n = self.pop(CellType.INTEGER)
         s = self.pop(CellType.STRING)
+        if n < 0:
+            self.trap(TrapCode.INVALID_OPERAND_VALUE)
         self.push(CellType.STRING, s[-n:])
 
     def _exec_sub(self):
