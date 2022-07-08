@@ -102,6 +102,10 @@ class TimeDevice(Device):
 class RngDevice(Device):
     name = 'rng'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.last_rnd = None
+
     def _exec_seed(self):
         logger.info('DEV RNG: seed')
         seed = self._get_arg_from_stack(CellType.SINGLE)
@@ -109,8 +113,16 @@ class RngDevice(Device):
 
     def _exec_rnd(self):
         arg = self._get_arg_from_stack(CellType.SINGLE)
-        result = self.impl.rng_rnd(arg)
-        self.cpu.push(CellType.SINGLE, result)
+
+        if arg == 0:
+            if self.last_rnd is None:
+                self.last_rnd = self.impl.rng_get_next()
+        elif arg < 0:
+            self.last_rnd = self.impl.rng_get_with_seed(arg)
+        else:
+            self.last_rnd = self.impl.rng_get_next()
+
+        self.cpu.push(CellType.SINGLE, self.last_rnd)
 
 
 class MemoryDevice(Device):
@@ -506,6 +518,16 @@ class BasePeripheralsImpl:
 
     def rng_seed(self, seed):
         self.rng.seed(seed)
+
+    def rng_get_next(self):
+        return self.rng.random()
+
+    def rng_get_with_seed(self, seed):
+        state = self.rng.getstate()
+        self.rng.seed(seed)
+        rnd = self.rng.random()
+        self.rng.setstate(state)
+        return rnd
 
     def rng_rnd(self, arg):
         if arg == 0:
