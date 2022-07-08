@@ -1,0 +1,189 @@
+# success
+print asc("A")
+---
+io: terminal, print, " 65 \r\n"
+===
+print asc(65)
+---
+compileerror: TYPE_MISMATCH
+=== CHR$ ===
+print chr$(34)
+---
+io: terminal, print, "\"\r\n"
+===
+print chr$("A")
+---
+compileerror: TYPE_MISMATCH
+=== INT ===
+print int(1.6)
+---
+io: terminal, print, " 1 \r\n"
+===
+print int(-1.6)
+---
+io: terminal, print, "-2 \r\n"
+===
+print int("A")
+---
+compileerror: TYPE_MISMATCH
+=== LCASE$ ===
+print lcase$("FooBar")
+---
+io: terminal, print, "foobar\r\n"
+===
+print lcase$(1)
+---
+compileerror: TYPE_MISMATCH
+=== LEFT$ ===
+print left$("FooBar", 3)
+---
+io: terminal, print, "Foo\r\n"
+===
+print left$("FooBar", 10)
+---
+io: terminal, print, "FooBar\r\n"
+===
+print left$("FooBar", -3)
+---
+trap: INVALID_OPERAND_VALUE
+===
+print left$(1, 3)
+---
+compileerror: TYPE_MISMATCH
+===
+print left$("FooBar", "3")
+---
+compileerror: TYPE_MISMATCH
+=== LEN ===
+print len("foo")
+---
+io: terminal, print, " 3 \r\n"
+===
+print len("")
+---
+io: terminal, print, " 0 \r\n"
+=== MID$ ===
+print mid$("FooBar", 3, 2)
+---
+io: terminal, print, "oB\r\n"
+===
+print mid$("FooBar", 3, 0)
+---
+io: terminal, print, "\r\n"
+===
+print mid$("FooBar", 30, 1)
+---
+io: terminal, print, "\r\n"
+===
+print mid$("FooBar", 3)
+---
+io: terminal, print, "oBar\r\n"
+===
+print mid$("FooBar", 0)
+---
+trap: INVALID_OPERAND_VALUE
+===
+print mid$("FooBar", -1)
+---
+trap: INVALID_OPERAND_VALUE
+===
+print mid$("FooBar", 3, -1)
+---
+trap: INVALID_OPERAND_VALUE
+===
+print mid$("FooBar", "3", 1)
+---
+compileerror: TYPE_MISMATCH
+===
+print mid$("FooBar", "3")
+---
+compileerror: TYPE_MISMATCH
+===
+print mid$("FooBar", 3, "1")
+---
+compileerror: TYPE_MISMATCH
+===
+print mid$("FooBar", 3.5, 1.1)
+---
+io: terminal, print, "B\r\n"
+=== RIGHT$ ===
+print right$("FooBar", 3)
+---
+io: terminal, print, "Bar\r\n"
+===
+print right$("FooBar", 10)
+---
+io: terminal, print, "FooBar\r\n"
+===
+print right$("FooBar", -3)
+---
+trap: INVALID_OPERAND_VALUE
+===
+print right$(1, 3)
+---
+compileerror: TYPE_MISMATCH
+===
+print right$("FooBar", "3")
+---
+compileerror: TYPE_MISMATCH
+=== SPACE$ ===
+print space$(3)
+---
+io: terminal, print, "   \r\n"
+===
+print space$(0)
+---
+io: terminal, print, "\r\n"
+===
+print space$(-1)
+---
+trap: INVALID_OPERAND_VALUE
+=== STR$ ===
+print str$(10)
+---
+io: terminal, print, " 10\r\n"
+===
+print str$(-10)
+---
+io: terminal, print, "-10\r\n"
+===
+print str$(0)
+---
+io: terminal, print, " 0\r\n"
+=== UCASE$ ===
+print ucase$("FooBar")
+---
+io: terminal, print, "FOOBAR\r\n"
+===
+print ucase$(1)
+---
+compileerror: TYPE_MISMATCH
+=== VAL ===
+print val("10")
+---
+io: terminal, print, " 10 \r\n"
+===
+print val("1.1")
+---
+io: terminal, print, " 1.1 \r\n"
+===
+print val("1.1e-2")
+---
+io: terminal, print, " 0.011 \r\n"
+===
+print val("1.1D-2")
+---
+io: terminal, print, " 0.011 \r\n"
+===
+print val("-2.9")
+---
+io: terminal, print, "-2.9 \r\n"
+===
+print val("10.25x")
+---
+io: terminal, print, " 10.25 \r\n"
+===
+print val("x")
+---
+io: terminal, print, " 0 \r\n"
+===
