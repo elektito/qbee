@@ -6,16 +6,12 @@ from .exceptions import EvalError
 
 class EvaluationContext(ABC):
     def __init__(self):
-        self.consts = {}  # maps const names to (const) Expr objects
+        self.global_consts = {}  # maps const names to (const) Expr objects
         self.global_vars = {}  # maps global var names to types
         self.user_types = {}  # maps user type names to type blocks
         self.def_letter_types = {}  # maps a single letter to a type
         self.routines = {}  # maps routine names to Routine objects
         self.main_routine = None
-
-    def is_const(self, name):
-        "Return whether the given name is a const or not"
-        return name in self.consts
 
     def get_node_routine(self, node):
         parent = node.parent
@@ -90,6 +86,7 @@ class Routine:
         self.params: dict[str, Type] = dict(params)
         self.local_vars: dict[str, Type] = {}
         self.static_vars: dict[str, Type] = {}
+        self.local_consts: dict[str, Type] = {}
         self.labels = set()
 
     def __repr__(self):

@@ -284,11 +284,7 @@ class TerminalDevice(Device):
             def print_number(n):
                 nonlocal buf
                 nval = n.value
-                if n.type == CellType.SINGLE:
-                    # limit it to a 32 bit float
-                    enc = struct.pack('>f', nval)
-                    nval, = struct.unpack('>f', enc)
-                buf += format_number(nval, n.type)
+                buf += format_number(nval, n.type) + ' '
             for arg in printables:
                 if arg == semicolon:
                     pass

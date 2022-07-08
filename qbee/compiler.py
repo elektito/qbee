@@ -40,12 +40,16 @@ class CompilationUnit(EvaluationContext):
         self.data = defaultdict(list)
 
     def eval_lvalue(self, lvalue):
-        if lvalue.base_var not in self.consts or \
-           lvalue.array_indices or \
-           lvalue.dotted_vars:
+        if lvalue.array_indices or lvalue.dotted_vars:
             raise InternalError(
                 'Attempting to evaluate non-const expression')
-        return self.consts[lvalue.base_var].eval()
+        if lvalue.base_var in lvalue.parent_routine.local_consts:
+            return lvalue.parent_routine.local_consts[lvalue.base_var].eval()
+        if lvalue.base_var in self.global_consts:
+            return self.global_consts[lvalue.base_var].eval()
+
+        raise InternalError(
+            'Attempting to evaluate non-const expression')
 
     def get_routine(self, name: str, kind=None):
         assert kind is None or kind in ('sub', 'function')
@@ -472,22 +476,35 @@ class Pass2(CompilePass):
         self._check_function_args(node, nargs, arg_types)
 
     def process_const_pre(self, node):
-        if node.name in self.compilation.consts:
-            raise CompileError(
-                EC.DUPLICATE_DEFINITION,
-                node=node)
         if node.parent_routine.has_variable(node.name):
             raise CompileError(
                 EC.DUPLICATE_DEFINITION,
                 node=node)
+
         if not node.value.is_const:
             raise CompileError(
                 EC.INVALID_CONSTANT,
                 node=node.value)
-        self.compilation.consts[node.name] = node.value
+
+        if node.parent_routine == self.compilation.main_routine:
+            if node.name in self.compilation.global_consts:
+                raise CompileError(
+                    EC.DUPLICATE_DEFINITION,
+                    node=node)
+
+            self.compilation.global_consts[node.name] = node.value
+        else:
+            if node.name in node.parent_routine.local_consts:
+                raise CompileError(
+                    EC.DUPLICATE_DEFINITION,
+                    node=node)
+
+            node.parent_routine.local_consts[node.name] = node.value
 
     def process_lvalue_pre(self, node):
-        const = self.compilation.consts.get(node.base_var)
+        const = node.parent_routine.local_consts.get(node.base_var)
+        if const is None:
+            const = self.compilation.global_consts.get(node.base_var)
         if const is not None:
             if node.array_indices or node.dotted_vars:
                 raise CompileError(
@@ -527,7 +544,8 @@ class Pass2(CompilePass):
                 node=node)
 
         if not node.parent_routine.has_variable(node.base_var) and \
-           node.base_var not in self.compilation.consts:
+           node.base_var not in node.parent_routine.local_consts and \
+           node.base_var not in self.compilation.global_consts:
             # Implicitly defined variable
             decl = VarDeclClause(node.base_var, None)
             if node.array_indices:
@@ -697,7 +715,8 @@ class Pass2(CompilePass):
         if not node.lvalue.type.is_coercible_to(node.rvalue.type):
             raise CompileError(EC.TYPE_MISMATCH, node=node)
 
-        if node.lvalue.base_var in self.compilation.consts:
+        if node.lvalue.base_var in node.parent_routine.local_consts or \
+           node.lvalue.base_var in self.compilation.global_consts:
             raise CompileError(EC.DUPLICATE_DEFINITION, node=node)
 
         if Type.name_ends_with_type_char(node.lvalue.base_var):

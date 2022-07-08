@@ -9,6 +9,56 @@ end sub
 ---
 io: terminal, print, " 100 \r\n"
 ===
+const a = 10
+print a
+foo
+print a
+
+sub foo
+    const a = 100
+    print a
+end sub
+---
+io: terminal, print, " 10 \r\n"
+io: terminal, print, " 100 \r\n"
+io: terminal, print, " 10 \r\n"
+===
+foo
+print a
+
+sub foo
+    const a = 100
+    print a
+end sub
+---
+io: terminal, print, " 100 \r\n"
+io: terminal, print, " 0 \r\n"
+===
+const a = 10
+print a
+y=foo
+print a
+
+function foo
+    const a = 100
+    print a
+end function
+---
+io: terminal, print, " 10 \r\n"
+io: terminal, print, " 100 \r\n"
+io: terminal, print, " 10 \r\n"
+===
+y=foo
+print a
+
+function foo
+    const a = 100
+    print a
+end function
+---
+io: terminal, print, " 100 \r\n"
+io: terminal, print, " 0 \r\n"
+===
 const a = 100
 a = 101
 ---

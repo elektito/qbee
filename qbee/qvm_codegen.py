@@ -231,7 +231,6 @@ class QvmCode(BaseCode):
         self._main_routine = None
         self._string_literals = []
         self._globals = None
-        self._consts = {}
         self._debug_info_enabled = False
         self._source_code = None
         self._compilation = None
@@ -264,9 +263,6 @@ class QvmCode(BaseCode):
     def add_string_literal(self, value):
         if value not in self._string_literals:
             self._string_literals.append(value)
-
-    def add_const_expr(self, name, value):
-        self._consts[name] = value
 
     def optimize(self):
         i = 0
@@ -542,9 +538,9 @@ class QvmCode(BaseCode):
         labels = {}
         patch_positions = {}
         code = bytearray()
-        dbg_collector = DebugInfoCollector(self._source_code,
-                                           self._compilation,
-                                           self._consts)
+        if self._debug_info_enabled:
+            dbg_collector = DebugInfoCollector(self._source_code,
+                                               self._compilation)
         for instr in self._instrs:
             op, *args = instr.final
             if op == '_label':
@@ -1207,8 +1203,7 @@ def gen_color(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.ConstStmt)
 def gen_const_stmt(node, code, codegen):
-    # No code for const statements needed
-    code.add_const_expr(node.name, node.value)
+    pass
 
 
 @QvmCodeGen.generator_for(stmt.DefSegStmt)

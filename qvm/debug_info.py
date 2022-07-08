@@ -38,16 +38,18 @@ class DebugNodeRecord(DebugRecord):
 class DebugRoutineRecord(DebugNodeRecord):
     name: str
     type: RoutineType
+    local_consts: dict[str, tuple]
 
 
 class DebugInfo:
-    def __init__(self, source_code, empty_blocks, compilation, consts):
+    def __init__(self, source_code, empty_blocks, compilation,
+                 global_consts):
         self.source_code = source_code
         self.empty_blocks = empty_blocks
         self.main_routine = compilation.routines['_main']
         self.user_types = compilation.user_types
         self.global_vars = compilation.global_vars
-        self.consts = consts
+        self.global_consts = global_consts
         self.routines = {}
         self.blocks = []
         self.stmts = []
@@ -83,6 +85,10 @@ class DebugInfo:
                 source_start_col=start_col,
                 source_end_line=end_line,
                 source_end_col=end_col,
+                local_consts={
+                    name: (const.type, const.eval())
+                    for name, const in node.routine.local_consts.items()
+                },
                 node=node,
             )
 
@@ -200,10 +206,10 @@ class DebugInfo:
 
 
 class DebugInfoCollector:
-    def __init__(self, source_code, compilation, consts):
+    def __init__(self, source_code, compilation):
         self._source_code = source_code
         self._compilation = compilation
-        self._consts = consts
+        self._global_consts = compilation.global_consts
         self._stack = []
         self._nodes = []
         self._empty_blocks = []
@@ -220,14 +226,14 @@ class DebugInfoCollector:
         self._empty_blocks.append(code_offset)
 
     def get_debug_info(self):
-        consts = {
+        global_consts = {
             name: (const.type, const.eval())
-            for name, const in self._consts.items()
+            for name, const in self._global_consts.items()
         }
         dbg_info = DebugInfo(self._source_code,
                              self._empty_blocks,
                              self._compilation,
-                             consts)
+                             global_consts)
 
         for node, start_offset, end_offset in self._nodes:
             dbg_info.add_node(node, start_offset, end_offset)

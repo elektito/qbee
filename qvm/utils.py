@@ -23,6 +23,4 @@ def format_number(n, n_type):
     if n >= 0:
         s = ' ' + s
 
-    s += ' '
-
     return s

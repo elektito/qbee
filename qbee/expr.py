@@ -852,7 +852,9 @@ class Lvalue(Expr):
         if self.array_indices or self.dotted_vars:
             return False
 
-        return self.context.is_const(self.base_var)
+        if self.base_var in self.parent_routine.local_consts:
+            return True
+        return self.base_var in self.context.global_consts
 
     @property
     def type(self):
