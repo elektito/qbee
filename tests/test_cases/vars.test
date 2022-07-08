@@ -1,0 +1,18 @@
+# success
+x! = 5
+x% = 10
+print x!; x%
+---
+io: terminal, print, " 5  10 \r\n"
+===
+x! = 5
+x% = 10
+x = 20
+print x!; x%; x
+---
+io: terminal, print, " 5  10  20 \r\n"
+===
+dim x$ as string
+---
+syntaxerror
+===
