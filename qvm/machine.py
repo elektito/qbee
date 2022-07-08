@@ -475,7 +475,7 @@ class BasePeripheralsImpl:
 
         # rng
         self.rng = Random()
-        self.last_rnd = self.rng.random()
+        self.rng.seed(0)
 
     # memory
 
