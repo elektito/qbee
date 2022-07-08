@@ -179,7 +179,7 @@ def parse_test_file(toks):
 
 # rules
 
-case_delim = Literal('\n===\n')
+case_delim = Regex('\n===.*\n')
 options_delim = Literal('\n---\n')
 nl = Literal('\n')
 colon = Literal(':')
