@@ -997,6 +997,7 @@ class BuiltinFuncCall(Expr):
             'rnd': Type.SINGLE,
             'space$': Type.STRING,
             'str$': Type.STRING,
+            'string$': Type.STRING,
             'timer': Type.SINGLE,
             'ucase$': Type.STRING,
             'val': Type.DOUBLE,

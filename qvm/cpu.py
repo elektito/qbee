@@ -1129,6 +1129,27 @@ class QvmCpu:
 
         self.push(CellType.STRING, result)
 
+    def _exec_strrep(self):
+        char = self.pop()
+        length = self.pop(CellType.INTEGER)
+
+        if length < 0:
+            self.trap(TrapCode.INVALID_OPERAND_VALUE)
+
+        if char.type == CellType.INTEGER:
+            char = bytes([char.value]).decode('cp437')
+        elif char.type != CellType.STRING:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='INTEGER or STRING',
+                      got=char.type)
+        else:
+            if len(char.value) == 0:
+                self.trap(TrapCode.INVALID_OPERAND_VALUE)
+            char = char.value[0]
+
+        result = char * length
+        self.push(CellType.STRING, result)
+
     def _exec_strright(self):
         n = self.pop(CellType.INTEGER)
         s = self.pop(CellType.STRING)

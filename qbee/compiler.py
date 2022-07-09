@@ -439,7 +439,20 @@ class Pass2(CompilePass):
                         EC.TYPE_MISMATCH,
                         f'Type mismatch; expected '
                         f'{arg_type.name.upper()}; got '
-                        f'{func_node.args[0].type.name.upper()}',
+                        f'{arg.type.name.upper()}',
+                        node=arg)
+            elif isinstance(arg_type, tuple):
+                assert all(isinstance(t, Type) for t in arg_type)
+                assert len(arg_type) > 1
+                if not any(arg.type.is_coercible_to(t)
+                           for t in arg_type):
+                    expected_types = ', '.join(
+                        t.name.upper() for t in arg_type)
+                    raise CompileError(
+                        EC.TYPE_MISMATCH,
+                        f'Type mismatch; expected '
+                        f'any of [{expected_types}]; got '
+                        f'{arg.type.name.upper()}',
                         node=arg)
             elif arg_type == 'numeric':
                 if not arg.type.is_numeric:
@@ -466,6 +479,7 @@ class Pass2(CompilePass):
             'rnd': ((0, 1), Type.SINGLE),
             'space$': (1, Type.INTEGER),
             'str$': (1, 'numeric'),
+            'string$': (2, Type.INTEGER, (Type.INTEGER, Type.STRING)),
             'timer': (0,),
             'ucase$': (1, Type.STRING),
             'val': (1, Type.STRING),

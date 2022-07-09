@@ -344,6 +344,7 @@ builtin_func = Located(
         rnd_kw |
         space_dollar_kw |
         str_dollar_kw |
+        string_dollar_kw |
         timer_kw |
         ucase_dollar_kw |
         val_kw

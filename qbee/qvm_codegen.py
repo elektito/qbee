@@ -85,6 +85,7 @@ class CanonicalOp(Enum):
     STRLEFT = auto()
     STRLEN = auto()
     STRMID = auto()
+    STRREP = auto()
     STRRIGHT = auto()
     SWAP = auto()
     SWAPPREV = auto()
@@ -1125,6 +1126,15 @@ def gen_builtin_func_call(node, code, codegen):
     elif node.name == 'str$':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('ntos',))
+    elif node.name == 'string$':
+        codegen.gen_code_for_node(node.args[0], code)
+        gen_code_for_conv(
+            expr.Type.INTEGER, node.args[0], code, codegen)
+        codegen.gen_code_for_node(node.args[1], code)
+        if node.args[1].type.is_numeric:
+            gen_code_for_conv(
+                expr.Type.INTEGER, node.args[1], code, codegen)
+        code.add(('strrep',))
     elif node.name == 'timer':
         code.add(('io', 'time', 'get_time'))
     elif node.name == 'val':

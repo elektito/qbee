@@ -178,6 +178,64 @@ io: terminal, print, "-10\r\n"
 print str$(0)
 ---
 io: terminal, print, " 0\r\n"
+=== STRING$ ===
+print string$(5, 65)
+---
+io: terminal, print, "AAAAA\r\n"
+===
+print string$(3, "XYZ")
+---
+io: terminal, print, "XXX\r\n"
+===
+print string$(0, "XYZ")
+---
+io: terminal, print, "\r\n"
+===
+print string$(0, 65)
+---
+io: terminal, print, "\r\n"
+===
+print string$(-1, 65)
+---
+trap: INVALID_OPERAND_VALUE
+===
+print string$(-1, "A")
+---
+trap: INVALID_OPERAND_VALUE
+===
+print string$(4, 65.5)
+---
+io: terminal, print, "BBBB\r\n"
+===
+type foo
+     x as integer
+end type
+dim c as foo
+print string$(3, c)
+---
+compileerror: TYPE_MISMATCH
+===
+dim c(5) as integer
+print string$(3, c)
+---
+compileerror: TYPE_MISMATCH
+===
+print string$("3", 65)
+---
+compileerror: TYPE_MISMATCH
+===
+type foo
+     x as integer
+end type
+dim c as foo
+print string$(c, 65)
+---
+compileerror: TYPE_MISMATCH
+===
+dim c(5) as integer
+print string$(c, 65)
+---
+compileerror: TYPE_MISMATCH
 === TIMER ===
 print timer
 print timer
