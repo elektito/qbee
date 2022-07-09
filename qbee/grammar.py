@@ -555,7 +555,9 @@ exit_do_stmt = (
     exit_kw.suppress() + do_kw.suppress()
 ).set_name('exit_do_stmt')
 
-end_stmt = (end_kw).set_name('end_stmt')
+end_stmt = (
+    end_kw | system_kw
+).set_name('end_stmt')
 
 for_stmt = (
     for_kw.suppress() -
