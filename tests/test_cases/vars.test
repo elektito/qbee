@@ -16,3 +16,10 @@ dim x$ as string
 ---
 syntaxerror
 ===
+print a
+---
+io: terminal, print, " 0 \r\n"
+===
+print x$
+---
+io: terminal, print, "\r\n"

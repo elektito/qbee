@@ -713,6 +713,20 @@ class Pass2(CompilePass):
         for decl in node.var_decls:
             self.compilation.validate_decl(decl)
 
+            if decl.array_dims:
+                for dim_range in decl.array_dims:
+                    if not dim_range.is_const:
+                        continue
+                    lbound = dim_range.static_lbound
+                    ubound = dim_range.static_ubound
+                    if lbound > ubound:
+                        raise CompileError(
+                            EC.INVALID_DIMENSIONS,
+                            f'Array LBOUND ({lbound}) is greater than '
+                            f'array UBOUND ({ubound})',
+                            node=dim_range,
+                        )
+
             if node.parent_routine.has_variable(decl.name) or \
                decl.name in self.compilation.routines:
                 raise CompileError(

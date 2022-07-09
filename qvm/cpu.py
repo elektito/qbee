@@ -440,10 +440,13 @@ class QvmCpu:
             value = kwargs.get('value')
             print(f'A cell of type {cell_type} cannot hold: {value}')
         elif code == TrapCode.INDEX_OUT_OF_RANGE:
-            idx = kwargs.get('idx')
-            lbound = kwargs.get('lbound')
-            ubound = kwargs.get('ubound')
-            print(f'Index {idx} not in range {lbound} to {ubound}')
+            if msg := kwargs.get('msg'):
+                print(msg)
+            else:
+                idx = kwargs.get('idx')
+                lbound = kwargs.get('lbound')
+                ubound = kwargs.get('ubound')
+                print(f'Index {idx} not in range {lbound} to {ubound}')
         elif code == TrapCode.INVALID_DIMENSIONS:
             expected = kwargs.get('expected')
             got = kwargs.get('got')
@@ -534,6 +537,12 @@ class QvmCpu:
         for i in range(n_dims):
             ubound = self.pop(CellType.LONG)
             lbound = self.pop(CellType.LONG)
+            if lbound > ubound:
+                self.trap(
+                    TrapCode.INDEX_OUT_OF_RANGE,
+                    msg=(f'Array LBOUND ({lbound}) is greater than '
+                         f'array UBOUND ({ubound})')
+                )
             bounds.append((lbound, ubound))
 
         bounds.reverse()
@@ -781,6 +790,12 @@ class QvmCpu:
         for i in range(n_dims):
             ubound = self.pop(CellType.LONG)
             lbound = self.pop(CellType.LONG)
+            if lbound > ubound:
+                self.trap(
+                    TrapCode.INDEX_OUT_OF_RANGE,
+                    msg=(f'Array LBOUND ({lbound}) is greater than '
+                         f'array UBOUND ({ubound})')
+                )
             bounds.append((lbound, ubound))
 
         bounds.reverse()
@@ -800,6 +815,12 @@ class QvmCpu:
         for i in range(n_dims):
             ubound = self.pop(CellType.LONG)
             lbound = self.pop(CellType.LONG)
+            if lbound > ubound:
+                self.trap(
+                    TrapCode.INDEX_OUT_OF_RANGE,
+                    msg=(f'Array LBOUND ({lbound}) is greater than '
+                         f'array UBOUND ({ubound})')
+                )
             bounds.append((lbound, ubound))
 
         bounds.reverse()
