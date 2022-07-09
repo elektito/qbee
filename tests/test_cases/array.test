@@ -1,0 +1,243 @@
+# success
+dim a(1 to 3)
+a(1) = 11
+a(2) = 21
+a(3) = 31
+print a(1); a(2); a(3)
+---
+io: terminal, print, " 11  21  31 \r\n"
+===
+dim a(1 to 3)
+print a(0)
+---
+trap: INDEX_OUT_OF_RANGE
+===
+dim a(1 to 3)
+print a(4)
+---
+trap: INDEX_OUT_OF_RANGE
+===
+a(2) = 10
+print a(0); a(1); a(2); a(3); a(4)
+print a(5); a(6); a(7); a(8); a(9); a(10)
+---
+io: terminal, print, " 0  0  10  0  0 \r\n"
+io: terminal, print, " 0  0  0  0  0  0 \r\n"
+===
+a(2) = 10
+a(-1) = 2
+---
+trap: INDEX_OUT_OF_RANGE
+===
+a(2) = 10
+a(11) = 2
+---
+trap: INDEX_OUT_OF_RANGE
+===
+a(20) = 10
+---
+trap: INDEX_OUT_OF_RANGE
+===
+dim a(50 to 52)
+a(50) = 100
+a(51) = 200
+a(52) = 300
+print a(50); a(51); a(52)
+---
+io: terminal, print, " 100  200  300 \r\n"
+===
+dim a(50 to 52)
+a(53) = 300
+---
+trap: INDEX_OUT_OF_RANGE
+===
+dim a(-3 to -2) as string
+a(-3) = "spam"
+a(-2) = "foo"
+print a(-3); a(-2)
+---
+io: terminal, print, "spamfoo\r\n"
+===
+dim a(30 to 20) as string
+---
+compileerror: INVALID_DIMENSIONS
+===
+n = 20
+dim a(30 to n) as string
+---
+trap: INDEX_OUT_OF_RANGE
+===
+lb = 2
+ub = 4
+dim a(lb to ub) as string
+a(2) = "two"
+a(3) = "three"
+a(4) = "four"
+print a(2)
+print a(3)
+print a(4)
+---
+io: terminal, print, "two\r\n"
+io: terminal, print, "three\r\n"
+io: terminal, print, "four\r\n"
+===
+lb = 2
+ub = 4
+dim a(lb to ub) as string
+print a(1)
+---
+trap: INDEX_OUT_OF_RANGE
+===
+lb = 2
+ub = 4
+dim a(lb to ub) as string
+print a(5)
+---
+trap: INDEX_OUT_OF_RANGE
+===
+lb = 4
+ub = 2
+dim a(lb to ub) as string
+---
+trap: INDEX_OUT_OF_RANGE
+===
+dim a(1 to 2, 4 to 5) as integer
+for i = 1 to 2
+    for j = 4 to 5
+        a(i, j) = i * j
+    next
+next
+for i = 1 to 2
+    for j = 4 to 5
+        print a(i, j);
+    next
+    print
+next
+---
+io: terminal, print, " 4 "
+io: terminal, print, " 5 "
+io: terminal, print, "\r\n"
+io: terminal, print, " 8 "
+io: terminal, print, " 10 "
+io: terminal, print, "\r\n"
+===
+dim a(1 to 2, 4 to 5) as integer
+print a(1, 6)
+---
+trap: INDEX_OUT_OF_RANGE
+===
+dim a(1 to 2, 4 to 5) as integer
+print a(0, 4)
+---
+trap: INDEX_OUT_OF_RANGE
+===
+dim shared a(1 to 3)
+a(1) = 11
+a(2) = 21
+a(3) = 31
+print a(1); a(2); a(3)
+---
+io: terminal, print, " 11  21  31 \r\n"
+===
+dim shared a(1 to 3)
+print a(0)
+---
+trap: INDEX_OUT_OF_RANGE
+===
+dim shared a(1 to 3)
+print a(4)
+---
+trap: INDEX_OUT_OF_RANGE
+===
+dim shared a(50 to 52)
+a(50) = 100
+a(51) = 200
+a(52) = 300
+print a(50); a(51); a(52)
+---
+io: terminal, print, " 100  200  300 \r\n"
+===
+dim shared a(50 to 52)
+a(53) = 300
+---
+trap: INDEX_OUT_OF_RANGE
+===
+dim shared a(-3 to -2) as string
+a(-3) = "spam"
+a(-2) = "foo"
+print a(-3); a(-2)
+---
+io: terminal, print, "spamfoo\r\n"
+===
+dim shared a(30 to 20) as string
+---
+compileerror: INVALID_DIMENSIONS
+===
+n = 20
+dim shared a(30 to n) as string
+---
+trap: INDEX_OUT_OF_RANGE
+===
+lb = 2
+ub = 4
+dim shared a(lb to ub) as string
+a(2) = "two"
+a(3) = "three"
+a(4) = "four"
+print a(2)
+print a(3)
+print a(4)
+---
+io: terminal, print, "two\r\n"
+io: terminal, print, "three\r\n"
+io: terminal, print, "four\r\n"
+===
+lb = 2
+ub = 4
+dim shared a(lb to ub) as string
+print a(1)
+---
+trap: INDEX_OUT_OF_RANGE
+===
+lb = 2
+ub = 4
+dim shared a(lb to ub) as string
+print a(5)
+---
+trap: INDEX_OUT_OF_RANGE
+===
+lb = 4
+ub = 2
+dim shared a(lb to ub) as string
+---
+trap: INDEX_OUT_OF_RANGE
+===
+dim shared a(1 to 2, 4 to 5) as integer
+for i = 1 to 2
+    for j = 4 to 5
+        a(i, j) = i * j
+    next
+next
+for i = 1 to 2
+    for j = 4 to 5
+        print a(i, j);
+    next
+    print
+next
+---
+io: terminal, print, " 4 "
+io: terminal, print, " 5 "
+io: terminal, print, "\r\n"
+io: terminal, print, " 8 "
+io: terminal, print, " 10 "
+io: terminal, print, "\r\n"
+===
+dim shared a(1 to 2, 4 to 5) as integer
+print a(1, 6)
+---
+trap: INDEX_OUT_OF_RANGE
+===
+dim shared a(1 to 2, 4 to 5) as integer
+print a(0, 4)
+---
+trap: INDEX_OUT_OF_RANGE
