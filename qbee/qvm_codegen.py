@@ -846,7 +846,8 @@ def gen_code_for_block(node_list, code, codegen):
         # add a dummy statement in the middle so we can differentiate
         # code from the start of block and code from the end of the
         # block when generating debug info.
-        code.add(('_empty_block',))
+        if codegen.debug_info_enabled:
+            code.add(('_empty_block',))
         return
 
     for inner_stmt in node_list:
