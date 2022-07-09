@@ -854,6 +854,35 @@ def gen_code_for_block(node_list, code, codegen):
         codegen.gen_code_for_node(inner_stmt, code)
 
 
+def gen_static_array_init(decl, code, codegen):
+    element_size = get_type_size(
+        codegen.compilation, decl.type.array_base_type)
+    if decl.var.is_global:
+        scope = 'g'  # global
+    else:
+        scope = 'l'  # local
+
+    for dim_range in decl.array_dims:
+        codegen.gen_code_for_node(dim_range.lbound, code)
+        gen_code_for_conv(
+            expr.Type.LONG, dim_range.lbound, code, codegen)
+
+        codegen.gen_code_for_node(dim_range.ubound, code)
+        gen_code_for_conv(
+            expr.Type.LONG, dim_range.ubound, code, codegen)
+
+    if decl.array_dims_are_const:
+        # static array
+        code.add(
+            (f'initarr{scope}',
+             decl.name, len(decl.array_dims), element_size),
+        )
+    else:
+        # dynamic array
+        code.add(('allocarr', len(decl.array_dims), element_size))
+        code.add((f'store{scope}', decl.name))
+
+
 # Code generators for expressions
 
 
@@ -920,6 +949,9 @@ def gen_lvalue(node, code, codegen):
         else:
             code.add((f'push{node.type.type_char}', node.eval()))
         return
+
+    if node.implicit_decl and node.implicit_decl.type.is_array:
+        gen_static_array_init(node.implicit_decl, code, codegen)
 
     base_var = node.get_base_variable()
     if base_var.is_global:
@@ -1160,6 +1192,10 @@ def gen_label(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.AssignmentStmt)
 def gen_assignment(node, code, codegen):
+    if node.lvalue.implicit_decl and \
+       node.lvalue.implicit_decl.type.is_array:
+        gen_static_array_init(node.lvalue.implicit_decl, code, codegen)
+
     codegen.gen_code_for_node(node.rvalue, code)
 
     if node.rvalue.type != node.lvalue.type:
@@ -1247,32 +1283,7 @@ def gen_dim(node, code, codegen):
         if not decl.type.is_array:
             continue
 
-        element_size = get_type_size(
-            codegen.compilation, decl.type.array_base_type)
-        if decl.var.is_global:
-            scope = 'g'  # global
-        else:
-            scope = 'l'  # local
-
-        for dim_range in decl.array_dims:
-            codegen.gen_code_for_node(dim_range.lbound, code)
-            gen_code_for_conv(
-                expr.Type.LONG, dim_range.lbound, code, codegen)
-
-            codegen.gen_code_for_node(dim_range.ubound, code)
-            gen_code_for_conv(
-                expr.Type.LONG, dim_range.ubound, code, codegen)
-
-        if decl.array_dims_are_const:
-            # static array
-            code.add(
-                (f'initarr{scope}',
-                 decl.name, len(decl.array_dims), element_size),
-            )
-        else:
-            # dynamic array
-            code.add(('allocarr', len(decl.array_dims), element_size))
-            code.add((f'store{scope}', decl.name))
+        gen_static_array_init(decl, code, codegen)
 
 
 @QvmCodeGen.generator_for(stmt.LoopBlock)

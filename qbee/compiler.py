@@ -579,6 +579,8 @@ class Pass2(CompilePass):
             else:
                 node.parent_routine.local_vars[node.base_var] = decl.type
 
+            node.implicit_decl = decl
+
         if node.array_indices:
             if not node.base_type.is_array:
                 raise CompileError(

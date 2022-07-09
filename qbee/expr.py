@@ -838,6 +838,12 @@ class Lvalue(Expr):
         self.array_indices = array_indices
         self.dotted_vars = dotted_vars
 
+        # if the lvalue base variable is implicitly defined, this
+        # contains a VarDeclClause representing the implicit DIM
+        # statement, which can be used later by codegen to initialize
+        # values.
+        self.implicit_decl = None
+
     def __repr__(self):
         ret = '<Lvalue ' + self.base_var
         if self.array_indices:
