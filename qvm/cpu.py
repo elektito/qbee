@@ -619,6 +619,28 @@ class QvmCpu:
         char = bytes([char_code]).decode('cp437')
         self.push(CellType.STRING, char)
 
+    def _exec_cint(self):
+        value = self.pop()
+
+        if not value.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=value.type)
+
+        result = int(round(value.value))
+        self.push(CellType.INTEGER, result)
+
+    def _exec_clng(self):
+        value = self.pop()
+
+        if not value.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=value.type)
+
+        result = int(round(value.value))
+        self.push(CellType.LONG, result)
+
     def _exec_cmp(self):
         b = self.pop()
         a = self.pop()

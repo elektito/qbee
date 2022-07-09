@@ -34,6 +34,8 @@ class CanonicalOp(Enum):
     ASC = auto()
     CALL = auto()
     CHR = auto()
+    CINT = auto()
+    CLNG = auto()
     CMP = auto()
     CONV = auto()
     DEREF = auto()
@@ -1099,6 +1101,12 @@ def gen_builtin_func_call(node, code, codegen):
         gen_code_for_conv(
             expr.Type.INTEGER, node.args[0], code, codegen)
         code.add(('chr',))
+    elif node.name == 'cint':
+        codegen.gen_code_for_node(node.args[0], code)
+        code.add(('cint',))
+    elif node.name == 'clng':
+        codegen.gen_code_for_node(node.args[0], code)
+        code.add(('clng',))
     elif node.name == 'inkey$':
         code.add(('io', 'terminal', 'inkey'))
     elif node.name == 'int':

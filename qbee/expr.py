@@ -992,6 +992,8 @@ class BuiltinFuncCall(Expr):
         func_type = {
             'asc': Type.INTEGER,
             'chr$': Type.STRING,
+            'cint': Type.INTEGER,
+            'clng': Type.LONG,
             'inkey$': Type.STRING,
             'int': Type.LONG,
             'lcase$': Type.STRING,

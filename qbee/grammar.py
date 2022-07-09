@@ -333,6 +333,8 @@ builtin_func = Located(
     (
         asc_kw |
         chr_dollar_kw |
+        cint_kw |
+        clng_kw |
         inkey_dollar_kw |
         int_kw |
         lcase_dollar_kw |

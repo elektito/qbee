@@ -468,6 +468,8 @@ class Pass2(CompilePass):
         nargs, *arg_types = {
             'asc': (1, Type.STRING),
             'chr$': (1, Type.INTEGER),
+            'cint': (1, 'numeric'),
+            'clng': (1, 'numeric'),
             'inkey$': (0,),
             'int': (1, 'numeric'),
             'lcase$': (1, Type.STRING),

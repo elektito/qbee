@@ -14,6 +14,46 @@ io: terminal, print, "\"\r\n"
 print chr$("A")
 ---
 compileerror: TYPE_MISMATCH
+=== CINT ===
+print cint(1.4)
+---
+io: terminal, print, " 1 \r\n"
+===
+print cint(1.5)
+---
+io: terminal, print, " 2 \r\n"
+===
+print cint(-1.4)
+---
+io: terminal, print, "-1 \r\n"
+===
+print cint(100000)
+---
+trap: INVALID_CELL_VALUE
+===
+print cint("A")
+---
+compileerror: TYPE_MISMATCH
+=== CLNG ===
+print clng(1.4)
+---
+io: terminal, print, " 1 \r\n"
+===
+print clng(1.5)
+---
+io: terminal, print, " 2 \r\n"
+===
+print clng(3.2e12)
+---
+trap: INVALID_CELL_VALUE
+===
+print clng(-1.4)
+---
+io: terminal, print, "-1 \r\n"
+===
+print clng("A")
+---
+compileerror: TYPE_MISMATCH
 === INKEY$ ===
 print inkey$
 ---
