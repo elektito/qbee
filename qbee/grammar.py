@@ -569,7 +569,14 @@ for_stmt = (
     Opt(step_kw.suppress() - expr, default=None)
 ).set_name('for_stmt')
 next_stmt = (
-    next_kw.suppress() + Opt(Located(identifier), default=None)
+    next_kw.suppress() +
+    Opt(
+        delimited_list(
+            Group(Located(identifier), aslist=True),
+            delim=comma
+        ),
+        default=None
+    )
 ).set_name('next_stmt')
 exit_for_stmt = (
     exit_kw.suppress() + for_kw.suppress()
@@ -900,10 +907,15 @@ def parse_stmt(toks):
     loc_start, toks, loc_end = toks
     if len(toks) == 0:
         return toks
-    tok = toks[0]
-    tok.loc_start = loc_start
-    tok.loc_end = loc_end
-    return tok
+
+    # we might have multiple actual statements per statement; for
+    # example, "NEXT c, r" would result in two NEXT statements. These
+    # would share loc_start and loc_end
+    for tok in toks:
+        tok.loc_start = loc_start
+        tok.loc_end = loc_end
+
+    return toks
 
 
 @parse_action(string_literal)
@@ -1195,12 +1207,14 @@ def parse_next_stmt(toks):
     if toks[0] is None:
         return NextStmt(None)
 
-    var_loc_start, (var,), var_loc_end = toks
-    var = Lvalue(var, [], [])
-    var.loc_start = var_loc_start
-    var.loc_end = var_loc_end
+    stmts = []
+    for loc_start, (var,), loc_end in toks:
+        var = Lvalue(var, [], [])
+        var.loc_start = loc_start
+        var.loc_end = loc_end
+        stmts.append(NextStmt(var))
 
-    return NextStmt(var)
+    return stmts
 
 
 @parse_action(exit_for_stmt)

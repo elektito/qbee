@@ -62,3 +62,16 @@ for i$ = 1 to 10
 next
 ---
 compileerror: TYPE_MISMATCH
+===
+for i = 1 to 3
+    for j = 10 to 20 step 10
+        print i; j
+next j, i
+---
+io: terminal, print, " 1  10 \r\n"
+io: terminal, print, " 1  20 \r\n"
+io: terminal, print, " 2  10 \r\n"
+io: terminal, print, " 2  20 \r\n"
+io: terminal, print, " 3  10 \r\n"
+io: terminal, print, " 3  20 \r\n"
+===
