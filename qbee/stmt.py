@@ -495,6 +495,10 @@ class PrintSep(Stmt):
         assert sep in (';', ',')
         self.sep = sep
 
+    def __repr__(self):
+        sep_name = 'semicolon' if self.sep == ';' else 'comma'
+        return f'<PrintSep {sep_name}>'
+
     @classmethod
     def node_name(cls):
         return 'PRINT SEP'
