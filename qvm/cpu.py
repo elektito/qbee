@@ -1028,6 +1028,21 @@ class QvmCpu:
                       got_type=value.type)
         self.push(CellType.REFERENCE, value.value)
 
+    def _exec_readg_reference(self, idx):
+        try:
+            value = self.globals_segment.get_cell(idx)
+        except IndexError:
+            self.trap(TrapCode.INVALID_GLOBAL_VAR_IDX,
+                      idx=idx)
+
+        if value is None:
+            self.trap(TrapCode.NULL_REFERENCE, scope='global', idx=idx)
+        if value.type != CellType.REFERENCE:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected_type=CellType.REFERENCE,
+                      got_type=value.type)
+        self.push(CellType.REFERENCE, value.value)
+
     def _exec_refidx(self):
         idx = self.pop()
         ref = self.pop(CellType.REFERENCE)
