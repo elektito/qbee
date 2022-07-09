@@ -903,6 +903,10 @@ class QvmCpu:
         s = self.pop(CellType.STRING)
         self.push(CellType.STRING, s.lower())
 
+    def _exec_ltrim(self):
+        s = self.pop(CellType.STRING)
+        self.push(CellType.STRING, s.lstrip(' '))
+
     def _exec_le(self):
         value = self.pop()
 
@@ -1077,6 +1081,10 @@ class QvmCpu:
         idx = idx.value
         ref.index += idx
         self.push(CellType.REFERENCE, ref)
+
+    def _exec_rtrim(self):
+        s = self.pop(CellType.STRING)
+        self.push(CellType.STRING, s.rstrip(' '))
 
     def _exec_sdbl(self):
         string = self.pop(CellType.STRING)

@@ -340,10 +340,12 @@ builtin_func = Located(
         lcase_dollar_kw |
         left_dollar_kw |
         len_kw |
+        ltrim_dollar_kw |
         mid_dollar_kw |
         peek_kw |
         right_dollar_kw |
         rnd_kw |
+        rtrim_dollar_kw |
         space_dollar_kw |
         str_dollar_kw |
         string_dollar_kw |

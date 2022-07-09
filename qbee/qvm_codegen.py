@@ -60,6 +60,7 @@ class CanonicalOp(Enum):
     LCASE = auto()
     LE = auto()
     LT = auto()
+    LTRIM = auto()
     MOD = auto()
     MUL = auto()
     NE = auto()
@@ -77,6 +78,7 @@ class CanonicalOp(Enum):
     RET = auto()
     RETV = auto()
     RND = auto()
+    RTRIM = auto()
     SDBL = auto()
     SIGN = auto()
     SPACE = auto()
@@ -1115,6 +1117,9 @@ def gen_builtin_func_call(node, code, codegen):
     elif node.name == 'lcase$':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('lcase',))
+    elif node.name == 'ltrim$':
+        codegen.gen_code_for_node(node.args[0], code)
+        code.add(('ltrim',))
     elif node.name == 'left$':
         codegen.gen_code_for_node(node.args[0], code)
         codegen.gen_code_for_node(node.args[1], code)
@@ -1159,6 +1164,9 @@ def gen_builtin_func_call(node, code, codegen):
         else:
             code.add(('push!', 1))
         code.add(('io', 'rng', 'rnd'))
+    elif node.name == 'rtrim$':
+        codegen.gen_code_for_node(node.args[0], code)
+        code.add(('rtrim',))
     elif node.name == 'space$':
         codegen.gen_code_for_node(node.args[0], code)
         gen_code_for_conv(

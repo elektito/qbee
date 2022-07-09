@@ -103,6 +103,10 @@ compileerror: TYPE_MISMATCH
 print left$("FooBar", "3")
 ---
 compileerror: TYPE_MISMATCH
+=== LTRIM$ ===
+print ltrim$("   foobar   ")
+---
+io: terminal, print, "foobar   \r\n"
 === LEN ===
 print len("foo")
 ---
@@ -194,6 +198,10 @@ print rnd(-2)
 io: terminal, print, " 0.01 \r\n"
 io: terminal, print, " 0.01 \r\n"
 io: terminal, print, " 0.02 \r\n"
+=== RTRIM$ ===
+print rtrim$("   foobar   ")
+---
+io: terminal, print, "   foobar\r\n"
 === SPACE$ ===
 print space$(3)
 ---
