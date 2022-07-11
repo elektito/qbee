@@ -996,6 +996,7 @@ class BuiltinFuncCall(Expr):
             'clng': Type.LONG,
             'inkey$': Type.STRING,
             'int': Type.LONG,
+            'lbound': Type.LONG,
             'lcase$': Type.STRING,
             'left$': Type.STRING,
             'len': Type.LONG,
@@ -1009,6 +1010,7 @@ class BuiltinFuncCall(Expr):
             'str$': Type.STRING,
             'string$': Type.STRING,
             'timer': Type.SINGLE,
+            'ubound': Type.LONG,
             'ucase$': Type.STRING,
             'val': Type.DOUBLE,
         }.get(self.name)

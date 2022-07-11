@@ -454,6 +454,13 @@ class Pass2(CompilePass):
                         f'any of [{expected_types}]; got '
                         f'{arg.type.name.upper()}',
                         node=arg)
+            elif arg_type == 'array':
+                if not arg.type.is_array:
+                    raise CompileError(
+                        EC.TYPE_MISMATCH,
+                        f'Type mismatch; expected an array; got '
+                        f'{arg.type.name.upper()}',
+                        node=arg)
             elif arg_type == 'numeric':
                 if not arg.type.is_numeric:
                     raise CompileError(
@@ -472,6 +479,7 @@ class Pass2(CompilePass):
             'clng': (1, 'numeric'),
             'inkey$': (0,),
             'int': (1, 'numeric'),
+            'lbound': ((1, 2), 'array', Type.LONG),
             'lcase$': (1, Type.STRING),
             'left$': (2, Type.STRING, Type.INTEGER),
             'len': (1, Type.STRING),
@@ -485,6 +493,7 @@ class Pass2(CompilePass):
             'str$': (1, 'numeric'),
             'string$': (2, Type.INTEGER, (Type.INTEGER, Type.STRING)),
             'timer': (0,),
+            'ubound': ((1, 2), 'array', Type.LONG),
             'ucase$': (1, Type.STRING),
             'val': (1, Type.STRING),
         }.get(node.name, (None,))

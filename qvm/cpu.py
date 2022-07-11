@@ -899,6 +899,20 @@ class QvmCpu:
         if value == 0:
             self.pc = target
 
+    def _exec_lbound(self):
+        dim_idx = self.pop(CellType.LONG)
+        array = self.pop(CellType.REFERENCE).segment
+
+        ndims = array.get_cell(1).value
+        if dim_idx < 1 or dim_idx > ndims:
+            self.trap(
+                TrapCode.INDEX_OUT_OF_RANGE,
+                msg=f'Array has no dimension {dim_idx} '
+                f'(valid: 1-{ndims})')
+
+        lbound = array.get_cell(3 + (dim_idx - 1) * 2).value
+        self.push(CellType.LONG, lbound)
+
     def _exec_lcase(self):
         s = self.pop(CellType.STRING)
         self.push(CellType.STRING, s.lower())
@@ -1258,6 +1272,20 @@ class QvmCpu:
         self.push(prev1.type, prev1.value)
         self.push(prev2.type, prev2.value)
         self.push(top.type, top.value)
+
+    def _exec_ubound(self):
+        dim_idx = self.pop(CellType.LONG)
+        array = self.pop(CellType.REFERENCE).segment
+
+        ndims = array.get_cell(1).value
+        if dim_idx < 1 or dim_idx > ndims:
+            self.trap(
+                TrapCode.INDEX_OUT_OF_RANGE,
+                msg=f'Array has no dimension {dim_idx} '
+                f'(valid: 1-{ndims})')
+
+        ubound = array.get_cell(4 + (dim_idx - 1) * 2).value
+        self.push(CellType.LONG, ubound)
 
     def _exec_ucase(self):
         s = self.pop(CellType.STRING)

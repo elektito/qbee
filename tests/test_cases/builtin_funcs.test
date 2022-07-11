@@ -75,6 +75,32 @@ io: terminal, print, "-2 \r\n"
 print int("A")
 ---
 compileerror: TYPE_MISMATCH
+=== LBOUND ===
+dim a(5 to 10) as long
+print lbound(a)
+---
+io: terminal, print, " 5 \r\n"
+===
+lb = 5
+ub = 10
+dim a(lb to ub) as long
+print lbound(a)
+---
+io: terminal, print, " 5 \r\n"
+===
+dim a(-20 to -10, 1 to 33, 45 to 88)
+print lbound(a); lbound(a, 1); lbound(a, 2); lbound(a, 3)
+---
+io: terminal, print, "-20 -20  1  45 \r\n"
+===
+print lbound(a)
+---
+compileerror: TYPE_MISMATCH
+===
+dim a(5) as long
+print lbound(a, 2)
+---
+trap: INDEX_OUT_OF_RANGE
 === LCASE$ ===
 print lcase$("FooBar")
 ---
@@ -291,6 +317,32 @@ print timer
 with_timer: 1000, 2000
 io: terminal, print, " 1000 \r\n"
 io: terminal, print, " 2000 \r\n"
+=== UBOUND ===
+dim a(5 to 10) as long
+print ubound(a)
+---
+io: terminal, print, " 10 \r\n"
+===
+lb = 5
+ub = 10
+dim a(lb to ub) as long
+print ubound(a)
+---
+io: terminal, print, " 10 \r\n"
+===
+dim a(-20 to -10, 1 to 33, 45 to 88)
+print ubound(a); ubound(a, 1); ubound(a, 2); ubound(a, 3)
+---
+io: terminal, print, "-10 -10  33  88 \r\n"
+===
+print ubound(a)
+---
+compileerror: TYPE_MISMATCH
+===
+dim a(5) as long
+print ubound(a, 2)
+---
+trap: INDEX_OUT_OF_RANGE
 === UCASE$ ===
 print ucase$("FooBar")
 ---

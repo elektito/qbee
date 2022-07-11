@@ -337,6 +337,7 @@ builtin_func = Located(
         clng_kw |
         inkey_dollar_kw |
         int_kw |
+        lbound_kw |
         lcase_dollar_kw |
         left_dollar_kw |
         len_kw |
@@ -350,6 +351,7 @@ builtin_func = Located(
         str_dollar_kw |
         string_dollar_kw |
         timer_kw |
+        ubound_kw |
         ucase_dollar_kw |
         val_kw
     ) +

@@ -57,6 +57,7 @@ class CanonicalOp(Enum):
     IO = auto()
     JMP = auto()
     JZ = auto()
+    LBOUND = auto()
     LCASE = auto()
     LE = auto()
     LT = auto()
@@ -93,6 +94,7 @@ class CanonicalOp(Enum):
     STRRIGHT = auto()
     SWAP = auto()
     SWAPPREV = auto()
+    UBOUND = auto()
     UCASE = auto()
     XOR = auto()
 
@@ -1114,6 +1116,26 @@ def gen_builtin_func_call(node, code, codegen):
     elif node.name == 'int':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('int',))
+    elif node.name == 'lbound':
+        array = node.args[0]
+        base_var = array.get_base_variable()
+        scope = 'g' if base_var.is_global else 'l'
+        if array.base_is_ref:
+            # already a reference; just read it onto stack
+            code.add((f'read{scope}@', base_var.full_name))
+        else:
+            # push a reference to base onto the stack
+            code.add((f'pushref{scope}', base_var.full_name))
+
+        if len(node.args) == 1:
+            code.add(('push&', 1))
+        else:
+            codegen.gen_code_for_node(node.args[1], code)
+            gen_code_for_conv(
+                expr.Type.LONG, node.args[1], code, codegen)
+        code.add(
+            ('lbound',),
+        )
     elif node.name == 'lcase$':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('lcase',))
@@ -1189,6 +1211,26 @@ def gen_builtin_func_call(node, code, codegen):
     elif node.name == 'val':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('sdbl',))
+    elif node.name == 'ubound':
+        array = node.args[0]
+        base_var = array.get_base_variable()
+        scope = 'g' if base_var.is_global else 'l'
+        if array.base_is_ref:
+            # already a reference; just read it onto stack
+            code.add((f'read{scope}@', base_var.full_name))
+        else:
+            # push a reference to base onto the stack
+            code.add((f'pushref{scope}', base_var.full_name))
+
+        if len(node.args) == 1:
+            code.add(('push&', 1))
+        else:
+            codegen.gen_code_for_node(node.args[1], code)
+            gen_code_for_conv(
+                expr.Type.LONG, node.args[1], code, codegen)
+        code.add(
+            ('ubound',),
+        )
     elif node.name == 'ucase$':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('ucase',))
