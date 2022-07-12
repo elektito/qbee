@@ -995,6 +995,7 @@ class BuiltinFuncCall(Expr):
             'cint': Type.INTEGER,
             'clng': Type.LONG,
             'inkey$': Type.STRING,
+            'instr': Type.LONG,
             'int': Type.LONG,
             'lbound': Type.LONG,
             'lcase$': Type.STRING,

@@ -87,6 +87,7 @@ class CanonicalOp(Enum):
     STORE = auto()
     STOREIDX = auto()
     STOREREF = auto()
+    STRFIND = auto()
     STRLEFT = auto()
     STRLEN = auto()
     STRMID = auto()
@@ -1113,6 +1114,18 @@ def gen_builtin_func_call(node, code, codegen):
         code.add(('clng',))
     elif node.name == 'inkey$':
         code.add(('io', 'terminal', 'inkey'))
+    elif node.name == 'instr':
+        if len(node.args) == 2:
+            code.add(('push&', 1))  # search start
+            codegen.gen_code_for_node(node.args[0], code)
+            codegen.gen_code_for_node(node.args[1], code)
+        else:
+            codegen.gen_code_for_node(node.args[0], code)
+            gen_code_for_conv(
+                expr.Type.LONG, node.args[0], code, codegen)
+            codegen.gen_code_for_node(node.args[1], code)
+            codegen.gen_code_for_node(node.args[2], code)
+        code.add(('strfind',))
     elif node.name == 'int':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('int',))

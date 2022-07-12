@@ -1162,6 +1162,28 @@ class QvmCpu:
         value = self.pop()
         ref.segment.set_cell(ref.index, value)
 
+    def _exec_strfind(self):
+        str2 = self.pop(CellType.STRING)
+        str1 = self.pop(CellType.STRING)
+        start = self.pop(CellType.LONG)
+
+        if start <= 0:
+            self.trap(TrapCode.INVALID_OPERAND_VALUE,
+                      desc="STRFIND start argument must be positive")
+
+        # make it zero based
+        start -= 1
+
+        try:
+            index = str1.index(str2, start)
+        except ValueError:
+            index = 0
+        else:
+            # make it one based
+            index += 1
+
+        self.push(CellType.LONG, index)
+
     def _exec_strleft(self):
         n = self.pop(CellType.INTEGER)
         s = self.pop(CellType.STRING)

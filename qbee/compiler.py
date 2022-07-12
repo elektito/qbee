@@ -419,7 +419,31 @@ class Pass2(CompilePass):
     #    we're just finding function calls in this pass)
     # 3. Perform target checking in GOTO statements.
 
-    def _check_function_args(self, func_node, nargs, arg_types):
+    def _check_function_args(self, func_node, arg_spec):
+        """
+        Check the given function node against the given argument spec,
+        which might be a list of specs, and if so, one of them matching
+        is enough.
+        """
+
+        if isinstance(arg_spec, tuple):
+            arg_spec = [arg_spec]
+
+        error = None
+        for nargs, *arg_types in arg_spec:
+            try:
+                self.__check_function_args(func_node, nargs, arg_types)
+            except CompileError as e:
+                error = e
+            else:
+                # all good, at least for one spec!
+                return
+        if error:
+            raise error
+
+    def __check_function_args(self, func_node, nargs, arg_types):
+        "Check a single argument spec for a function node"
+
         if isinstance(nargs, tuple):
             nfrom, nto = nargs
             if not (nfrom <= len(func_node.args) <= nto):
@@ -472,12 +496,14 @@ class Pass2(CompilePass):
                 assert False
 
     def process_builtin_func_call_pre(self, node):
-        nargs, *arg_types = {
+        arg_spec = {
             'asc': (1, Type.STRING),
             'chr$': (1, Type.INTEGER),
             'cint': (1, 'numeric'),
             'clng': (1, 'numeric'),
             'inkey$': (0,),
+            'instr': [(2, Type.STRING, Type.STRING),
+                      (3, Type.INTEGER, Type.STRING, Type.STRING)],
             'int': (1, 'numeric'),
             'lbound': ((1, 2), 'array', Type.LONG),
             'lcase$': (1, Type.STRING),
@@ -496,11 +522,11 @@ class Pass2(CompilePass):
             'ubound': ((1, 2), 'array', Type.LONG),
             'ucase$': (1, Type.STRING),
             'val': (1, Type.STRING),
-        }.get(node.name, (None,))
-        if nargs is None:
+        }.get(node.name)
+        if arg_spec is None:
             raise InternalError(
                 f'Unknown built-in function: {node.name}')
-        self._check_function_args(node, nargs, arg_types)
+        self._check_function_args(node, arg_spec)
 
     def process_const_pre(self, node):
         if node.parent_routine.has_variable(node.name):

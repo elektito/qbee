@@ -63,6 +63,38 @@ print inkey$
 ---
 with_inkey: "A"
 io: terminal, print, "A\r\n"
+=== INSTR ===
+print instr("foobar", "bar")
+---
+io: terminal, print, " 4 \r\n"
+===
+print instr(2, "foobar", "bar")
+---
+io: terminal, print, " 4 \r\n"
+===
+print instr(5, "foobar", "bar")
+---
+io: terminal, print, " 0 \r\n"
+===
+print instr(80, "foobar", "bar")
+---
+io: terminal, print, " 0 \r\n"
+===
+print instr("foobar", "bars")
+---
+io: terminal, print, " 0 \r\n"
+===
+print instr(0, "foobar", "bar")
+---
+trap: INVALID_OPERAND_VALUE
+===
+print instr(-1, "foobar", "bar")
+---
+trap: INVALID_OPERAND_VALUE
+===
+print instr("1", "foobar", "bar")
+---
+compileerror: TYPE_MISMATCH
 === INT ===
 print int(1.6)
 ---
