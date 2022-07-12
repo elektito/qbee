@@ -365,11 +365,13 @@ builtin_func = Located(
 paren_expr = Located(
     lpar.suppress() - expr + rpar.suppress()
 )
+invalid_expr = keyword
 atom = Located(
     addsub_op[...] +
     (
         (builtin_func | lvalue | numeric_literal | string_literal) |
-        paren_expr
+        paren_expr |
+        invalid_expr
     )
 )
 exponent_expr = Forward()
@@ -780,6 +782,8 @@ declare_stmt = (
     )[0, 1]
 ).set_name('declare_stmt')
 
+invalid_stmt = keyword
+
 
 # program
 
@@ -820,8 +824,8 @@ stmt = Located(
     end_if_stmt |
 
     select_stmt |
-    case_stmt |
     case_else_stmt |
+    case_stmt |
     end_select_stmt |
 
     randomize_stmt |
@@ -848,7 +852,9 @@ stmt = Located(
 
     # this needs to be after all other statements starting with the
     # end keyword
-    end_stmt
+    end_stmt |
+
+    invalid_stmt
 ).set_name('stmt')
 
 line_prefix = label | line_no
@@ -881,6 +887,11 @@ def parse_action(rule):
 @parse_action(untyped_identifier)
 def parse_identifier(toks):
     return [toks[0].lower()]
+
+
+@parse_action(invalid_expr)
+def parse_invalid_expr(s, loc, toks):
+    raise SyntaxError(loc, 'Invalid expression')
 
 
 @parse_action(atom)
@@ -1578,6 +1589,11 @@ def parse_width_stmt(toks):
         columns = toks[0]
         lines = None
     return WidthStmt(columns, lines)
+
+
+@parse_action(invalid_stmt)
+def parse_invalid_stmt(s, loc, toks):
+    raise SyntaxError(loc, 'Invalid statement')
 
 
 def main():
