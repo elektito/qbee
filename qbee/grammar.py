@@ -331,6 +331,7 @@ expr = Forward().set_name('expr')
 expr_list = delimited_list(expr, delim=',', min=1)
 builtin_func = Located(
     (
+        abs_kw |
         asc_kw |
         chr_dollar_kw |
         cint_kw |

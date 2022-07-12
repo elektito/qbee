@@ -990,6 +990,7 @@ class BuiltinFuncCall(Expr):
     @property
     def type(self):
         func_type = {
+            'abs': lambda: self.args[0].type,
             'asc': Type.INTEGER,
             'chr$': Type.STRING,
             'cint': Type.INTEGER,
@@ -1019,5 +1020,8 @@ class BuiltinFuncCall(Expr):
         if func_type is None:
             raise InternalError(
                 f'Unknown built-in function: {self.name}')
+
+        if callable(func_type):
+            func_type = func_type()
 
         return func_type

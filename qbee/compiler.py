@@ -497,6 +497,7 @@ class Pass2(CompilePass):
 
     def process_builtin_func_call_pre(self, node):
         arg_spec = {
+            'abs': (1, 'numeric'),
             'asc': (1, Type.STRING),
             'chr$': (1, Type.INTEGER),
             'cint': (1, 'numeric'),

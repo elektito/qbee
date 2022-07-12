@@ -145,6 +145,7 @@ def def_instr(op, op_code, operands=None):
     op_to_instr[op] = instruction
 
 
+def_instr('abs', 136)
 def_instr('add', 2)
 def_instr('allocarr', 101, [UInt8, Int32])
 def_instr('and', 3)

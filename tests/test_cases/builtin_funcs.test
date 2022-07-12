@@ -1,4 +1,32 @@
 # success
+print abs(-1.1)
+---
+io: terminal, print, " 1.1 \r\n"
+===
+print abs(1.1)
+---
+io: terminal, print, " 1.1 \r\n"
+===
+print abs(10)
+---
+io: terminal, print, " 10 \r\n"
+===
+print abs(-100)
+---
+io: terminal, print, " 100 \r\n"
+===
+print 1.1 = abs(-1.1)
+---
+io: terminal, print, "-1 \r\n"
+===
+print 1.1# = abs(-1.1#)
+---
+io: terminal, print, "-1 \r\n"
+===
+print 1.1# = abs(-1.1!)
+---
+io: terminal, print, " 0 \r\n"
+=== ASC ===
 print asc("A")
 ---
 io: terminal, print, " 65 \r\n"

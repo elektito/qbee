@@ -510,6 +510,16 @@ class QvmCpu:
         result = op(a.value, b.value)
         self.push(a.type, result)
 
+    def _exec_abs(self):
+        n = self.pop()
+        if not n.type.is_numeric:
+            self.trap(TrapCode.TYPE_MISMATCH,
+                      expected='numeric',
+                      got=n.type)
+
+        result = abs(n.value)
+        self.push(n.type, result)
+
     def _exec_add(self):
         b = self.pop()
         a = self.pop()

@@ -27,6 +27,7 @@ class BlockContext:
 class CanonicalOp(Enum):
     "VM ops without scope, type, etc."
 
+    ABS = auto()
     ADD = auto()
     ALLOCARR = auto()
     AND = auto()
@@ -1098,7 +1099,10 @@ def gen_unary_op(node, code, codegen):
 
 @QvmCodeGen.generator_for(expr.BuiltinFuncCall)
 def gen_builtin_func_call(node, code, codegen):
-    if node.name == 'asc':
+    if node.name == 'abs':
+        codegen.gen_code_for_node(node.args[0], code)
+        code.add(('abs',))
+    elif node.name == 'asc':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('asc',))
     elif node.name == 'chr$':
