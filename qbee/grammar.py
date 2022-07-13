@@ -871,7 +871,7 @@ line = (
     stmt_group[0, 1] +
     colon[...].suppress() +
     comment[0, 1] +
-    LineEnd()
+    LineEnd().suppress()
 ).set_name('line')
 
 
