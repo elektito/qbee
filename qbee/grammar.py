@@ -28,9 +28,11 @@ from .stmt import (
 )
 from .program import Label, LineNo, Line
 
+# We've disabled packrat at the moment because it causes a "maximum
+# recursion depth exceeded" error in some programs.
 
-# Enable memoization
-ParserElement.enable_packrat()
+## Enable memoization
+#ParserElement.enable_packrat()
 
 # Space and tab constitute as whitespace (but not newline)
 ParserElement.set_default_whitespace_chars(' \t')
