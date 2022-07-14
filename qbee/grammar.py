@@ -30,7 +30,7 @@ from .program import Label, LineNo, Line
 
 
 # Enable memoization
-ParserElement.enable_packrat()
+#ParserElement.enable_packrat()
 
 # Space and tab constitute as whitespace (but not newline)
 ParserElement.set_default_whitespace_chars(' \t')
