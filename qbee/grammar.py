@@ -24,7 +24,8 @@ from .stmt import (
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
     RandomizeStmt, GosubStmt, ReturnStmt, DefSegStmt, PokeStmt,
     ReadStmt, RestoreStmt, LocateStmt, ScreenStmt, WidthStmt, PlayStmt,
-    ExitDoStmt, ExitForStmt,
+    ExitDoStmt, ExitForStmt, OnErrorStmt, KillStmt, SoundStmt,
+    BloadStmt, BsaveStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -336,6 +337,7 @@ builtin_func = Located(
         chr_dollar_kw |
         cint_kw |
         clng_kw |
+        err_kw |
         inkey_dollar_kw |
         instr_kw |
         int_kw |
@@ -454,6 +456,21 @@ assignment_stmt = (
 ).set_name('assignment')
 
 beep_stmt = beep_kw
+
+bload_stmt = (
+    bload_kw.suppress() -
+    expr +
+    Opt(comma.suppress() + expr)
+).set_name('bload_stmt')
+
+bsave_stmt = (
+    bsave_kw.suppress() -
+    expr -
+    comma.suppress() -
+    expr -
+    comma.suppress() -
+    expr
+).set_name('bsave_stmt')
 
 select_stmt = (
     select_kw.suppress() -
@@ -640,9 +657,45 @@ input_stmt = (
     delimited_list(lvalue, delim=',')
 ).set_name('input_stmt')
 
+kill_stmt = (
+    kill_kw.suppress() -
+    expr
+).set_name('kill_stmt')
+
+opt_expr = Opt(expr, default=None)
 locate_stmt = (
-    locate_kw.suppress() - expr - comma.suppress() - expr
+    locate_kw.suppress() -
+    opt_expr +   # row
+    Opt(
+        comma.suppress() -
+        opt_expr -  # col
+        Opt(
+            comma.suppress() -
+            opt_expr +  # cursor
+            Opt(
+                comma.suppress() -
+                expr +  # start
+                Opt(
+                    comma.suppress() -
+                    expr,  # stop
+                    default=None
+                ),
+                default=None
+            ),
+            default=None
+        ),
+        default=None
+    )
 ).set_name('locate_stmt')
+
+on_error_stmt = (
+    on_kw.suppress() +
+    error_kw.suppress() -
+    (
+        (resume_kw - next_kw) |
+        (goto_kw - (untyped_identifier | line_no_value))
+    )
+).set_name('on_error_stmt')
 
 play_stmt = (
     play_kw.suppress() -
@@ -682,6 +735,13 @@ screen_stmt = (
     screen_kw.suppress() -
     delimited_list(expr, delim=comma, min=1, max=4)
 ).set_name('screen_stmt')
+
+sound_stmt = (
+    sound_kw.suppress() -
+    expr -
+    comma.suppress() -
+    expr
+).set_name('sound_stmt')
 
 view_print_stmt = (
     view_kw.suppress() +
@@ -796,6 +856,8 @@ stmt = Located(
 
     assignment_stmt |
     beep_stmt |
+    bload_stmt |
+    bsave_stmt |
     call_stmt |
     cls_stmt |
     color_stmt |
@@ -844,11 +906,14 @@ stmt = Located(
     return_stmt |
     goto_stmt |
     input_stmt |
+    kill_stmt |
     locate_stmt |
+    on_error_stmt |
     play_stmt |
     poke_stmt |
     print_stmt |
     rem_stmt |
+    sound_stmt |
     view_print_stmt |
     width_stmt |
 
@@ -1050,6 +1115,18 @@ def parse_assignment(toks):
 @parse_action(beep_stmt)
 def parse_beep(toks):
     return BeepStmt()
+
+
+@parse_action(bload_stmt)
+def parse_bload_stmt(toks):
+    filespec, offset = toks
+    return BloadStmt(filespec, offset)
+
+
+@parse_action(bsave_stmt)
+def parse_bload_stmt(toks):
+    filespec, offset, length = toks
+    return BsaveStmt(filespec, offset, length)
 
 
 @parse_action(select_stmt)
@@ -1338,10 +1415,26 @@ def parse_input(toks):
     return InputStmt(same_line, prompt, prompt_question, var_list)
 
 
+@parse_action(kill_stmt)
+def parse_kill_stmt(toks):
+    return KillStmt(toks[0])
+
+
 @parse_action(locate_stmt)
 def parse_locate_stmt(toks):
-    row, col = toks
-    return LocateStmt(row, col)
+    row, col, cursor, start, stop, *_ = list(toks) + 5 * [None]
+    return LocateStmt(row, col, cursor, start, stop)
+
+
+@parse_action(on_error_stmt)
+def parse_on_error_stmt(toks):
+    if toks[0].lower() == 'resume':
+        resume_next = True
+        goto_label = None
+    else:
+        resume_next = False
+        goto_label = toks[1]
+    return OnErrorStmt(resume_next, goto_label)
 
 
 @parse_action(play_stmt)
@@ -1395,6 +1488,12 @@ def parse_restore_stmt(toks):
         # it's a line number
         target = int(target)
     return RestoreStmt(target)
+
+
+@parse_action(sound_stmt)
+def parse_sound_stmt(toks):
+    freq, dur = toks
+    return SoundStmt(freq, dur)
 
 
 @parse_action(screen_stmt)

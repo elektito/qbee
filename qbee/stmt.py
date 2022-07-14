@@ -133,6 +133,34 @@ class BeepStmt(Stmt):
         return '<BeepStmt>'
 
 
+class BloadStmt(Stmt):
+    child_fields = ['filespec', 'offset']
+
+    def __init__(self, filespec, offset):
+        self.filespec = filespec
+        self.offset = offset
+
+    def __repr__(self):
+        return (
+            f'<BloadStmt filespec={self.filespec} offset={self.offset}>'
+        )
+
+
+class BsaveStmt(Stmt):
+    child_fields = ['filespec', 'offset', 'length']
+
+    def __init__(self, filespec, offset, length):
+        self.filespec = filespec
+        self.offset = offset
+        self.length = length
+
+    def __repr__(self):
+        return (
+            f'<BloadStmt filespec={self.filespec} offset={self.offset} '
+            f'length={self.length}>'
+        )
+
+
 class CallStmt(Stmt):
     child_fields = ['args']
 
@@ -456,15 +484,52 @@ class InputStmt(Stmt):
         )
 
 
-class LocateStmt(Stmt):
-    child_fields = ['row', 'col']
+class KillStmt(Stmt):
+    child_fields = ['filespec']
 
-    def __init__(self, row, col):
-        self.row = row
-        self.col = col
+    def __init__(self, filespec):
+        self.filespec = filespec
 
     def __repr__(self):
-        return f'<LocateStmt {self.row} {self.col}>'
+        return f'<KillStmt {self.filespec}>'
+
+
+class LocateStmt(Stmt):
+    child_fields = ['row', 'col', 'cursor', 'start', 'stop']
+
+    def __init__(self, row, col, cursor, start, stop):
+        self.row = row
+        self.col = col
+        self.cursor = cursor
+        self.start = start
+        self.stop = stop
+
+    def __repr__(self):
+        return (
+            f'<LocateStmt row={self.row} col={self.col} '
+            f'cursor={self.cursor} '
+            f'start={self.start} stop={self.stop}>'
+        )
+
+
+class OnErrorStmt(Stmt):
+    child_fields = []
+
+    def __init__(self, resume_next, goto_label):
+        assert (
+            (resume_next and not goto_label) or
+            (goto_label and not resume_next)
+        )
+
+        self.resume_next = resume_next
+        self.goto_label = goto_label
+
+    def __repr__(self):
+        if self.resume_next:
+            desc = 'RESUME NEXT'
+        else:
+            desc = f'GOTO {self.goto_label}'
+        return f'<OnErrorStmt {desc}>'
 
 
 class PlayStmt(Stmt):
@@ -576,6 +641,17 @@ class ScreenStmt(Stmt):
         apage = f' apage={self.apage}' if self.apage else ''
         vpage = f' vpage={self.vpage}' if self.vpage else ''
         return f'<ScreenStmt {self.mode}{csw}{apage}{vpage}'
+
+
+class SoundStmt(Stmt):
+    child_fields = ['frequency', 'duration']
+
+    def __init__(self, frequency, duration):
+        self.frequency = frequency
+        self.duration = duration
+
+    def __repr__(self):
+        return f'<SoundStmt freq={self.frequency} dur={self.duration}>'
 
 
 class TypeStmt(Stmt):
