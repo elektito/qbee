@@ -334,6 +334,34 @@ Type help or ? to list commands.
 
         return f'{prefix}{i_addr:08x}: {instr.op: <12}{operands_list}'
 
+    def get_current_bt(self):
+        frames = []
+        frame = self.cpu.cur_frame
+        stmt_addr = self.cpu.pc
+        while frame:
+            frame_info = {}
+            routine = self.find_routine(frame.code_start)
+            if routine == self.debug_info.main_routine:
+                frame_info['routine_type'] = 'toplevel'
+                frame_info['routine_name'] = None
+            else:
+                frame_info['routine_type'] = routine.kind.upper()
+                frame_info['routine_name'] = routine.name
+
+            stmt = self.find_stmt(stmt_addr)
+            if stmt:
+                frame_info['stmt'] = stmt
+            else:
+                frame_info['stmt'] = None
+
+            frames.append(frame_info)
+
+            stmt_addr = frame.caller_addr
+            frame = frame.prev_frame
+
+        return frames
+
+
     def postcmd(self, stop, line):
         if stop:
             print('Goodbye!')
@@ -498,42 +526,26 @@ name to break at.
             print('No such breakpoint')
 
     def do_bt(self, arg):
-        'Print backtrace'
-        frames = []
+        bt = self.get_current_bt()
+        for i, frame in enumerate(reversed(bt)):
+            fidx = len(bt) - i
 
-        frame = self.cpu.cur_frame
-        while frame:
-            routine = self.find_routine(frame.code_start)
-            frames.append((frame, routine))
-            frame = frame.prev_frame
+            line_no = '<unknown line>'
+            if frame['stmt']:
+                line_no = frame['stmt'].source_start_line
 
-        frames.reverse()
-
-        for i, (frame, routine) in enumerate(frames):
-            fidx = len(frames) - i
-
-            if routine and routine != self.debug_info.main_routine:
-                stmt = self.find_stmt(frame.caller_addr)
-                if stmt is None:
-                    print('<unknown line>')
-                else:
-                    caller_line_no = stmt.source_start_line
-                    print(f'line {caller_line_no} ')
-                    print('   ',
-                          self.source_lines[caller_line_no - 1].strip())
-
-                print(f'[{fidx}] {routine.kind.upper()} '
-                      f'{routine.name} ', end='')
+            if frame['routine_type'] == 'toplevel':
+                rtype = 'module-level'
+                rname = 'code'
             else:
-                print(f'[{fidx}] _main ', end='')
+                rtype = frame['routine_type']
+                rname = frame['routine_name']
 
-        stmt = self.find_stmt(self.cpu.pc)
-        if stmt is None:
-            print('<unknown stmt>')
-        else:
-            line_no = stmt.source_start_line
-            print(f'line {line_no} ')
-            print('   ', self.source_lines[line_no - 1].strip())
+            print(f'[{fidx}] {rtype} {rname} line {line_no}')
+
+            if frame['stmt']:
+                stmt_text = self.source_lines[line_no - 1].strip()
+                print(f'    {stmt_text}')
 
     def do_print(self, arg):
         'Print the value of a variable'
