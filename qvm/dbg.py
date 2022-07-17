@@ -370,9 +370,11 @@ Type help or ? to list commands.
         return stop
 
     def do_autostatus(self, arg):
-        """Change/show auto-status. If auto-status is on, the debugger
+        """
+        Change/show auto-status. If auto-status is on, the debugger
         would print some status information after each operation that
-        progresses the debuggee."""
+        progresses the debuggee.
+        """
         arg = arg.strip().upper()
         if arg == '':
             status = {
@@ -392,17 +394,24 @@ Type help or ? to list commands.
 
     @unhalted
     def do_continue(self, arg):
-        'Continue until the machine is halted or we hit a breakpoint.'
+        """
+        Continue until the machine is halted or we hit a breakpoint.
+        """
         if not self.cpu.run():
             print('Hit breakpoint')
 
         self.show_auto_status()
 
     def do_curi(self, arg):
-        'Show current instruction and a few before/after it.'
+        """
+        Show current instruction and a few before/after it.
+        """
         self.show_instruction_with_context(self.cpu.pc)
 
     def do_stack(self, arg):
+        """
+        Print the values currently on top of the stack.
+        """
         stack = self.cpu.stack
         original_size = len(stack)
         if len(stack) > 5:
@@ -421,21 +430,27 @@ Type help or ? to list commands.
 
     @unhalted
     def do_stepi(self, arg):
-        'Execute one machine instruction.'
+        """
+        Execute one machine instruction.
+        """
         self.machine.tick()
 
         self.show_auto_status()
 
     @unhalted
     def do_nexti(self, arg):
-        'Execute one machine instruction, skipping over calls.'
+        """
+        Execute one machine instruction, skipping over calls.
+        """
         if not self.cpu.next():
             print('Hit breakpoint')
 
         self.show_auto_status()
 
     def do_cur(self, arg):
-        'Show current statement'
+        """
+        Show current source statement with some context.
+        """
         stmt = self.find_nonempty_stmt(self.cpu.pc)
         reasons = [HaltReason.INSTRUCTION, HaltReason.END_OF_CODE]
         if stmt is None and self.cpu.halted and \
@@ -454,7 +469,9 @@ Type help or ? to list commands.
 
     @unhalted
     def do_step(self, arg):
-        'Execute one source statement'
+        """
+        Execute one source statement.
+        """
 
         stmt = self.find_nonempty_stmt(self.cpu.pc)
 
@@ -476,6 +493,10 @@ Type help or ? to list commands.
 
     @unhalted
     def do_next(self, arg):
+        """
+        Execute current statement, skipping over sub-routine/function
+        calls.
+        """
         stmt = self.find_nonempty_stmt(self.cpu.pc)
         while not self.cpu.halted:
             if not self.cpu.next():
@@ -489,11 +510,10 @@ Type help or ? to list commands.
 
     def do_break(self, arg):
         """
-Add breakpoint. If argument starts with 0x, it is assumed to be an
-address to break at. If a decimal number, it is assumed to be a line
-number to break at. Otherwise, it is assumed to be a sub or function
-name to break at.
-
+        Add breakpoint. If argument starts with 0x, it is assumed to be
+        an address to break at. If a decimal number, it is assumed to be
+        a line number to break at. Otherwise, it is assumed to be a
+        sub or function name to break at.
         """
         if not arg:
             for bp in self.cpu.breakpoints:
@@ -511,7 +531,9 @@ name to break at.
         self.cpu.add_breakpoint(bp)
 
     def do_delbr(self, arg):
-        'Delete breakpoint'
+        """
+        Delete breakpoint.
+        """
         bp, err = self.parse_breakpoint_spec(arg)
         if bp is None:
             print(f'Error: {err}')
@@ -526,6 +548,9 @@ name to break at.
             print('No such breakpoint')
 
     def do_bt(self, arg):
+        """
+        Print current backtrace.
+        """
         bt = self.get_current_bt()
         for i, frame in enumerate(reversed(bt)):
             fidx = len(bt) - i
@@ -548,7 +573,9 @@ name to break at.
                 print(f'    {stmt_text}')
 
     def do_print(self, arg):
-        'Print the value of a variable'
+        """
+        Print the value of a variable.
+        """
         try:
             tree = grammar.expr.parse_string(arg, parse_all=True)
             tree = tree[0]
@@ -566,6 +593,10 @@ name to break at.
         print(value)
 
     def do_annotate(self, arg):
+        """
+        Print machine instructions annotated with QB statements they
+        were generated for.
+        """
         for i_addr, instr, operands in self.instrs:
             instr_str = self.format_instr(i_addr, instr, operands,
                                           prefix='   ')
@@ -585,11 +616,15 @@ name to break at.
             print(f'{instr_str: <72} ; {stmt_desc}')
 
     def do_quit(self, arg):
-        'Exit debugger'
+        """
+        Exit debugger.
+        """
         return True
 
     def do_EOF(self, arg):
-        'Exit debugger'
+        """
+        Exit debugger.
+        """
         return True
 
 
