@@ -439,7 +439,8 @@ Type help or ? to list commands.
         self.cpu.add_breakpoint(step_breakpoint)
         try:
             if not self.cpu.run():
-                print('Hit breakpoint')
+                if self.cpu.last_breakpoint != step_breakpoint:
+                    print('Hit breakpoint')
         finally:
             self.cpu.del_breakpoint(step_breakpoint)
 
