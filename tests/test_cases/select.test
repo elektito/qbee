@@ -1,0 +1,116 @@
+# success
+x = 10
+
+select case x + 1
+case 21
+     print "twenty one"
+case 11
+     print "eleven"
+case 31
+     print "thirty one"
+end select
+---
+io: terminal, print, "eleven\r\n"
+===
+x = 10
+
+select case x
+case is <5
+     print "lt five"
+case is >=10
+     print "ge ten"
+case 10
+     print "ten"
+case else
+     print "other"
+end select
+---
+io: terminal, print, "ge ten\r\n"
+===
+x = 10
+
+select case x
+case 1 to 4
+     print "one to four"
+case 5 to 10
+     print "five to ten"
+case 10
+     print "ten"
+case else
+     print "other"
+end select
+---
+io: terminal, print, "five to ten\r\n"
+===
+x = 10
+
+select case x
+case 1 to 4
+     print "one to four"
+case 20
+     print "twenty"
+case is >10
+     print "ge ten"
+case else
+     print "other"
+end select
+---
+io: terminal, print, "other\r\n"
+===
+x = 10
+
+select case x
+case 1 to 4
+     print "one to four"
+case 20
+     print "twenty"
+case is >10
+     print "ge ten"
+case else
+     print "other"
+case else
+     print "other2"
+end select
+---
+io: terminal, print, "other\r\n"
+===
+x = 10
+
+select case x
+case 1 to 4
+     print "one to four"
+case 20
+     print "twenty"
+case is >10
+     print "ge ten"
+case else
+     print "other"
+case 10
+     print "ten"
+end select
+---
+io: terminal, print, "other\r\n"
+===
+call foo
+
+sub foo
+    select case 1
+    case 1
+         exit sub
+    end select
+end sub
+===
+for i = 1 to 10
+    select case 1
+    case 1
+         exit for
+    end select
+next
+===
+do
+    select case 1
+    case 1
+         exit do
+    end select
+loop
+===

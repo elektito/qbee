@@ -24,6 +24,12 @@ class BlockContext:
     exit_label: str
 
 
+@dataclass
+class SelectBlockContext(BlockContext):
+    var_name: str
+    var_type: expr.Type
+
+
 class CanonicalOp(Enum):
     "VM ops without scope, type, etc."
 
@@ -1862,8 +1868,16 @@ def gen_select_block(node, code, codegen):
     start_label = codegen.get_label('select_start')
     end_label = codegen.get_label('select_end')
 
+    select_var = codegen.get_label('select_var')
+    var_type = node.value.type
+    node.parent_routine.local_vars[select_var] = var_type
+
+    codegen.cur_blocks.append(
+        SelectBlockContext('select', end_label, select_var, var_type))
+
     code.add(('_label', start_label))
     codegen.gen_code_for_node(node.value, code)
+    code.add(('storel', select_var))
 
     cur_case_label = codegen.get_label('case')
     next_case_label = codegen.get_label('case')
@@ -1891,17 +1905,17 @@ def gen_select_block(node, code, codegen):
 
     code.add(
         ('_label', end_label),
-        ('pop',),
     )
+
+    block_context = codegen.cur_blocks.pop()
+    assert block_context.kind == 'select'
 
 
 @QvmCodeGen.generator_for(stmt.CaseStmt)
 def gen_case_stmt(node, code, codegen):
     codegen.gen_code_for_node(node.cases[0], code)
     for case in node.cases[1:]:
-        code.add(('swap',))
         codegen.gen_code_for_node(case, code)
-        code.add(('swapprev',))
         code.add(('or',))
 
 
@@ -1914,7 +1928,9 @@ def gen_case_else_stmt(node, code, codegen):
 def gen_simple_case_clause(node, code, codegen):
     value_type = node.parent.parent.value.type
 
-    code.add(('dupl',))
+    block = codegen.cur_blocks[-1]
+    type_char = block.var_type.type_char
+    code.add((f'readl{type_char}', block.var_name))
     codegen.gen_code_for_node(node.value, code)
     gen_code_for_conv(value_type, node.value, code, codegen)
     code.add(('cmp',), ('eq',))
@@ -1924,7 +1940,9 @@ def gen_simple_case_clause(node, code, codegen):
 def gen_compare_case_clause(node, code, codegen):
     value_type = node.parent.parent.value.type
 
-    code.add(('dupl',))
+    block = codegen.cur_blocks[-1]
+    type_char = block.var_type.type_char
+    code.add((f'readl{type_char}', block.var_name))
     codegen.gen_code_for_node(node.value, code)
     gen_code_for_conv(value_type, node.value, code, codegen)
 
@@ -1936,20 +1954,21 @@ def gen_compare_case_clause(node, code, codegen):
         expr.Operator.CMP_LE: 'le',
         expr.Operator.CMP_GE: 'ge',
     }[node.op]
-    code.add((op,))
+    code.add(('cmp',), (op,))
 
 
 @QvmCodeGen.generator_for(stmt.RangeCaseClause)
 def gen_range_case_clause(node, code, codegen):
     value_type = node.parent.parent.value.type
 
-    code.add(('dupl',))
-    code.add(('dupl',))
+    block = codegen.cur_blocks[-1]
+    type_char = block.var_type.type_char
+    code.add((f'readl{type_char}', block.var_name))
     codegen.gen_code_for_node(node.from_value, code)
     gen_code_for_conv(value_type, node.from_value, code, codegen)
-    code.add(('ge',))
-    code.add(('swap',))
+    code.add(('cmp',), ('ge',))
+    code.add((f'readl{type_char}', block.var_name))
     codegen.gen_code_for_node(node.to_value, code)
     gen_code_for_conv(value_type, node.to_value, code, codegen)
-    code.add(('le',))
+    code.add(('cmp',), ('le',))
     code.add(('and',))
