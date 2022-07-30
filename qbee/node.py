@@ -13,6 +13,7 @@ class Node(ABC):
         obj.__init__(*args, **kwargs)
         for child in obj.children:
             child.parent = obj
+        obj._parent_routine = None
         return obj
 
     def __getnewargs_ex__(self):
@@ -34,6 +35,8 @@ class Node(ABC):
 
     @property
     def parent_routine(self):
+        if self._parent_routine:
+            return self._parent_routine
         return self.context.get_node_routine(self)
 
     @classmethod

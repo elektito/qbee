@@ -889,7 +889,7 @@ def gen_static_array_init(decl, code, codegen):
         # static array
         code.add(
             (f'initarr{scope}',
-             decl.name, len(decl.array_dims), element_size),
+             decl.var.full_name, len(decl.array_dims), element_size),
         )
     else:
         # dynamic array

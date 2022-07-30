@@ -619,6 +619,11 @@ class Pass2(CompilePass):
             else:
                 node.parent_routine.local_vars[node.base_var] = decl.type
 
+            # we need to manually set the parent_routine field for
+            # this node, because it does not have a parent and the
+            # usual parent_routine attribute does not work for it.
+            decl._parent_routine = node.parent_routine
+
             node.implicit_decl = decl
 
         if node.array_indices:
