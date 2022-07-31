@@ -16,6 +16,7 @@ class TrapCode(Enum):
     INVALID_DIMENSIONS = 12
     KEYBOARD_INTERRUPT = 13
     DIVISION_BY_ZERO = 14
+    UNINITIALIZED_MEM = 15
 
 
 class Trapped(Exception):

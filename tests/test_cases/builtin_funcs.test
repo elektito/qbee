@@ -161,6 +161,22 @@ dim a(5) as long
 print lbound(a, 2)
 ---
 trap: INDEX_OUT_OF_RANGE
+===
+dim shared x as integer
+dim shared y(10 to 30) as long
+print lbound(y)
+---
+io: terminal, print, " 10 \r\n"
+===
+dim shared x as integer
+foo
+
+sub foo static
+    dim y(10 to 30) as long
+    print lbound(y)
+end sub
+---
+io: terminal, print, " 10 \r\n"
 === LCASE$ ===
 print lcase$("FooBar")
 ---
@@ -403,6 +419,22 @@ dim a(5) as long
 print ubound(a, 2)
 ---
 trap: INDEX_OUT_OF_RANGE
+===
+dim shared x as integer
+dim shared y(10 to 30) as long
+print ubound(y)
+---
+io: terminal, print, " 30 \r\n"
+===
+dim shared x as integer
+foo
+
+sub foo static
+    dim y(10 to 30) as long
+    print ubound(y)
+end sub
+---
+io: terminal, print, " 30 \r\n"
 === UCASE$ ===
 print ucase$("FooBar")
 ---

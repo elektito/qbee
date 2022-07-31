@@ -456,6 +456,10 @@ class QvmCpu:
             print('Received keyboard interrupt')
         elif code == TrapCode.DIVISION_BY_ZERO:
             print('Division by zero')
+        elif code == TrapCode.UNINITIALIZED_MEM:
+            msg = kwargs.get('msg')
+            msg = msg or 'Accessing uninitialized memory'
+            print(msg)
         else:
             assert False
 
@@ -911,16 +915,25 @@ class QvmCpu:
 
     def _exec_lbound(self):
         dim_idx = self.pop(CellType.LONG)
-        array = self.pop(CellType.REFERENCE).segment
+        array_ref = self.pop(CellType.REFERENCE)
+        array_seg = array_ref.segment
+        array_idx = array_ref.index
 
-        ndims = array.get_cell(1).value
+        ndims = array_seg.get_cell(array_idx + 1)
+        if ndims is None:
+            self.trap(
+                TrapCode.UNINITIALIZED_MEM,
+                msg='Array memory is uninitialized')
+        ndims = ndims.value
+
         if dim_idx < 1 or dim_idx > ndims:
             self.trap(
                 TrapCode.INDEX_OUT_OF_RANGE,
                 msg=f'Array has no dimension {dim_idx} '
                 f'(valid: 1-{ndims})')
 
-        lbound = array.get_cell(3 + (dim_idx - 1) * 2).value
+        idx = array_idx + 3 + (dim_idx - 1) * 2
+        lbound = array_seg.get_cell(idx).value
         self.push(CellType.LONG, lbound)
 
     def _exec_lcase(self):
@@ -1307,16 +1320,25 @@ class QvmCpu:
 
     def _exec_ubound(self):
         dim_idx = self.pop(CellType.LONG)
-        array = self.pop(CellType.REFERENCE).segment
+        array_ref = self.pop(CellType.REFERENCE)
+        array_seg = array_ref.segment
+        array_idx = array_ref.index
 
-        ndims = array.get_cell(1).value
+        ndims = array_seg.get_cell(array_idx + 1)
+        if ndims is None:
+            self.trap(
+                TrapCode.UNINITIALIZED_MEM,
+                msg='Array memory is uninitialized')
+        ndims = ndims.value
+
         if dim_idx < 1 or dim_idx > ndims:
             self.trap(
                 TrapCode.INDEX_OUT_OF_RANGE,
                 msg=f'Array has no dimension {dim_idx} '
                 f'(valid: 1-{ndims})')
 
-        ubound = array.get_cell(4 + (dim_idx - 1) * 2).value
+        idx = array_idx + 4 + (dim_idx - 1) * 2
+        ubound = array_seg.get_cell(idx).value
         self.push(CellType.LONG, ubound)
 
     def _exec_ucase(self):
