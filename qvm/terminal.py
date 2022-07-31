@@ -273,6 +273,10 @@ class TerminalWindow(pyglet.window.Window):
         )
         self.text_texture.blit_into(text_img_data, 0, 0, 0)
 
+    def set_mem(self, offset, value):
+        self.text_buffer[offset] = value
+        self._text_updated = True
+
     @lru_cache(maxsize=256)
     def _get_char(self, char_code, fg_color, bg_color):
         assert len(fg_color) == len(bg_color) == 3

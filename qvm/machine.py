@@ -500,12 +500,18 @@ class BasePeripheralsImpl:
     def memory_poke(self, offset, value):
         if self.cur_segment == 0 and offset == 0x417:
             self.misc_set_control_keys()
+        elif self.cur_segment == 0xb800:
+            self.terminal_set_mem(offset, value)
         else:
+            if self.cur_segment:
+                cur_segment = f'{self.cur_segment:04x}'
+            else:
+                cur_segment = 'default_segment'
             raise DeviceError(
                 error_code=Device.Error.BAD_ARG_VALUE,
                 error_msg=(
                     f'Cannot write to memory at: '
-                    f'{self.cur_segment:04x}:{offset:04x}'
+                    f'{cur_segment}:{offset:04x}'
                 ),
             )
 
@@ -659,6 +665,9 @@ class SmartTerminalMixin:
 
         self.terminal.call('view_print', top_line, bottom_line)
 
+    def terminal_set_mem(self, offset, value):
+        self.terminal.call('set_mem', offset, value)
+
 
 class DumbTerminalMixin:
     def __init__(self):
@@ -793,6 +802,13 @@ class DumbTerminalMixin:
             )
 
         # no need to do anything for view print without arguments
+
+    def terminal_set_mem(self, offset, value):
+        self._device_error(
+            error_code=Device.Error.BAD_ARG_VALUE,
+            error_msg='Direct memory access not supported with dumb '
+            'terminal',
+        )
 
 
 class SmartPeripheralsImpl(BasePeripheralsImpl, SmartTerminalMixin):
