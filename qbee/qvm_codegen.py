@@ -999,7 +999,7 @@ def gen_array_pass(node, code, codegen):
         scope = 'g'  # global
     else:
         scope = 'l'  # local
-    code.add((f'pushref{scope}', node.identifier))
+    code.add((f'pushref{scope}', var.full_name))
 
 
 @QvmCodeGen.generator_for(expr.BinaryOp)
