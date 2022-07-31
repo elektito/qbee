@@ -60,7 +60,7 @@ class TerminalWindow(pyglet.window.Window):
         # set current background and foreground color for the entire
         # screen text buffer
         attrs = self._get_current_text_attrs_byte()
-        for i in range(0, len(self.text_buffer), 2):
+        for i in range(1, len(self.text_buffer), 2):
             self.text_buffer[i] = attrs
 
         self._cursor_row = self._cursor_col = 0
@@ -204,8 +204,8 @@ class TerminalWindow(pyglet.window.Window):
                 continue
 
             attrs = self._get_current_text_attrs_byte()
-            self.text_buffer[idx] = attrs
-            self.text_buffer[idx + 1] = char
+            self.text_buffer[idx] = char
+            self.text_buffer[idx + 1] = attrs
 
             self._cursor_col += 1
 
@@ -248,13 +248,13 @@ class TerminalWindow(pyglet.window.Window):
             x = column * self.char_width
             y = line * self.char_height
 
-            attrs = self.text_buffer[i]
+            attrs = self.text_buffer[i + 1]
             fg_color = attrs & 0x0f
             bg_color = (attrs & 0x70) >> 4
             blink = (attrs & 0x80) >> 7
             fg_color = self.color_palette[fg_color]
             bg_color = self.color_palette[bg_color]
-            char_code = self.text_buffer[i + 1]
+            char_code = self.text_buffer[i]
             char_img = self._get_char(
                 char_code, fg_color, bg_color)
 
