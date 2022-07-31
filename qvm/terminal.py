@@ -63,6 +63,8 @@ class TerminalWindow(pyglet.window.Window):
         for i in range(0, len(self.text_buffer), 2):
             self.text_buffer[i] = attrs
 
+        self._cursor_row = self._cursor_col = 0
+
     def set_mode(self, mode):
         assert mode == 0, 'Only SCREEN 0 supported for now'
         self.mode = mode
