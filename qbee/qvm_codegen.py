@@ -1292,6 +1292,24 @@ def gen_beep(node, code, codegen):
     code.add(('io', 'pcspkr', 'beep'))
 
 
+@QvmCodeGen.generator_for(stmt.BloadStmt)
+def gen_bload(node, code, codegen):
+    codegen.gen_code_for_node(node.filespec, code)
+    codegen.gen_code_for_node(node.offset, code)
+    gen_code_for_conv(expr.Type.LONG, node.offset, code, codegen)
+    code.add(('io', 'memory', 'bload'))
+
+
+@QvmCodeGen.generator_for(stmt.BsaveStmt)
+def gen_bsave(node, code, codegen):
+    codegen.gen_code_for_node(node.filespec, code)
+    codegen.gen_code_for_node(node.offset, code)
+    gen_code_for_conv(expr.Type.LONG, node.offset, code, codegen)
+    codegen.gen_code_for_node(node.length, code)
+    gen_code_for_conv(expr.Type.LONG, node.length, code, codegen)
+    code.add(('io', 'memory', 'bsave'))
+
+
 @QvmCodeGen.generator_for(stmt.CallStmt)
 def gen_call(node, code, codegen):
     routine = codegen.compilation.routines[node.name]

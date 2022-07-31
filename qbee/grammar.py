@@ -24,7 +24,7 @@ from .stmt import (
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
     RandomizeStmt, GosubStmt, ReturnStmt, DefSegStmt, PokeStmt,
     ReadStmt, RestoreStmt, LocateStmt, ScreenStmt, WidthStmt, PlayStmt,
-    ExitDoStmt, ExitForStmt,
+    ExitDoStmt, ExitForStmt, BloadStmt, BsaveStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -455,6 +455,21 @@ assignment_stmt = (
 
 beep_stmt = beep_kw
 
+bload_stmt = (
+    bload_kw.suppress() -
+    expr +
+    Opt(comma.suppress() + expr)
+).set_name('bload_stmt')
+
+bsave_stmt = (
+    bsave_kw.suppress() -
+    expr -
+    comma.suppress() -
+    expr -
+    comma.suppress() -
+    expr
+).set_name('bsave_stmt')
+
 select_stmt = (
     select_kw.suppress() -
     case_kw.suppress() -
@@ -796,6 +811,8 @@ stmt = Located(
 
     assignment_stmt |
     beep_stmt |
+    bload_stmt |
+    bsave_stmt |
     call_stmt |
     cls_stmt |
     color_stmt |
@@ -1050,6 +1067,18 @@ def parse_assignment(toks):
 @parse_action(beep_stmt)
 def parse_beep(toks):
     return BeepStmt()
+
+
+@parse_action(bload_stmt)
+def parse_bload_stmt(toks):
+    filespec, offset = toks
+    return BloadStmt(filespec, offset)
+
+
+@parse_action(bsave_stmt)
+def parse_bload_stmt(toks):
+    filespec, offset, length = toks
+    return BsaveStmt(filespec, offset, length)
 
 
 @parse_action(select_stmt)

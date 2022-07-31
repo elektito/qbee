@@ -133,6 +133,34 @@ class BeepStmt(Stmt):
         return '<BeepStmt>'
 
 
+class BloadStmt(Stmt):
+    child_fields = ['filespec', 'offset']
+
+    def __init__(self, filespec, offset):
+        self.filespec = filespec
+        self.offset = offset
+
+    def __repr__(self):
+        return (
+            f'<BloadStmt filespec={self.filespec} offset={self.offset}>'
+        )
+
+
+class BsaveStmt(Stmt):
+    child_fields = ['filespec', 'offset', 'length']
+
+    def __init__(self, filespec, offset, length):
+        self.filespec = filespec
+        self.offset = offset
+        self.length = length
+
+    def __repr__(self):
+        return (
+            f'<BloadStmt filespec={self.filespec} offset={self.offset} '
+            f'length={self.length}>'
+        )
+
+
 class CallStmt(Stmt):
     child_fields = ['args']
 

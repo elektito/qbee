@@ -55,6 +55,8 @@ QVM_DEVICES = {
             'peek': 2,
             'set_segment': 3,
             'set_default_segment': 4,
+            'bsave': 5,
+            'bload': 6,
         }
     },
     'data': {

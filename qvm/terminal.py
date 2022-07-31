@@ -277,6 +277,12 @@ class TerminalWindow(pyglet.window.Window):
         self.text_buffer[offset] = value
         self._text_updated = True
 
+    def get_mem_block(self, offset, length):
+        return self.text_buffer[offset:offset+length]
+
+    def set_mem_block(self, block, offset):
+        self.text_buffer[offset:offset+len(block)] = block
+
     @lru_cache(maxsize=256)
     def _get_char(self, char_code, fg_color, bg_color):
         assert len(fg_color) == len(bg_color) == 3

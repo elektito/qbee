@@ -23,6 +23,7 @@ class Device:
         BAD_ARG_TYPE = 2
         BAD_ARG_VALUE = 3
         OP_FAILED = 4
+        BAD_FILESPEC = 5
 
     def __init__(self, device_id, cpu, impl):
         assert hasattr(self, 'name')
@@ -61,6 +62,8 @@ class Device:
                     device_id=self.id,
                     error_code=Device.Error.OP_FAILED,
                     error_msg=f'{self.name}::{op} not implemented')
+                else:
+                    raise
             finally:
                 self.cur_op = None
 
@@ -160,6 +163,17 @@ class MemoryDevice(Device):
             return
         offset = self._get_arg_from_stack(CellType.LONG)
         self.impl.memory_poke(offset, value)
+
+    def _exec_bsave(self):
+        length = self.cpu.pop(CellType.LONG)
+        offset = self.cpu.pop(CellType.LONG)
+        filespec = self.cpu.pop(CellType.STRING)
+        self.impl.memory_bsave(filespec, offset, length)
+
+    def _exec_bload(self):
+        offset = self.cpu.pop(CellType.LONG)
+        filespec = self.cpu.pop(CellType.STRING)
+        self.impl.memory_bload(filespec, offset)
 
     def _get_control_keys(self):
         # The original meaning of the bits at 0000:0417, were (from
@@ -515,6 +529,44 @@ class BasePeripheralsImpl:
                 ),
             )
 
+    def memory_bsave(self, filespec, offset, length):
+        if self.cur_segment == 0xb800:
+            block = self.terminal.call_with_result(
+                'get_mem_block', offset, length)
+            filespec = self._map_filespec(filespec)
+            with open(filespec, 'wb') as f:
+                f.write(block)
+        else:
+            if self.cur_segment:
+                cur_segment = f'{self.cur_segment:04x}'
+            else:
+                cur_segment = 'default_segment'
+            raise DeviceError(
+                error_code=Device.Error.BAD_ARG_VALUE,
+                error_msg=(
+                    f'Cannot read memory at: {cur_segment}:{offset:04x}'
+                ),
+            )
+
+    def memory_bload(self, filespec, offset):
+        if self.cur_segment == 0xb800:
+            filespec = self._map_filespec(filespec)
+            with open(filespec, 'rb') as f:
+                block = f.read()
+            self.terminal.call('set_mem_block', block, offset)
+        else:
+            if self.cur_segment:
+                cur_segment = f'{self.cur_segment:04x}'
+            else:
+                cur_segment = 'default_segment'
+            raise DeviceError(
+                error_code=Device.Error.BAD_ARG_VALUE,
+                error_msg=(
+                    f'Cannot write to memory at: '
+                    f'{cur_segment}:{offset:04x}'
+                ),
+            )
+
     # pcspkr
 
     def pcspkr_play(self, command):
@@ -579,6 +631,17 @@ class BasePeripheralsImpl:
         # We do not support reading/setting these values right now
         # however.
         logger.info('Setting control keys not supported.')
+
+    # internal
+
+    def _map_filespec(self, filespec):
+        if len(filespec) >= 2 and filespec[1] == ':':
+            raise DeviceError(
+                error_code=Device.Error.BAD_FILESPEC,
+                error_msg=f'Absolute paths not supported',
+            )
+        filespec = filespec.replace('\\', '/')
+        return filespec
 
 
 class SmartTerminalMixin:
