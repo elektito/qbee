@@ -502,6 +502,7 @@ class Pass2(CompilePass):
             'chr$': (1, Type.INTEGER),
             'cint': (1, 'numeric'),
             'clng': (1, 'numeric'),
+            'err': (0,),
             'inkey$': (0,),
             'instr': [(2, Type.STRING, Type.STRING),
                       (3, Type.INTEGER, Type.STRING, Type.STRING)],
@@ -740,6 +741,9 @@ class Pass2(CompilePass):
                 (f'{label_type} not in the same routine as GOTO: '
                  f'{node.target}'),
                 node=node)
+
+    def process_on_error_pre(self, node):
+        pass
 
     def process_dim_pre(self, node):
         if node.kind == 'dim_shared' \

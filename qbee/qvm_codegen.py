@@ -1122,6 +1122,8 @@ def gen_builtin_func_call(node, code, codegen):
     elif node.name == 'clng':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('clng',))
+    elif node.name == 'err':
+        code.add(('push%', 0))
     elif node.name == 'inkey$':
         code.add(('io', 'terminal', 'inkey'))
     elif node.name == 'instr':
@@ -1678,6 +1680,11 @@ def gen_locate_stmt(node, code, codegen):
     )
 
     code.add(('io', 'terminal', 'locate'))
+
+
+@QvmCodeGen.generator_for(stmt.OnErrorStmt)
+def gen_on_error(node, code, codegen):
+    pass
 
 
 @QvmCodeGen.generator_for(stmt.PlayStmt)

@@ -512,6 +512,26 @@ class LocateStmt(Stmt):
         )
 
 
+class OnErrorStmt(Stmt):
+    child_fields = []
+
+    def __init__(self, resume_next, goto_label):
+        assert (
+            (resume_next and not goto_label) or
+            (goto_label and not resume_next)
+        )
+
+        self.resume_next = resume_next
+        self.goto_label = goto_label
+
+    def __repr__(self):
+        if self.resume_next:
+            desc = 'RESUME NEXT'
+        else:
+            desc = f'GOTO {self.goto_label}'
+        return f'<OnErrorStmt {desc}>'
+
+
 class PlayStmt(Stmt):
     child_fields = ['command_string']
 

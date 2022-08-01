@@ -24,7 +24,8 @@ from .stmt import (
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
     RandomizeStmt, GosubStmt, ReturnStmt, DefSegStmt, PokeStmt,
     ReadStmt, RestoreStmt, LocateStmt, ScreenStmt, WidthStmt, PlayStmt,
-    ExitDoStmt, ExitForStmt, KillStmt, SoundStmt, BloadStmt, BsaveStmt,
+    ExitDoStmt, ExitForStmt, KillStmt, SoundStmt, OnErrorStmt,
+    BloadStmt, BsaveStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -336,6 +337,7 @@ builtin_func = Located(
         chr_dollar_kw |
         cint_kw |
         clng_kw |
+        err_kw |
         inkey_dollar_kw |
         instr_kw |
         int_kw |
@@ -686,6 +688,15 @@ locate_stmt = (
     )
 ).set_name('locate_stmt')
 
+on_error_stmt = (
+    on_kw.suppress() +
+    error_kw.suppress() -
+    (
+        (resume_kw - next_kw) |
+        (goto_kw - (untyped_identifier | line_no_value))
+    )
+).set_name('on_error_stmt')
+
 play_stmt = (
     play_kw.suppress() -
     expr
@@ -897,6 +908,7 @@ stmt = Located(
     input_stmt |
     kill_stmt |
     locate_stmt |
+    on_error_stmt |
     play_stmt |
     poke_stmt |
     print_stmt |
@@ -1412,6 +1424,17 @@ def parse_kill_stmt(toks):
 def parse_locate_stmt(toks):
     row, col, cursor, start, stop, *_ = list(toks) + 5 * [None]
     return LocateStmt(row, col, cursor, start, stop)
+
+
+@parse_action(on_error_stmt)
+def parse_on_error_stmt(toks):
+    if toks[0].lower() == 'resume':
+        resume_next = True
+        goto_label = None
+    else:
+        resume_next = False
+        goto_label = toks[1]
+    return OnErrorStmt(resume_next, goto_label)
 
 
 @parse_action(play_stmt)
