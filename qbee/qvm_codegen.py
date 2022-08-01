@@ -1648,14 +1648,25 @@ def gen_input(node, code, codegen):
 
 @QvmCodeGen.generator_for(stmt.LocateStmt)
 def gen_locate_stmt(node, code, codegen):
-    codegen.gen_code_for_node(node.row, code)
-    gen_code_for_conv(expr.Type.INTEGER, node.row, code, codegen)
+    if node.row is None:
+        code.add(('push%', -1))
+    else:
+        codegen.gen_code_for_node(node.row, code)
+        gen_code_for_conv(expr.Type.INTEGER, node.row, code, codegen)
 
-    codegen.gen_code_for_node(node.col, code)
-    gen_code_for_conv(expr.Type.INTEGER, node.col, code, codegen)
+    if node.row is None:
+        code.add(('push%', -1))
+    else:
+        codegen.gen_code_for_node(node.col, code)
+        gen_code_for_conv(expr.Type.INTEGER, node.col, code, codegen)
+
+    if node.cursor is None:
+        code.add(('push%', -1))
+    else:
+        codegen.gen_code_for_node(node.cursor, code)
+        gen_code_for_conv(expr.Type.INTEGER, node.cursor, code, codegen)
 
     code.add(
-        ('push%', -1),
         ('push%', -1),
         ('push%', -1),
     )

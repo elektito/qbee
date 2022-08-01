@@ -655,8 +655,30 @@ input_stmt = (
     delimited_list(lvalue, delim=',')
 ).set_name('input_stmt')
 
+opt_expr = Opt(expr, default=None)
 locate_stmt = (
-    locate_kw.suppress() - expr - comma.suppress() - expr
+    locate_kw.suppress() -
+    opt_expr +   # row
+    Opt(
+        comma.suppress() -
+        opt_expr -  # col
+        Opt(
+            comma.suppress() -
+            opt_expr +  # cursor
+            Opt(
+                comma.suppress() -
+                expr +  # start
+                Opt(
+                    comma.suppress() -
+                    expr,  # stop
+                    default=None
+                ),
+                default=None
+            ),
+            default=None
+        ),
+        default=None
+    )
 ).set_name('locate_stmt')
 
 play_stmt = (
@@ -1369,8 +1391,8 @@ def parse_input(toks):
 
 @parse_action(locate_stmt)
 def parse_locate_stmt(toks):
-    row, col = toks
-    return LocateStmt(row, col)
+    row, col, cursor, start, stop, *_ = list(toks) + 5 * [None]
+    return LocateStmt(row, col, cursor, start, stop)
 
 
 @parse_action(play_stmt)

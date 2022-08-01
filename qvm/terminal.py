@@ -133,7 +133,7 @@ class TerminalWindow(pyglet.window.Window):
         # cursor position on the screen
         self._cursor_row = self._cursor_col = 0
 
-    def locate(self, row, col):
+    def locate(self, row, col, cursor, start, stop):
         if row is not None:
             if row < self.text_view_top or \
                row > self.text_view_bottom:
@@ -149,6 +149,9 @@ class TerminalWindow(pyglet.window.Window):
                 raise DeviceError('Invalid cursor col')
 
             self._cursor_col = col
+
+        if cursor is not None:
+            self.show_cursor = cursor
 
     def get_cursor_pos(self):
         return self._cursor_row, self._cursor_col

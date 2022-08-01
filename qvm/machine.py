@@ -674,7 +674,13 @@ class SmartTerminalMixin:
             row = None
         if col < 0:
             col = None
-        self.terminal.call('locate', row, col)
+        if cursor < 0:
+            cursor = None
+        if start < 0:
+            start = None
+        if stop < 0:
+            stop = None
+        self.terminal.call('locate', row, col, cursor, start, stop)
 
     def terminal_print(self, text):
         self.terminal.call('put_text', text)
@@ -691,6 +697,8 @@ class SmartTerminalMixin:
             assert False
 
     def terminal_input(self, same_line):
+        old_show_cursor = self.terminal.call_with_result(
+            'get', 'show_cursor')
         self.terminal.call('set', 'show_cursor', True)
         string = ''
         while True:
@@ -716,7 +724,7 @@ class SmartTerminalMixin:
         if not same_line:
             self.terminal.call('put_text', '\r\n')
 
-        self.terminal.call('set', 'show_cursor', False)
+        self.terminal.call('set', 'show_cursor', old_show_cursor)
 
         return string
 

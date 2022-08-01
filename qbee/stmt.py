@@ -485,14 +485,21 @@ class InputStmt(Stmt):
 
 
 class LocateStmt(Stmt):
-    child_fields = ['row', 'col']
+    child_fields = ['row', 'col', 'cursor', 'start', 'stop']
 
-    def __init__(self, row, col):
+    def __init__(self, row, col, cursor, start, stop):
         self.row = row
         self.col = col
+        self.cursor = cursor
+        self.start = start
+        self.stop = stop
 
     def __repr__(self):
-        return f'<LocateStmt {self.row} {self.col}>'
+        return (
+            f'<LocateStmt row={self.row} col={self.col} '
+            f'cursor={self.cursor} '
+            f'start={self.start} stop={self.stop}>'
+        )
 
 
 class PlayStmt(Stmt):
