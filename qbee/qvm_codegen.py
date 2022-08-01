@@ -1781,6 +1781,17 @@ def gen_screen_stmt(node, code, codegen):
     code.add(('io', 'terminal', 'set_mode'))
 
 
+@QvmCodeGen.generator_for(stmt.SoundStmt)
+def gen_sound(node, code, codegen):
+    codegen.gen_code_for_node(node.frequency, code)
+    gen_code_for_conv(
+        expr.Type.INTEGER, node.frequency, code, codegen)
+    codegen.gen_code_for_node(node.duration, code)
+    gen_code_for_conv(
+        expr.Type.LONG, node.duration, code, codegen)
+    code.add(('io', 'pcspkr', 'sound'))
+
+
 @QvmCodeGen.generator_for(stmt.WidthStmt)
 def gen_width_stmt(node, code, codegen):
     if node.columns:

@@ -33,6 +33,7 @@ QVM_DEVICES = {
         'ops': {
             'beep': 1,
             'play': 2,
+            'sound': 3,
         },
     },
     'time': {

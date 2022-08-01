@@ -623,6 +623,17 @@ class ScreenStmt(Stmt):
         return f'<ScreenStmt {self.mode}{csw}{apage}{vpage}'
 
 
+class SoundStmt(Stmt):
+    child_fields = ['frequency', 'duration']
+
+    def __init__(self, frequency, duration):
+        self.frequency = frequency
+        self.duration = duration
+
+    def __repr__(self):
+        return f'<SoundStmt freq={self.frequency} dur={self.duration}>'
+
+
 class TypeStmt(Stmt):
     child_fields = []
 

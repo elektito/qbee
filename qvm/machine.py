@@ -425,6 +425,11 @@ class PcSpeakerDevice(Device):
         command = self.cpu.pop(CellType.STRING)
         self.impl.pcspkr_play(command)
 
+    def _exec_sound(self):
+        duration = self.cpu.pop(CellType.LONG)
+        freq = self.cpu.pop(CellType.INTEGER)
+        self.impl.pcspkr_sound(freq, duration)
+
 
 class DataDevice(Device):
     name = 'data'
@@ -581,6 +586,25 @@ class BasePeripheralsImpl:
 
     def pcspkr_play(self, command):
         logger.info('PLAY: %s', command)
+
+    def pcspkr_sound(self, freq, duration):
+        if freq < 37:
+            raise DeviceError(
+                error_code=Device.Error.BAD_ARG_VALUE,
+                error_msg=(
+                    f'Invalid SOUND frequency: {freq} '
+                    f'(expected: 37-32767)'
+                ),
+            )
+        if duration < 0 or duration > 65535:
+            raise DeviceError(
+                error_code=Device.Error.BAD_ARG_VALUE,
+                error_msg=(
+                    f'Invalid SOUND duration: {duration} '
+                    f'(expected: 0-65535)'
+                ),
+            )
+        logger.info('SOUND: %d, %d', freq, duration)
 
     # rng
 

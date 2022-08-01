@@ -24,7 +24,7 @@ from .stmt import (
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
     RandomizeStmt, GosubStmt, ReturnStmt, DefSegStmt, PokeStmt,
     ReadStmt, RestoreStmt, LocateStmt, ScreenStmt, WidthStmt, PlayStmt,
-    ExitDoStmt, ExitForStmt, KillStmt, BloadStmt, BsaveStmt,
+    ExitDoStmt, ExitForStmt, KillStmt, SoundStmt, BloadStmt, BsaveStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -725,6 +725,13 @@ screen_stmt = (
     delimited_list(expr, delim=comma, min=1, max=4)
 ).set_name('screen_stmt')
 
+sound_stmt = (
+    sound_kw.suppress() -
+    expr -
+    comma.suppress() -
+    expr
+).set_name('sound_stmt')
+
 view_print_stmt = (
     view_kw.suppress() +
     print_kw.suppress() +
@@ -894,6 +901,7 @@ stmt = Located(
     poke_stmt |
     print_stmt |
     rem_stmt |
+    sound_stmt |
     view_print_stmt |
     width_stmt |
 
@@ -1457,6 +1465,12 @@ def parse_restore_stmt(toks):
         # it's a line number
         target = int(target)
     return RestoreStmt(target)
+
+
+@parse_action(sound_stmt)
+def parse_sound_stmt(toks):
+    freq, dur = toks
+    return SoundStmt(freq, dur)
 
 
 @parse_action(screen_stmt)
