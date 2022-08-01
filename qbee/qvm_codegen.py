@@ -1385,6 +1385,12 @@ def gen_dim(node, code, codegen):
         gen_static_array_init(decl, code, codegen)
 
 
+@QvmCodeGen.generator_for(stmt.KillStmt)
+def gen_kill(node, code, codegen):
+    codegen.gen_code_for_node(node.filespec, code)
+    code.add(('io', 'fs', 'kill'))
+
+
 @QvmCodeGen.generator_for(stmt.LoopBlock)
 def gen_loop(node, code, codegen):
     do_label = codegen.get_label('do')

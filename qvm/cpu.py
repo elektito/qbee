@@ -65,6 +65,12 @@ QVM_DEVICES = {
             'read': 1,
             'restore': 2,
         }
+    },
+    'fs': {
+        'id': 9,
+        'ops': {
+            'kill': 1,
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 import struct
 import logging
+import os
 from datetime import datetime
 from enum import Enum
 from random import Random
@@ -24,6 +25,7 @@ class Device:
         BAD_ARG_VALUE = 3
         OP_FAILED = 4
         BAD_FILESPEC = 5
+        FILE_NOT_FOUND = 6
 
     def __init__(self, device_id, cpu, impl):
         assert hasattr(self, 'name')
@@ -480,6 +482,14 @@ class DataDevice(Device):
         self.data_idx = 0
 
 
+class FileSystemDevice(Device):
+    name = 'fs'
+
+    def _exec_kill(self):
+        filespec = self.cpu.pop(CellType.STRING)
+        self.impl.fs_kill(filespec)
+
+
 class BasePeripheralsImpl:
     def __init__(self):
         super().__init__()
@@ -608,6 +618,18 @@ class BasePeripheralsImpl:
             hour=0, minute=0, second=0, microsecond=0)
         time_since_midnight = (now - midnight).total_seconds()
         return time_since_midnight
+
+    # fs
+
+    def fs_kill(self, filespec):
+        filespec = self._map_filespec(filespec)
+        try:
+            os.unlink(filespec)
+        except FileNotFoundError:
+            raise DeviceError(
+                error_code=Device.Error.FILE_NOT_FOUND,
+                error_msg=f'No such file or directory: {filespec}',
+            )
 
     # misc
 
@@ -926,6 +948,10 @@ class QvmMachine:
         data_device = DataDevice(
             QVM_DEVICES['data']['id'], self.cpu, impl)
         self.cpu.connect_device('data', data_device)
+
+        fs_device = FileSystemDevice(
+            QVM_DEVICES['fs']['id'], self.cpu, impl)
+        self.cpu.connect_device('fs', fs_device)
 
     def run(self):
         self.cpu.run()

@@ -24,7 +24,7 @@ from .stmt import (
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
     RandomizeStmt, GosubStmt, ReturnStmt, DefSegStmt, PokeStmt,
     ReadStmt, RestoreStmt, LocateStmt, ScreenStmt, WidthStmt, PlayStmt,
-    ExitDoStmt, ExitForStmt, BloadStmt, BsaveStmt,
+    ExitDoStmt, ExitForStmt, KillStmt, BloadStmt, BsaveStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -655,6 +655,11 @@ input_stmt = (
     delimited_list(lvalue, delim=',')
 ).set_name('input_stmt')
 
+kill_stmt = (
+    kill_kw.suppress() -
+    expr
+).set_name('kill_stmt')
+
 opt_expr = Opt(expr, default=None)
 locate_stmt = (
     locate_kw.suppress() -
@@ -883,6 +888,7 @@ stmt = Located(
     return_stmt |
     goto_stmt |
     input_stmt |
+    kill_stmt |
     locate_stmt |
     play_stmt |
     poke_stmt |
@@ -1387,6 +1393,11 @@ def parse_input(toks):
     var_list = list(toks)
 
     return InputStmt(same_line, prompt, prompt_question, var_list)
+
+
+@parse_action(kill_stmt)
+def parse_kill_stmt(toks):
+    return KillStmt(toks[0])
 
 
 @parse_action(locate_stmt)

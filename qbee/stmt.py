@@ -484,6 +484,16 @@ class InputStmt(Stmt):
         )
 
 
+class KillStmt(Stmt):
+    child_fields = ['filespec']
+
+    def __init__(self, filespec):
+        self.filespec = filespec
+
+    def __repr__(self):
+        return f'<KillStmt {self.filespec}>'
+
+
 class LocateStmt(Stmt):
     child_fields = ['row', 'col', 'cursor', 'start', 'stop']
 
