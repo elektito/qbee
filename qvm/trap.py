@@ -17,6 +17,9 @@ class TrapCode(Enum):
     KEYBOARD_INTERRUPT = 13
     DIVISION_BY_ZERO = 14
     UNINITIALIZED_MEM = 15
+    NO_RESUME = 16
+    ERRHAND_IN_HANDLER = 17
+    CANNOT_RESUME = 18
 
 
 class Trapped(Exception):

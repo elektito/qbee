@@ -512,6 +512,32 @@ class LocateStmt(Stmt):
         )
 
 
+class OnErrorStmt(Stmt):
+    child_fields = []
+
+    def __init__(self, resume_next, goto_label):
+        assert (
+            (resume_next and goto_label is None) or
+            (goto_label is not None and not resume_next)
+        )
+
+        self.resume_next = resume_next
+        self.goto_label = goto_label
+
+        if isinstance(goto_label, int):
+            self.canonical_goto_label = LineNo.get_canonical_name(
+                goto_label)
+        else:
+            self.canonical_goto_label = goto_label
+
+    def __repr__(self):
+        if self.resume_next:
+            desc = 'RESUME NEXT'
+        else:
+            desc = f'GOTO {self.goto_label}'
+        return f'<OnErrorStmt {desc}>'
+
+
 class PlayStmt(Stmt):
     child_fields = ['command_string']
 
@@ -604,6 +630,19 @@ class DataStmt(Stmt):
 
     def __repr__(self):
         return '<DataStmt>'
+
+
+class ResumeStmt(Stmt):
+    child_fields = []
+
+    def __init__(self, next):
+        self.next = next
+
+    def __repr__(self):
+        if self.next:
+            return '<ResumeStmt>'
+        else:
+            return '<ResumeStmt NEXT>'
 
 
 class ScreenStmt(Stmt):

@@ -995,6 +995,7 @@ class BuiltinFuncCall(Expr):
             'chr$': Type.STRING,
             'cint': Type.INTEGER,
             'clng': Type.LONG,
+            'err': Type.INTEGER,
             'inkey$': Type.STRING,
             'instr': Type.LONG,
             'int': Type.LONG,

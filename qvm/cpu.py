@@ -218,11 +218,16 @@ class QvmCpu:
         self.halted = False
         self.halt_reason = HaltReason.NONE
         self.pc = 0
+        self.prev_pc = 0
         self.cur_frame = None
         self.stack = []
         self.breakpoints = []
         self.last_breakpoint = None
         self.last_trap = None
+        self.last_trap_kwargs = {}
+        self.trap_target = None
+        self.error_handler_active = False
+        self.trapped_addr = 0
 
         self.received_keyboard_interrupt = False
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -311,6 +316,7 @@ class QvmCpu:
             self._trap(TrapCode.KEYBOARD_INTERRUPT)
             return
 
+        self.prev_pc = self.pc
         instr_addr = self.pc
         instr, operands, size = self.get_current_instruction()
         self.pc += size
@@ -337,11 +343,12 @@ class QvmCpu:
         try:
             func(*operands)
         except Trapped as e:
+            self.trapped_addr = self.prev_pc
             self._trap(e.trap_code, **e.trap_kwargs)
         except ZeroDivisionError:
             self._trap(TrapCode.DIVISION_BY_ZERO)
 
-        if self.pc >= len(self.module.code):
+        if not self.halted and self.pc >= len(self.module.code):
             logger.info(
                 'Halting because execution reached end of module')
             self.halt_reason = HaltReason.END_OF_CODE
@@ -402,10 +409,23 @@ class QvmCpu:
         return instr, operands, idx - addr
 
     def trap(self, code, **kwargs):
+        self.trapped_addr = self.prev_pc
         raise Trapped(trap_code=code, trap_kwargs=kwargs)
 
     def _trap(self, code, **kwargs):
         logger.info('Received trap: %s', code)
+
+        self.last_trap = code
+        self.last_trap_kwargs = kwargs
+
+        if not self.error_handler_active and \
+           self.trap_target is not None:
+            if self.trap_target == 'next':
+                self._exec_errresn()
+            else:
+                self.pc = self.trap_target
+                self.error_handler_active = True
+            return
 
         if code == TrapCode.INVALID_OP_CODE:
             op_code = kwargs['op_code']
@@ -469,12 +489,19 @@ class QvmCpu:
             msg = kwargs.get('msg')
             msg = msg or 'Accessing uninitialized memory'
             print(msg)
+        elif code == TrapCode.NO_RESUME:
+            print('No RESUME in error handler')
+        elif code == TrapCode.ERRHAND_IN_HANDLER:
+            print('ON ERROR while error handling active is not legal')
+        elif code == TrapCode.CANNOT_RESUME:
+            msg = kwargs.get('msg')
+            msg = msg or 'Cannot RESUME.'
+            print(msg)
         else:
             assert False
 
         self.halted = True
         self.halt_reason = HaltReason.TRAP
-        self.last_trap = code
 
     def push(self, value_type, value):
         logger.info(
@@ -724,6 +751,49 @@ class QvmCpu:
 
     def _exec_eqv(self):
         self._bitwise(lambda a, b: ~(a ^ b))
+
+    def _exec_errget(self):
+        self.push(CellType.INTEGER, self.last_trap.value)
+
+    def _exec_errhand(self, target):
+        if target == 0 and self.error_handler_active:
+            # "ON ERROR GOTO 0" inside an error handler, re-raises the
+            # error
+            self.trap(self.last_trap, **self.last_trap_kwargs)
+
+        if self.error_handler_active:
+            self.trap(TrapCode.ERRHAND_IN_HANDLER)
+
+        if target == 0:
+            # ON ERROR GOTO 0
+            self.trap_target = None
+        elif target == 1:
+            # ON ERROR RESUME NEXT
+            self.trap_target = 'next'
+        else:
+            self.trap_target = target
+
+    def _exec_errres(self):
+        # RESUME
+        if self.module.debug_info is None:
+            self.trap(TrapCode.CANNOT_RESUME,
+                      msg='Cannot resume without debug info')
+        stmt = self.module.debug_info.find_stmt(self.trapped_addr, self)
+        if stmt is None:
+            self.trap(TrapCode.CANNOT_RESUME,
+                      msg=f'Could not find statement to resume at addr {self.trapped_addr:08x}.')
+        self.pc = stmt.start_offset
+
+    def _exec_errresn(self):
+        # RESUME NEXT
+        if self.module.debug_info is None:
+            self.trap(TrapCode.CANNOT_RESUME,
+                      msg='Cannot resume without debug info')
+        stmt = self.module.debug_info.find_stmt(self.trapped_addr, self)
+        if stmt is None:
+            self.trap(TrapCode.CANNOT_RESUME,
+                      msg=f'Could not find statement to resume at addr {self.trapped_addr:08x}.')
+        self.pc = stmt.end_offset
 
     def _exec_exp(self):
         b = self.pop()
@@ -1067,12 +1137,18 @@ class QvmCpu:
         self.push(CellType.REFERENCE, ref)
 
     def _exec_ret(self):
+        if self.error_handler_active:
+            self.trap(TrapCode.NO_RESUME)
+
         self.cur_frame.destroy()
         self.cur_frame = self.cur_frame.prev_frame
         ret_addr = self.pop(CellType.LONG)
         self.pc = ret_addr
 
     def _exec_retv(self):
+        if self.error_handler_active:
+            self.trap(TrapCode.NO_RESUME)
+
         self.cur_frame.destroy()
         self.cur_frame = self.cur_frame.prev_frame
 

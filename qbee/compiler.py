@@ -502,6 +502,7 @@ class Pass2(CompilePass):
             'chr$': (1, Type.INTEGER),
             'cint': (1, 'numeric'),
             'clng': (1, 'numeric'),
+            'err': (0,),
             'inkey$': (0,),
             'instr': [(2, Type.STRING, Type.STRING),
                       (3, Type.INTEGER, Type.STRING, Type.STRING)],
@@ -739,6 +740,28 @@ class Pass2(CompilePass):
                 EC.LABEL_NOT_DEFINED,
                 (f'{label_type} not in the same routine as GOTO: '
                  f'{node.target}'),
+                node=node)
+
+    def process_on_error_pre(self, node):
+        if node.resume_next or node.goto_label == 0:
+            return
+
+        if isinstance(node.goto_label, int):
+            label_type = 'line number'
+        else:
+            label_type = 'label'
+
+        if node.canonical_goto_label not in self.compilation.all_labels:
+            raise CompileError(
+                EC.LABEL_NOT_DEFINED,
+                f'{label_type} not defined: {node.goto_label}',
+                node=node)
+        if node.canonical_goto_label not in self.compilation.main_routine.labels:
+        #if node.canonical_goto_label not in node.parent_routine.labels:
+            raise CompileError(
+                EC.LABEL_NOT_DEFINED,
+                (f'Module-level {label_type} not found: '
+                 f'{node.goto_label}'),
                 node=node)
 
     def process_dim_pre(self, node):

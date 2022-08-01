@@ -197,6 +197,63 @@ class DebugInfo:
         del self.blocks
         del self.empty_blocks
 
+    def find_stmt(self, addr, cpu):
+        # if we're at the beginning of the module code, there should
+        # be a call instruction telling us where the actual beginning
+        # of the module code is. we'll use that to find the first
+        # statement.
+        if addr == 0:
+            instr, operands, _ = cpu.get_instruction_at(0)
+            if instr.op != 'call':
+                return None
+            return self.find_stmt(operands[0], cpu)
+
+        # if the address falls within the range of some statement,
+        # return the one with the smallest range, excluding any
+        # blocks.
+        matching = []
+        for stmt in self.stmts:
+            if stmt.start_offset <= addr < stmt.end_offset:
+                matching.append(stmt)
+
+        blocks = [stmt for stmt in matching if isinstance(stmt, Block)]
+        non_blocks = [
+            stmt for stmt in matching
+            if not isinstance(stmt, Block)]
+
+        non_blocks.sort(key=lambda r: r.end_offset - r.start_offset)
+        if non_blocks:
+            return non_blocks[0]
+
+        # if not however...
+
+        if blocks:
+            blocks.sort(key=lambda r: r.end_offset - r.start_offset)
+
+            # if it falls between the start of a block, and the start
+            # of the first statement inside that block, it's
+            # considered part of the "state statement" of that block
+            first_inner_stmt = first_stmt_in_block(block)
+            if first_inner_stmt:
+                first_inner_offset = first_inner_stmt.start_offset
+            else:
+                first_inner_offset = block.end_stmt.start_offset
+            if block.start_offset <= addr < first_inner_offset:
+                return block.start_stmt
+
+            # if it falls between the end of the last statement inside
+            # a block and the end of the block, it's considered part
+            # of the "end statement" of that block.
+            last_inner_stmt = last_stmt_in_block(block)
+            if last_inner_stmt:
+                last_inner_offset = last_inner_stmt.end_offset
+            else:
+                last_inner_offset = block.start_stmt.end_offset
+            if last_inner_offset <= addr < block.end_offset:
+                return block.end_stmt
+
+        return None
+
     def serialize(self):
         return gzip.compress(pickle.dumps(self))
 

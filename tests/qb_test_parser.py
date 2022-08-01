@@ -32,6 +32,7 @@ class TestCase:
     expected_error: str = None
     expected_io: list = field(default_factory=list)
     no_run: bool = False
+    debug_info: str = 'both'
     filename: str = None
     idx: int = None
 
@@ -89,6 +90,7 @@ def parse_test_case(toks):
     inkey_list = []
     timer_list = []
     rnd_list = []
+    debug_info = 'both'
     for name, value in options:
         name = name.lower()
         if name == 'success':
@@ -121,6 +123,14 @@ def parse_test_case(toks):
             expected_io.append(tuple(value))
         elif name == 'norun':
             no_run = True
+        elif name == 'onlydbg':
+            if debug_info == 'without':
+                raise RuntimeError('Cannot have both onlydbg and nodbg')
+            debug_info = 'with' # test only with debug info
+        elif name == 'nodbg':
+            if debug_info == 'with':
+                raise RuntimeError('Cannot have both onlydbg and nodbg')
+            debug_info = 'without' # test only without debug info
         elif name == 'with_inkey':
             inkey_list = list(value)
         elif name == 'with_rnd':
@@ -136,6 +146,7 @@ def parse_test_case(toks):
         expected_error=expected_error,
         expected_io=expected_io,
         no_run=no_run,
+        debug_info=debug_info,
         inkey_list=inkey_list,
         rnd_list=rnd_list,
         timer_list=timer_list,

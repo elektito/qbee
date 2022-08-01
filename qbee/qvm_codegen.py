@@ -50,6 +50,12 @@ class CanonicalOp(Enum):
     DUPL = auto()
     EQ = auto()
     EQV = auto()
+    ERRGET = auto() # err function
+    ERRHAND = auto() # on error goto sth
+    ERRLINE = auto() # erl function
+    ERRRAISE = auto() # error statement
+    ERRRES = auto() # resume
+    ERRRESN = auto() # resume next
     EXP = auto()
     FRAME = auto()
     GE = auto()
@@ -597,6 +603,14 @@ class QvmCode(BaseCode):
                 label = args[0]
                 patch_positions[cur_offset + 1] = label
                 bargs = struct.pack('>I', 0)  # to be patched
+            elif op == 'errhand':
+                assert len(args) == 1
+                label = args[0]
+                if label in [0, 1]:
+                    bargs = struct.pack('>I', label)
+                else:
+                    patch_positions[cur_offset + 1] = label
+                    bargs = struct.pack('>I', 0)  # to be patched
             elif op == 'frame':
                 assert len(args) == 2
                 params_size, vars_size = args
@@ -1122,6 +1136,8 @@ def gen_builtin_func_call(node, code, codegen):
     elif node.name == 'clng':
         codegen.gen_code_for_node(node.args[0], code)
         code.add(('clng',))
+    elif node.name == 'err':
+        code.add(('errget',))
     elif node.name == 'inkey$':
         code.add(('io', 'terminal', 'inkey'))
     elif node.name == 'instr':
@@ -1680,6 +1696,16 @@ def gen_locate_stmt(node, code, codegen):
     code.add(('io', 'terminal', 'locate'))
 
 
+@QvmCodeGen.generator_for(stmt.OnErrorStmt)
+def gen_on_error(node, code, codegen):
+    if node.resume_next:
+        code.add(('errhand', 1))
+    elif node.goto_label == 0:
+        code.add(('errhand', 0))
+    else:
+        code.add(('errhand', node.canonical_goto_label))
+
+
 @QvmCodeGen.generator_for(stmt.PlayStmt)
 def gen_play_stmt(node, code, codegen):
     codegen.gen_code_for_node(node.command_string, code)
@@ -1754,6 +1780,14 @@ def gen_restore_stmt(node, code, codegen):
         ('push%', label_index),
         ('io', 'data', 'restore'),
     )
+
+
+@QvmCodeGen.generator_for(stmt.ResumeStmt)
+def gen_resume_stmt(node, code, codegen):
+    if node.next:
+        code.add(('errresn',))
+    else:
+        code.add(('errres',))
 
 
 @QvmCodeGen.generator_for(stmt.ScreenStmt)

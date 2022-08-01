@@ -24,7 +24,8 @@ from .stmt import (
     EndSelectStmt, PrintSep, WhileStmt, WendStmt, DefTypeStmt,
     RandomizeStmt, GosubStmt, ReturnStmt, DefSegStmt, PokeStmt,
     ReadStmt, RestoreStmt, LocateStmt, ScreenStmt, WidthStmt, PlayStmt,
-    ExitDoStmt, ExitForStmt, KillStmt, SoundStmt, BloadStmt, BsaveStmt,
+    ExitDoStmt, ExitForStmt, KillStmt, SoundStmt, OnErrorStmt,
+    BloadStmt, BsaveStmt, ResumeStmt,
 )
 from .program import Label, LineNo, Line
 
@@ -338,6 +339,7 @@ builtin_func = Located(
         chr_dollar_kw |
         cint_kw |
         clng_kw |
+        err_kw |
         inkey_dollar_kw |
         instr_kw |
         int_kw |
@@ -688,6 +690,15 @@ locate_stmt = (
     )
 ).set_name('locate_stmt')
 
+on_error_stmt = (
+    on_kw.suppress() +
+    error_kw.suppress() -
+    (
+        (resume_kw - next_kw) |
+        (goto_kw - (untyped_identifier | line_no_value))
+    )
+).set_name('on_error_stmt')
+
 play_stmt = (
     play_kw.suppress() -
     expr
@@ -721,6 +732,10 @@ restore_stmt = (
     restore_kw.suppress() +
     Opt(untyped_identifier | line_no_value, default=None)
 ).set_name('restore_stmt')
+
+resume_stmt = (
+    resume_kw + Opt(next_kw)
+).set_name('resume_stmt')
 
 screen_stmt = (
     screen_kw.suppress() -
@@ -886,6 +901,7 @@ stmt = Located(
     randomize_stmt |
     read_stmt |
     restore_stmt |
+    resume_stmt |
     screen_stmt |
     sub_stmt |
     end_sub_stmt |
@@ -899,6 +915,7 @@ stmt = Located(
     input_stmt |
     kill_stmt |
     locate_stmt |
+    on_error_stmt |
     play_stmt |
     poke_stmt |
     print_stmt |
@@ -1416,6 +1433,20 @@ def parse_locate_stmt(toks):
     return LocateStmt(row, col, cursor, start, stop)
 
 
+@parse_action(on_error_stmt)
+def parse_on_error_stmt(toks):
+    if toks[0].lower() == 'resume':
+        resume_next = True
+        goto_label = None
+    else:
+        resume_next = False
+        goto_label = toks[1]
+        if goto_label[0].isnumeric():
+            # it's a line number
+            goto_label = int(goto_label)
+    return OnErrorStmt(resume_next, goto_label)
+
+
 @parse_action(play_stmt)
 def parse_play_stmt(toks):
     command_string = toks[0]
@@ -1473,6 +1504,14 @@ def parse_restore_stmt(toks):
 def parse_sound_stmt(toks):
     freq, dur = toks
     return SoundStmt(freq, dur)
+
+
+@parse_action(resume_stmt)
+def parse_resume_stmt(toks):
+    if len(toks) == 1:
+        return ResumeStmt(next=False)
+    else:
+        return ResumeStmt(next=True)
 
 
 @parse_action(screen_stmt)

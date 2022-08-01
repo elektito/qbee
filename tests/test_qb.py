@@ -81,6 +81,10 @@ def test_qb_success(compiler, vm, case):
     code = compiler.compile(case.source_code)
     bcode = bytes(code)
     module = QModule.parse(bcode)
+    if case.debug_info == 'without' and module.debug_info:
+        return
+    if case.debug_info == 'with' and not module.debug_info:
+        return
     vm.init(module, case)
     if not case.no_run:
         vm.run()

@@ -103,7 +103,7 @@ class QModule:
                 n_indices, = struct.unpack('>B', bcode[idx:idx+1])
                 idx += 1
                 args = [n_indices]
-            elif op in ('call', 'jmp', 'jz'):
+            elif op in ('call', 'jmp', 'jz', 'errhand'):
                 dest, = struct.unpack('>I', bcode[idx:idx+4])
                 idx += 4
                 args = [f'0x{dest:x}']
