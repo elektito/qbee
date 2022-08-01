@@ -663,6 +663,7 @@ class BasePeripheralsImpl:
                 error_msg=f'Absolute paths not supported',
             )
         filespec = filespec.replace('\\', '/')
+        filespec = filespec.upper()
         return filespec
 
 
