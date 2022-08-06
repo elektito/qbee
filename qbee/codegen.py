@@ -1,4 +1,5 @@
 from .exceptions import InternalError, CodeGenError
+from .stmt import Stmt
 
 
 class BaseCode:
@@ -135,6 +136,8 @@ other codegen functions.
             return
         if not hasattr(node, 'loc_start'):
             return
+        if not isinstance(node, Stmt):
+            return
         if node.loc_start is None:
             return
 
@@ -145,6 +148,8 @@ other codegen functions.
         if not self.debug_info_enabled:
             return
         if not hasattr(node, 'loc_start'):
+            return
+        if not isinstance(node, Stmt):
             return
         if node.loc_start is None:
             return
