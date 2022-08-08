@@ -1,0 +1,3 @@
+[submodule "fastqvm/raylib"]
+	path = fastqvm/lib/raylib
+	url = https://github.com/raysan5/raylib.git
