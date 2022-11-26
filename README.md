@@ -29,7 +29,10 @@ You can step through the program using `next` and `step` commands, set
 breakpoints using `break`, and evaluate expressions using `print`. Run
 `help` to get a full list of all available debugger commands.
 
-qbee requires python 3.9 or higher. This is needed because:
+`qbee` has a fairly extensive test suite. You can run the tests using
+pytest: `python -m pytest`
+
+Python 3.9 or higher is required. This is needed because:
 
  - Python 3.9 allows having `classmethod` and `property` decorators on
    the same method.
