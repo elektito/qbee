@@ -1,4 +1,4 @@
-# qbee :honeybee:
+# qbee 🐝
 
 *qbee* is a QBASIC compiler written in Python. The compilation target
 is a virtual machine called QVM. Most of the core language is
